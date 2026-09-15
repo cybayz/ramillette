@@ -1,69 +1,147 @@
-import Image from "next/image";
+import prisma from "@/lib/db/prisma";
+import { HeroBanner } from "@/components/home/HeroBanner";
+import { CategoryShortcuts } from "@/components/home/CategoryShortcuts";
+import { BestSellersSection } from "@/components/home/BestSellersSection";
+import { OwnBrandSpotlight } from "@/components/home/OwnBrandSpotlight";
+import { InspiredSection } from "@/components/home/InspiredSection";
+import { LuxuryPerfumesSection } from "@/components/home/LuxuryPerfumesSection";
+import { PromotionalCTAs } from "@/components/home/PromotionalCTAs";
+import { ValueProps } from "@/components/home/ValueProps";
+import { CustomerReviewsSection } from "@/components/home/CustomerReviewsSection";
 
-export default function Home() {
+export const revalidate = 60; // Revalidate every 60 seconds
+
+export default async function HomePage() {
+  // Fetch real data from Prisma database
+  const [bestSellersRaw, ownBrandProduct, inspiredRaw, luxuryRaw] =
+    await Promise.all([
+      prisma.product.findMany({
+        where: { active: true, bestseller: true },
+        include: {
+          images: { orderBy: { sortOrder: "asc" } },
+          variants: { where: { active: true }, orderBy: { price: "asc" } },
+          reviews: { where: { approved: true } },
+          category: true,
+        },
+        take: 8,
+      }),
+      prisma.product.findFirst({
+        where: { slug: "amber-code-45" },
+        include: {
+          images: { orderBy: { sortOrder: "asc" } },
+          variants: { where: { active: true } },
+        },
+      }),
+      prisma.product.findMany({
+        where: {
+          active: true,
+          category: { slug: "inspired" },
+        },
+        include: {
+          images: { orderBy: { sortOrder: "asc" } },
+          variants: { where: { active: true }, orderBy: { price: "asc" } },
+          reviews: { where: { approved: true } },
+          category: true,
+        },
+        take: 8,
+      }),
+      prisma.product.findMany({
+        where: {
+          active: true,
+          category: { slug: "luxury-perfumes" },
+        },
+        include: {
+          images: { orderBy: { sortOrder: "asc" } },
+          variants: { where: { active: true }, orderBy: { price: "asc" } },
+          reviews: { where: { approved: true } },
+          category: true,
+        },
+        take: 8,
+      }),
+    ]);
+
+  // Format products for universal ProductCard
+  const formatCard = (p: any) => ({
+    id: p.id,
+    name: p.name,
+    slug: p.slug,
+    brand: p.brand,
+    categoryName: p.category?.name,
+    basePrice: Number(p.basePrice),
+    compareAtPrice: p.compareAtPrice ? Number(p.compareAtPrice) : null,
+    bestseller: p.bestseller,
+    newArrival: p.newArrival,
+    images: p.images.map((img: any) => ({ url: img.url, alt: img.alt })),
+    variants: p.variants.map((v: any) => ({
+      id: v.id,
+      name: v.name,
+      price: Number(v.price),
+      compareAtPrice: v.compareAtPrice ? Number(v.compareAtPrice) : null,
+      stock: v.stock,
+    })),
+    rating:
+      p.reviews?.length > 0
+        ? Math.round(
+            (p.reviews.reduce((sum: number, r: any) => sum + r.rating, 0) /
+              p.reviews.length) *
+              10
+          ) / 10
+        : 5,
+    reviewsCount: p.reviews?.length ?? 12,
+  });
+
+  const bestSellers = bestSellersRaw.map(formatCard);
+  const inspiredProducts = inspiredRaw.map(formatCard);
+  const luxuryPerfumes = luxuryRaw.map(formatCard);
+
+  const formattedOwnBrand = ownBrandProduct
+    ? {
+        id: ownBrandProduct.id,
+        name: ownBrandProduct.name,
+        slug: ownBrandProduct.slug,
+        description: ownBrandProduct.description,
+        basePrice: Number(ownBrandProduct.basePrice),
+        compareAtPrice: ownBrandProduct.compareAtPrice
+          ? Number(ownBrandProduct.compareAtPrice)
+          : null,
+        images: ownBrandProduct.images.map((img) => ({ url: img.url })),
+        variants: ownBrandProduct.variants.map((v) => ({
+          id: v.id,
+          name: v.name,
+          price: Number(v.price),
+          stock: v.stock,
+        })),
+      }
+    : undefined;
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+    <div className="flex flex-col min-h-screen">
+      {/* 1. Hero Banner with CTAs & Highlights */}
+      <HeroBanner />
+
+      {/* 2. Visual Category Navigation Shortcuts */}
+      <CategoryShortcuts />
+
+      {/* 3. Best Sellers Carousel / Grid */}
+      <BestSellersSection products={bestSellers} />
+
+      {/* 4. Own Brand Dedicated Showcase (Amber Code 80ml) */}
+      <OwnBrandSpotlight product={formattedOwnBrand} />
+
+      {/* 5. Inspired Fragrances Collection */}
+      <InspiredSection products={inspiredProducts} />
+
+      {/* 6. Luxury Perfumes (Arabian Oud & Amber) */}
+      <LuxuryPerfumesSection products={luxuryPerfumes} />
+
+      {/* 7. Promotional CTAs (Corporate Gifting & Refer & Earn) */}
+      <PromotionalCTAs />
+
+      {/* 8. Service Value Propositions (Qatar Delivery, Authentic, COD) */}
+      <ValueProps />
+
+      {/* 9. Verified Customer Reviews */}
+      <CustomerReviewsSection />
     </div>
   );
 }

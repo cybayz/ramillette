@@ -1,0 +1,79 @@
+import React from "react";
+import prisma from "@/lib/db/prisma";
+import { ShopListing } from "@/components/shop/ShopListing";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Shop All Fragrances | Ramillette Perfumes Qatar",
+  description:
+    "Browse our complete catalog of luxury Middle Eastern oud, amber, and designer-inspired perfumes in Qatar with 2-hour express delivery in Doha.",
+};
+
+export const revalidate = 60;
+
+export default async function ShopPage() {
+  const [productsRaw, categoriesRaw] = await Promise.all([
+    prisma.product.findMany({
+      where: { active: true },
+      include: {
+        images: { orderBy: { sortOrder: "asc" } },
+        variants: { where: { active: true }, orderBy: { price: "asc" } },
+        reviews: { where: { approved: true } },
+        category: true,
+      },
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.category.findMany({
+      where: { active: true },
+      orderBy: { sortOrder: "asc" },
+    }),
+  ]);
+
+  const products = productsRaw.map((p) => ({
+    id: p.id,
+    name: p.name,
+    slug: p.slug,
+    brand: p.brand,
+    categoryName: p.category?.name,
+    basePrice: Number(p.basePrice),
+    compareAtPrice: p.compareAtPrice ? Number(p.compareAtPrice) : null,
+    bestseller: p.bestseller,
+    newArrival: p.newArrival,
+    images: p.images.map((img) => ({ url: img.url, alt: img.alt })),
+    variants: p.variants.map((v) => ({
+      id: v.id,
+      name: v.name,
+      price: Number(v.price),
+      compareAtPrice: v.compareAtPrice ? Number(v.compareAtPrice) : null,
+      stock: v.stock,
+    })),
+    rating:
+      p.reviews.length > 0
+        ? Math.round(
+            (p.reviews.reduce((sum, r) => sum + r.rating, 0) /
+              p.reviews.length) *
+              10
+          ) / 10
+        : 5,
+    reviewsCount: p.reviews.length ?? 10,
+  }));
+
+  const categories = categoriesRaw.map((c) => ({
+    name: c.name,
+    slug: c.slug,
+    description: c.description,
+  }));
+
+  return (
+    <ShopListing
+      category={{
+        name: "All Fragrances",
+        slug: "all",
+        description:
+          "Discover Ramillette's curated collection of Arabian and European perfumes, handcrafted with high-concentration oils for lasting sillage.",
+      }}
+      products={products}
+      allCategories={categories}
+    />
+  );
+}

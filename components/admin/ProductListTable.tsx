@@ -1,0 +1,229 @@
+"use client";
+
+import React, { useState } from "react";
+import Image from "next/image";
+import Link from "next/link";
+import { formatPrice } from "@/lib/utils";
+import { Search, Edit3, Check, Loader2, Package } from "lucide-react";
+
+interface AdminProduct {
+  id: string;
+  name: string;
+  slug: string;
+  sku?: string | null;
+  categoryName?: string;
+  basePrice: number;
+  stock: number;
+  active: boolean;
+  variantsCount: number;
+  imageUrl?: string;
+}
+
+export function ProductListTable({
+  initialProducts,
+}: {
+  initialProducts: AdminProduct[];
+}) {
+  const [products, setProducts] = useState(initialProducts);
+  const [query, setQuery] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editStock, setEditStock] = useState<number>(0);
+  const [editPrice, setEditPrice] = useState<number>(0);
+  const [isSaving, setIsSaving] = useState(false);
+
+  const filtered = products.filter(
+    (p) =>
+      p.name.toLowerCase().includes(query.toLowerCase()) ||
+      (p.categoryName &&
+        p.categoryName.toLowerCase().includes(query.toLowerCase())) ||
+      (p.sku && p.sku.toLowerCase().includes(query.toLowerCase()))
+  );
+
+  const startEdit = (p: AdminProduct) => {
+    setEditingId(p.id);
+    setEditStock(p.stock);
+    setEditPrice(p.basePrice);
+  };
+
+  const saveEdit = async (productId: string) => {
+    setIsSaving(true);
+    try {
+      const res = await fetch(`/api/admin/products/${productId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ stock: editStock, basePrice: editPrice }),
+      });
+
+      if (res.ok) {
+        setProducts(
+          products.map((p) =>
+            p.id === productId
+              ? { ...p, stock: editStock, basePrice: editPrice }
+              : p
+          )
+        );
+        setEditingId(null);
+      }
+    } catch (err) {
+      console.error("Failed to update product:", err);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <div className="bg-white rounded-[8px] border border-[#e5e5e5] shadow-xs p-6 space-y-6">
+      {/* Search Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="relative flex-1 max-w-sm">
+          <Search
+            size={16}
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400"
+          />
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Filter by perfume name or category..."
+            className="w-full text-xs pl-9 pr-3 py-2.5 border border-[#e5e5e5] rounded-[5px] focus:outline-none focus:border-[#b6713e]"
+          />
+        </div>
+
+        <div className="text-xs text-neutral-500">
+          Showing <strong>{filtered.length}</strong> of {products.length} fragrances
+        </div>
+      </div>
+
+      {/* Table */}
+      <div className="overflow-x-auto">
+        <table className="w-full text-left text-xs">
+          <thead>
+            <tr className="border-b border-[#e5e5e5] bg-[#fbf9f5] text-neutral-600 font-bold uppercase">
+              <th className="py-3 px-3">Product</th>
+              <th className="py-3 px-3">Category</th>
+              <th className="py-3 px-3">Base Price</th>
+              <th className="py-3 px-3">Inventory Stock</th>
+              <th className="py-3 px-3">Variants</th>
+              <th className="py-3 px-3 text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-[#f0ece1]">
+            {filtered.map((product) => {
+              const isEditing = editingId === product.id;
+
+              return (
+                <tr key={product.id} className="hover:bg-[#fbf9f5]/50">
+                  {/* Product Title & Image */}
+                  <td className="py-3 px-3">
+                    <div className="flex items-center gap-3">
+                      <div className="relative w-12 h-12 bg-[#fbf9f5] rounded-[4px] border border-[#e5e5e5] overflow-hidden shrink-0">
+                        {product.imageUrl ? (
+                          <Image
+                            src={product.imageUrl}
+                            alt={product.name}
+                            fill
+                            className="object-contain p-1"
+                            sizes="48px"
+                          />
+                        ) : null}
+                      </div>
+                      <div>
+                        <Link
+                          href={`/product/${product.slug}`}
+                          target="_blank"
+                          className="font-bold text-[#1c1c1c] hover:text-[#b6713e]"
+                        >
+                          {product.name}
+                        </Link>
+                        {product.sku && (
+                          <span className="block text-[11px] text-neutral-400">
+                            {product.sku}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </td>
+
+                  {/* Category */}
+                  <td className="py-3 px-3 text-neutral-600 font-medium">
+                    {product.categoryName || "Unassigned"}
+                  </td>
+
+                  {/* Price */}
+                  <td className="py-3 px-3">
+                    {isEditing ? (
+                      <input
+                        type="number"
+                        step="0.5"
+                        value={editPrice}
+                        onChange={(e) => setEditPrice(parseFloat(e.target.value))}
+                        className="w-20 p-1.5 border border-[#b6713e] rounded font-bold text-xs"
+                      />
+                    ) : (
+                      <span className="font-extrabold text-[#1c1c1c]">
+                        {formatPrice(product.basePrice)}
+                      </span>
+                    )}
+                  </td>
+
+                  {/* Stock */}
+                  <td className="py-3 px-3">
+                    {isEditing ? (
+                      <input
+                        type="number"
+                        value={editStock}
+                        onChange={(e) => setEditStock(parseInt(e.target.value, 10))}
+                        className="w-20 p-1.5 border border-[#b6713e] rounded font-bold text-xs"
+                      />
+                    ) : (
+                      <span
+                        className={`font-bold px-2 py-0.5 rounded text-[11px] ${
+                          product.stock <= 20
+                            ? "bg-amber-100 text-amber-800"
+                            : "bg-emerald-100 text-emerald-800"
+                        }`}
+                      >
+                        {product.stock} units
+                      </span>
+                    )}
+                  </td>
+
+                  {/* Variants */}
+                  <td className="py-3 px-3 text-neutral-500 font-medium">
+                    {product.variantsCount} sizes
+                  </td>
+
+                  {/* Actions */}
+                  <td className="py-3 px-3 text-right">
+                    {isEditing ? (
+                      <button
+                        onClick={() => saveEdit(product.id)}
+                        disabled={isSaving}
+                        className="btn-primary h-8 px-3 text-xs font-semibold flex items-center gap-1.5 ml-auto"
+                      >
+                        {isSaving ? (
+                          <Loader2 size={12} className="animate-spin" />
+                        ) : (
+                          <Check size={12} />
+                        )}
+                        <span>Save</span>
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => startEdit(product)}
+                        className="btn-secondary h-8 px-3 text-xs font-semibold flex items-center gap-1.5 ml-auto text-neutral-600 hover:text-[#1c1c1c]"
+                      >
+                        <Edit3 size={12} />
+                        <span>Edit</span>
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
