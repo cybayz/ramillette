@@ -99,6 +99,7 @@ export function MobileNavDrawer({ isOpen, onClose }: MobileNavDrawerProps) {
 
             <Link
               href="/wishlist"
+              scroll={true}
               onClick={onClose}
               className="relative flex flex-col items-center py-2 px-1 rounded-md hover:bg-[#fbf9f5] text-[#1c1c1c] text-xs font-medium"
             >

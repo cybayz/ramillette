@@ -234,13 +234,13 @@ export function Footer() {
               {tFooter.accountCol}
             </h5>
             <div className="space-y-2.5 flex flex-col text-neutral-400">
-              <Link href="/cart" className="hover:text-white transition-colors">
+              <Link href="/cart" scroll={true} className="hover:text-white transition-colors">
                 {tFooter.myBag}
               </Link>
-              <Link href="/pages/wishlist" className="hover:text-white transition-colors">
+              <Link href="/pages/wishlist" scroll={true} className="hover:text-white transition-colors">
                 {tFooter.wishlist}
               </Link>
-              <Link href="/account" className="hover:text-white transition-colors">
+              <Link href="/account" scroll={true} className="hover:text-white transition-colors">
                 {tFooter.myOrders}
               </Link>
             </div>

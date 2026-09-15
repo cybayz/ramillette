@@ -6,6 +6,7 @@ import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { CartDrawer } from "@/components/cart/CartDrawer";
 import { FloatingWhatsApp } from "@/components/layout/FloatingWhatsApp";
+import { ScrollToTopOnNavigation } from "@/components/layout/ScrollToTopOnNavigation";
 
 const outfit = Outfit({
   variable: "--font-heading",
@@ -70,6 +71,9 @@ export default function RootLayout({
       className={`${outfit.variable} ${urbanist.variable} ${cairo.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-white text-[#1c1c1c]">
+        {/* Instant Scroll to Top on Page Changes */}
+        <ScrollToTopOnNavigation />
+
         {/* Top Location & Announcement Bar */}
         <TopBar />
 

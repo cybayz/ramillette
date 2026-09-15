@@ -141,6 +141,7 @@ export function Header() {
                 {/* Wishlist with Vertical Label */}
                 <Link
                   href="/wishlist"
+                  scroll={true}
                   className="hidden sm:flex flex-col items-center justify-center text-[#1c1c1c] hover:text-[#b6713e] transition-colors group relative cursor-pointer"
                   aria-label="Wishlist"
                 >
