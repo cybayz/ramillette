@@ -1,40 +1,73 @@
 "use client";
 
-import React, { useState } from "react";
-import { MapPin, Globe, Sparkles } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { MapPin, Globe } from "lucide-react";
+import { useLanguageStore } from "@/lib/store/useLanguageStore";
 
 export function TopBar() {
-  const [lang, setLang] = useState<"en" | "ar">("en");
+  const { language, toggleLanguage, t } = useLanguageStore();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const content = mounted ? t().topBar : {
+    location: "Souq Al Wakra, Qatar",
+    shippingNotice: "Free 2-Hour Express Delivery across Doha on orders over QAR 900",
+    languageToggle: "العربية",
+  };
 
   return (
-    <div className="bg-[#1c1c1c] text-[#fbf9f5] text-xs py-2 border-b border-[#2d2d2d]">
+    <div className="bg-[#0c0c0c] text-[#fbf9f5] text-xs py-2.5 border-b border-[#222222] transition-colors">
       <div className="ramillette-container flex items-center justify-between">
-        {/* Location */}
+        {/* Left: Boutique Location */}
         <div className="flex items-center gap-1.5 text-neutral-300">
-          <MapPin size={13} className="text-[#faedcd]" />
-          <span className="font-medium">Souq Al Wakra, Qatar</span>
+          <MapPin size={13} className="text-[#faedcd] flex-shrink-0" />
+          <span className="font-medium text-[12px]">{content.location}</span>
         </div>
 
-        {/* Center Promotion Announcement */}
-        <div className="hidden md:flex items-center gap-2 text-center text-xs font-medium">
-          <Sparkles size={13} className="text-[#faedcd]" />
-          <span>
-            Free 2-Hour Express Delivery across Doha on orders over{" "}
-            <strong className="text-[#faedcd]">QAR 900</strong>
-          </span>
+        {/* Center: Express Delivery Callout (Kept per user's specific request) */}
+        <div className="hidden md:flex items-center gap-2 text-center text-[12px] font-normal text-neutral-200">
+          <span>{content.shippingNotice}</span>
         </div>
 
-        {/* Language Switcher */}
-        <div className="flex items-center gap-3">
+        {/* Right: Language Switcher & Instagram Link */}
+        <div className="flex items-center gap-4">
           <button
-            onClick={() => setLang(lang === "en" ? "ar" : "en")}
-            className="flex items-center gap-1 text-neutral-300 hover:text-white transition-colors cursor-pointer"
+            type="button"
+            onClick={toggleLanguage}
+            className="flex items-center gap-1.5 text-neutral-300 hover:text-white transition-colors cursor-pointer text-[12px] font-medium"
+            aria-label="Toggle language"
           >
-            <Globe size={13} className="text-[#faedcd]" />
-            <span className="font-medium">
-              {lang === "en" ? "العربية" : "English"}
-            </span>
+            <span>{content.languageToggle}</span>
+            <Globe size={13} className="text-[#faedcd] flex-shrink-0" />
           </button>
+
+          <a
+            href="https://www.instagram.com/ramillette/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-neutral-300 hover:text-white transition-colors"
+            aria-label="Ramillette Instagram"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="lucide lucide-instagram"
+            >
+              <rect width="20" height="20" x="2" y="2" rx="5" ry="5" />
+              <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
+              <line x1="17.5" x2="17.51" y1="6.5" y2="6.5" />
+            </svg>
+          </a>
         </div>
       </div>
     </div>

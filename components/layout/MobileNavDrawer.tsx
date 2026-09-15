@@ -2,9 +2,11 @@
 
 import React from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { Drawer } from "@/components/ui/Drawer";
 import { useCartStore } from "@/lib/store/useCartStore";
 import { useWishlistStore } from "@/lib/store/useWishlistStore";
+import { useLanguageStore } from "@/lib/store/useLanguageStore";
 import {
   Home,
   Sparkles,
@@ -16,7 +18,7 @@ import {
   Phone,
   HelpCircle,
   MapPin,
-  FileText,
+  Globe,
 } from "lucide-react";
 
 interface MobileNavDrawerProps {
@@ -27,18 +29,20 @@ interface MobileNavDrawerProps {
 export function MobileNavDrawer({ isOpen, onClose }: MobileNavDrawerProps) {
   const { getTotalItems, openCart } = useCartStore();
   const { items: wishlistItems } = useWishlistStore();
+  const { language, toggleLanguage, t } = useLanguageStore();
 
   const cartCount = getTotalItems();
   const wishlistCount = wishlistItems.length;
+  const content = t();
 
   const navLinks = [
-    { label: "Home", href: "/", icon: Home },
-    { label: "Own Brand", href: "/shop/own-brand", icon: Crown, highlight: true },
-    { label: "Inspired", href: "/shop/inspired", icon: Sparkles },
+    { label: content.header.home, href: "/", icon: Home },
+    { label: content.header.ownBrand, href: "/shop/own-brand", icon: Crown, highlight: true },
+    { label: content.header.inspired, href: "/shop/inspired", icon: Sparkles },
     { label: "Luxury Perfumes", href: "/shop/luxury-perfumes", icon: Crown },
     { label: "Best Sellers", href: "/shop/best-sellers", icon: Flame },
     { label: "New Arrivals", href: "/shop/new-arrivals", icon: Sparkles },
-    { label: "Contact Us", href: "/pages/contact", icon: Phone },
+    { label: content.header.contact, href: "/pages/contact", icon: Phone },
     { label: "FAQ & Help", href: "/pages/faqs", icon: HelpCircle },
   ];
 
@@ -54,22 +58,35 @@ export function MobileNavDrawer({ isOpen, onClose }: MobileNavDrawerProps) {
     <Drawer
       isOpen={isOpen}
       onClose={onClose}
-      position="left"
+      position={language === "ar" ? "right" : "left"}
       maxWidth="max-w-xs"
       title={
         <div className="flex items-center gap-2">
-          <span className="font-bold tracking-wider text-base uppercase">
-            Ramillette
-          </span>
-          <span className="text-[10px] text-[#b6713e] font-semibold bg-[#faedcd] px-1.5 py-0.5 rounded border border-[#ecdec1]">
-            QATAR
-          </span>
+          <Image
+            src="/ramillette-logo-black.svg"
+            alt="Ramillette"
+            width={120}
+            height={32}
+            className="h-7 w-auto object-contain"
+          />
         </div>
       }
     >
       <div className="flex flex-col h-full justify-between pb-6">
         <div>
-          {/* Quick Account / Wishlist / Cart Bar */}
+          {/* Quick Language Toggle & Account / Wishlist / Cart Bar */}
+          <div className="flex items-center justify-between px-2 py-2 mb-3 bg-[#fbf9f5] rounded-md border border-[#ecdec1]">
+            <span className="text-xs text-neutral-600 font-medium">Language / اللغة</span>
+            <button
+              type="button"
+              onClick={toggleLanguage}
+              className="flex items-center gap-1.5 text-xs font-semibold text-[#b6713e] hover:text-[#8c4c1d]"
+            >
+              <Globe size={14} />
+              <span>{content.topBar.languageToggle}</span>
+            </button>
+          </div>
+
           <div className="grid grid-cols-3 gap-2 py-3 mb-4 border-b border-[#e5e5e5] text-center">
             <Link
               href="/account"

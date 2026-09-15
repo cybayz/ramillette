@@ -2,9 +2,11 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useCartStore } from "@/lib/store/useCartStore";
 import { useWishlistStore } from "@/lib/store/useWishlistStore";
+import { useLanguageStore } from "@/lib/store/useLanguageStore";
 import { SearchModal } from "./SearchModal";
 import { MobileNavDrawer } from "./MobileNavDrawer";
 import {
@@ -13,13 +15,13 @@ import {
   ShoppingBag,
   User,
   Menu,
-  Sparkles,
 } from "lucide-react";
 
 export function Header() {
   const pathname = usePathname();
   const { getTotalItems, openCart } = useCartStore();
   const { items: wishlistItems } = useWishlistStore();
+  const { language, t } = useLanguageStore();
 
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
@@ -29,7 +31,7 @@ export function Header() {
   useEffect(() => {
     setMounted(true);
     const handleScroll = () => {
-      setIsScrolled(window.scrollY > 20);
+      setIsScrolled(window.scrollY > 15);
     };
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
@@ -37,30 +39,38 @@ export function Header() {
 
   const totalCartItems = mounted ? getTotalItems() : 0;
   const totalWishlistItems = mounted ? wishlistItems.length : 0;
+  const content = mounted ? t().header : {
+    searchPlaceholder: "Search Products",
+    home: "Home",
+    ownBrand: "Own brand",
+    inspired: "Inspired",
+    contact: "Contact",
+    wishlist: "Wishlist",
+    myCart: "My Cart",
+    registerLogin: "Register / Login",
+    account: "My Account",
+  };
 
   const navLinks = [
-    { label: "Home", href: "/" },
-    { label: "Own brand", href: "/shop/own-brand" },
-    { label: "Inspired", href: "/shop/inspired" },
-    { label: "Luxury Perfumes", href: "/shop/luxury-perfumes" },
-    { label: "Best Sellers", href: "/shop/best-sellers" },
-    { label: "New Arrivals", href: "/shop/new-arrivals" },
-    { label: "Contact", href: "/pages/contact" },
+    { label: content.home, href: "/" },
+    { label: content.ownBrand, href: "/shop/own-brand" },
+    { label: content.inspired, href: "/shop/inspired" },
+    { label: content.contact, href: "/pages/contact" },
   ];
 
   return (
     <>
       <header
-        className={`sticky top-0 z-40 w-full transition-all duration-300 ${
+        className={`sticky top-0 z-40 w-full transition-all duration-300 bg-white ${
           isScrolled
-            ? "bg-white/95 backdrop-blur-md shadow-sm border-b border-[#e5e5e5]"
-            : "bg-white border-b border-[#f0ece1]"
+            ? "shadow-sm border-b border-[#e5e5e5]"
+            : "border-b border-[#efefef]"
         }`}
       >
         <div className="ramillette-container">
-          <div className="flex items-center justify-between h-20">
-            {/* Left: Mobile Menu Trigger & Logo */}
-            <div className="flex items-center gap-4">
+          <div className="flex items-center justify-between h-20 gap-4">
+            {/* Left: Mobile Menu & Desktop Search Pill */}
+            <div className="flex items-center gap-3">
               <button
                 type="button"
                 onClick={() => setIsMobileNavOpen(true)}
@@ -70,85 +80,115 @@ export function Header() {
                 <Menu size={24} />
               </button>
 
-              <Link href="/" className="flex flex-col items-start group">
-                <span className="font-extrabold text-2xl tracking-[0.18em] text-[#1c1c1c] uppercase font-heading group-hover:text-[#b6713e] transition-colors">
-                  Ramillette
-                </span>
-                <span className="text-[9px] tracking-[0.25em] text-[#b6713e] uppercase font-semibold">
-                  Perfumes • Qatar
-                </span>
-              </Link>
-            </div>
-
-            {/* Middle: Desktop Navigation Bar */}
-            <nav className="hidden lg:flex items-center space-x-7">
-              {navLinks.map((link) => {
-                const isActive = pathname === link.href;
-                return (
-                  <Link
-                    key={link.href}
-                    href={link.href}
-                    className={`text-[14px] font-medium transition-colors relative py-1 hover:text-[#b6713e] ${
-                      isActive ? "text-[#b6713e] font-semibold" : "text-[#1c1c1c]"
-                    }`}
-                  >
-                    {link.label}
-                    {isActive && (
-                      <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#b6713e] rounded-full" />
-                    )}
-                  </Link>
-                );
-              })}
-            </nav>
-
-            {/* Right: Header Actions (Search, Wishlist, Account, Cart) */}
-            <div className="flex items-center space-x-3 sm:space-x-4">
-              {/* Search Trigger */}
+              {/* Desktop Rounded Search Pill */}
               <button
                 type="button"
                 onClick={() => setIsSearchOpen(true)}
-                className="p-2 text-[#1c1c1c] hover:text-[#b6713e] transition-colors cursor-pointer"
+                className="hidden lg:flex items-center gap-2.5 px-4 py-2 border border-[#d1d5db] rounded-full text-sm text-[#737373] bg-[#fafafa] hover:bg-white hover:border-[#1c1c1c] transition-all cursor-pointer w-52 xl:w-64 text-left group shadow-[0_1px_2px_rgba(0,0,0,0.04)]"
+                aria-label="Search products"
+              >
+                <Search size={16} className="text-[#9ca3af] group-hover:text-[#1c1c1c] transition-colors flex-shrink-0" />
+                <span className="truncate text-[13px]">{content.searchPlaceholder}</span>
+              </button>
+
+              {/* Mobile Search Button */}
+              <button
+                type="button"
+                onClick={() => setIsSearchOpen(true)}
+                className="lg:hidden p-2 text-[#1c1c1c] hover:text-[#b6713e] transition-colors cursor-pointer"
                 aria-label="Search fragrances"
               >
                 <Search size={20} />
               </button>
+            </div>
 
-              {/* Wishlist Link with Badge */}
-              <Link
-                href="/wishlist"
-                className="relative p-2 text-[#1c1c1c] hover:text-[#b6713e] transition-colors hidden sm:flex items-center"
-                aria-label="Wishlist"
-              >
-                <Heart size={20} />
-                {totalWishlistItems > 0 && (
-                  <span className="absolute top-1 right-0 bg-[#b6713e] text-white text-[10px] font-bold h-4 w-4 rounded-full flex items-center justify-center">
-                    {totalWishlistItems}
+            {/* Center: Official Ramillette Script Logo Image */}
+            <div className="flex items-center justify-center flex-1 lg:flex-initial">
+              <Link href="/" className="inline-block relative py-1" aria-label="Ramillette Home">
+                <Image
+                  src="/ramillette-logo-black.svg"
+                  alt="Ramillette"
+                  width={160}
+                  height={43}
+                  className="h-10 md:h-11 w-auto object-contain transition-transform duration-200 hover:scale-[1.02]"
+                  priority
+                />
+              </Link>
+            </div>
+
+            {/* Right: Nav Links + Vertical Icon Action Stack */}
+            <div className="flex items-center gap-6 xl:gap-8">
+              {/* Main Desktop Navigation */}
+              <nav className="hidden xl:flex items-center space-x-6 rtl:space-x-reverse">
+                {navLinks.map((link) => {
+                  const isActive = pathname === link.href;
+                  return (
+                    <Link
+                      key={link.href}
+                      href={link.href}
+                      className={`text-[14px] font-medium transition-colors hover:text-[#b6713e] relative py-1 ${
+                        isActive ? "text-[#1c1c1c] font-semibold" : "text-[#333333]"
+                      }`}
+                    >
+                      {link.label}
+                    </Link>
+                  );
+                })}
+              </nav>
+
+              {/* Action Icons Stack (Wishlist, My Cart, Register/Login) */}
+              <div className="flex items-center gap-4 sm:gap-6">
+                {/* Wishlist with Vertical Label */}
+                <Link
+                  href="/wishlist"
+                  className="hidden sm:flex flex-col items-center justify-center text-[#1c1c1c] hover:text-[#b6713e] transition-colors group relative cursor-pointer"
+                  aria-label="Wishlist"
+                >
+                  <div className="relative">
+                    <Heart size={20} className="stroke-[1.6] group-hover:scale-110 transition-transform" />
+                    {totalWishlistItems > 0 && (
+                      <span className="absolute -top-1.5 -right-2 bg-[#b6713e] text-white text-[9px] font-bold h-3.5 w-3.5 rounded-full flex items-center justify-center">
+                        {totalWishlistItems}
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-[11px] font-medium text-[#444444] mt-1 group-hover:text-[#b6713e]">
+                    {content.wishlist}
                   </span>
-                )}
-              </Link>
+                </Link>
 
-              {/* Customer Account */}
-              <Link
-                href="/account"
-                className="p-2 text-[#1c1c1c] hover:text-[#b6713e] transition-colors hidden sm:flex items-center"
-                aria-label="Account"
-              >
-                <User size={20} />
-              </Link>
+                {/* My Cart with Vertical Label & Badge */}
+                <button
+                  type="button"
+                  onClick={openCart}
+                  className="flex flex-col items-center justify-center text-[#1c1c1c] hover:text-[#b6713e] transition-colors group relative cursor-pointer"
+                  aria-label="My Cart"
+                >
+                  <div className="relative">
+                    <ShoppingBag size={20} className="stroke-[1.6] group-hover:scale-110 transition-transform" />
+                    {totalCartItems > 0 && (
+                      <span className="absolute -top-1.5 -right-2 bg-[#1c1c1c] text-white text-[9px] font-bold h-3.5 w-3.5 rounded-full flex items-center justify-center">
+                        {totalCartItems}
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-[11px] font-medium text-[#444444] mt-1 group-hover:text-[#b6713e]">
+                    {content.myCart}
+                  </span>
+                </button>
 
-              {/* Shopping Cart Trigger with Total Count Badge */}
-              <button
-                type="button"
-                onClick={openCart}
-                className="relative flex items-center gap-2 btn-primary h-10 px-3.5 rounded-[5px] text-xs font-semibold cursor-pointer"
-                aria-label="View shopping bag"
-              >
-                <ShoppingBag size={17} />
-                <span className="hidden sm:inline">My Cart</span>
-                <span className="bg-[#1c1c1c] text-white text-[11px] font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center">
-                  {totalCartItems}
-                </span>
-              </button>
+                {/* Register / Login with Vertical Label */}
+                <Link
+                  href="/account"
+                  className="flex flex-col items-center justify-center text-[#1c1c1c] hover:text-[#b6713e] transition-colors group relative cursor-pointer"
+                  aria-label="Account"
+                >
+                  <User size={20} className="stroke-[1.6] group-hover:scale-110 transition-transform" />
+                  <span className="text-[11px] font-medium text-[#444444] mt-1 group-hover:text-[#b6713e] whitespace-nowrap">
+                    {content.registerLogin}
+                  </span>
+                </Link>
+              </div>
             </div>
           </div>
         </div>

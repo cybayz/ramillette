@@ -1,21 +1,31 @@
 import type { Metadata } from "next";
-import { Outfit, Urbanist } from "next/font/google";
+import { Outfit, Urbanist, Cairo } from "next/font/google";
 import "./globals.css";
 import { TopBar } from "@/components/layout/TopBar";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { CartDrawer } from "@/components/cart/CartDrawer";
+import { FloatingWhatsApp } from "@/components/layout/FloatingWhatsApp";
 
 const outfit = Outfit({
   variable: "--font-heading",
   subsets: ["latin"],
   weight: ["400", "500", "600", "700", "800"],
+  display: "swap",
 });
 
 const urbanist = Urbanist({
   variable: "--font-body",
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
+  display: "swap",
+});
+
+const cairo = Cairo({
+  variable: "--font-arabic",
+  subsets: ["arabic", "latin"],
+  weight: ["400", "500", "600", "700"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -57,7 +67,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${outfit.variable} ${urbanist.variable} h-full antialiased`}
+      className={`${outfit.variable} ${urbanist.variable} ${cairo.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-white text-[#1c1c1c]">
         {/* Top Location & Announcement Bar */}
@@ -71,6 +81,9 @@ export default function RootLayout({
 
         {/* Global Slideout Cart Drawer */}
         <CartDrawer />
+
+        {/* Floating WhatsApp Support Button */}
+        <FloatingWhatsApp />
 
         {/* Comprehensive Luxury Footer */}
         <Footer />

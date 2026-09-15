@@ -1,0 +1,56 @@
+[
+  {
+    "id": 0,
+    "video": "/stories/video_0.mp4",
+    "poster": "/stories/poster_0.jpg",
+    "thumb": "/stories/thumb_0.jpeg"
+  },
+  {
+    "id": 1,
+    "video": "/stories/video_1.mp4",
+    "poster": "/stories/poster_1.jpg",
+    "thumb": "/stories/thumb_1.jpeg"
+  },
+  {
+    "id": 2,
+    "video": "/stories/video_2.mp4",
+    "poster": "/stories/poster_2.jpg",
+    "thumb": "/stories/thumb_2.jpeg"
+  },
+  {
+    "id": 3,
+    "video": "/stories/video_3.mp4",
+    "poster": "/stories/poster_3.jpg",
+    "thumb": "/stories/thumb_3.jpeg"
+  },
+  {
+    "id": 4,
+    "video": "/stories/video_4.mp4",
+    "poster": "/stories/poster_4.jpg",
+    "thumb": "/stories/thumb_4.jpeg"
+  },
+  {
+    "id": 5,
+    "video": "/stories/video_5.mp4",
+    "poster": "/stories/poster_5.jpg",
+    "thumb": "/stories/thumb_5.jpeg"
+  },
+  {
+    "id": 6,
+    "video": "/stories/video_6.mp4",
+    "poster": "/stories/poster_6.jpg",
+    "thumb": "/stories/thumb_6.jpeg"
+  },
+  {
+    "id": 7,
+    "video": "/stories/video_7.mp4",
+    "poster": "/stories/poster_7.jpg",
+    "thumb": "/stories/thumb_7.jpeg"
+  },
+  {
+    "id": 8,
+    "video": "/stories/video_8.mp4",
+    "poster": "/stories/poster_8.jpg",
+    "thumb": "/stories/thumb_8.jpeg"
+  }
+]

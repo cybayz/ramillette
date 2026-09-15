@@ -1,5 +1,6 @@
 import prisma from "@/lib/db/prisma";
-import { HeroBanner } from "@/components/home/HeroBanner";
+import { StoryCircles } from "@/components/home/StoryCircles";
+import { HeroCarousel } from "@/components/home/HeroCarousel";
 import { CategoryShortcuts } from "@/components/home/CategoryShortcuts";
 import { BestSellersSection } from "@/components/home/BestSellersSection";
 import { OwnBrandSpotlight } from "@/components/home/OwnBrandSpotlight";
@@ -116,8 +117,11 @@ export default async function HomePage() {
 
   return (
     <div className="flex flex-col min-h-screen">
-      {/* 1. Hero Banner with CTAs & Highlights */}
-      <HeroBanner />
+      {/* 1. Preloaded Circular Video Stories */}
+      <StoryCircles />
+
+      {/* 2. Hero Model Banner Carousel */}
+      <HeroCarousel />
 
       {/* 2. Visual Category Navigation Shortcuts */}
       <CategoryShortcuts />

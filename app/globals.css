@@ -2,9 +2,6 @@
 
 @layer base {
   :root {
-    --font-heading: "Outfit", sans-serif;
-    --font-body: "Urbanist", sans-serif;
-
     --bg-primary: #ffffff;
     --bg-surface: #fbf9f5;
     --bg-surface-subtle: #f6f3ed;
@@ -34,17 +31,25 @@
   body {
     background-color: var(--bg-primary);
     color: var(--text-primary);
-    font-family: var(--font-body);
+    font-family: var(--font-body), var(--font-arabic), "Urbanist", -apple-system, BlinkMacSystemFont, sans-serif;
     font-size: 15px;
     line-height: 1.6;
     -webkit-font-smoothing: antialiased;
   }
 
   h1, h2, h3, h4, h5, h6 {
-    font-family: var(--font-heading);
+    font-family: var(--font-heading), var(--font-arabic), "Outfit", sans-serif;
     color: var(--text-primary);
     font-weight: 600;
     letter-spacing: -0.01em;
+  }
+
+  [dir="rtl"] body {
+    font-family: var(--font-arabic), var(--font-body), "Cairo", sans-serif;
+  }
+
+  [dir="rtl"] h1, [dir="rtl"] h2, [dir="rtl"] h3, [dir="rtl"] h4, [dir="rtl"] h5, [dir="rtl"] h6 {
+    font-family: var(--font-arabic), var(--font-heading), "Cairo", sans-serif;
   }
 }
 

@@ -15,6 +15,10 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "www.ramillette.com",
       },
+      {
+        protocol: "https",
+        hostname: "videomedia.vizupcommerce.com",
+      },
     ],
   },
 };
