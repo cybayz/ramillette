@@ -1,7 +1,7 @@
 import React from "react";
 import { notFound } from "next/navigation";
 import prisma from "@/lib/db/prisma";
-import { ShopListing } from "@/components/shop/ShopListing";
+import { ShopListing, CategoryInfo } from "@/components/shop/ShopListing";
 import type { Metadata } from "next";
 
 export const revalidate = 60;
@@ -9,6 +9,9 @@ export const revalidate = 60;
 interface PageProps {
   params: Promise<{
     categorySlug: string;
+  }>;
+  searchParams?: Promise<{
+    size?: string;
   }>;
 }
 
@@ -20,12 +23,24 @@ export async function generateMetadata({
   let title = "Collection";
   let description = "Luxury perfumes in Qatar from Ramillette.";
 
-  if (categorySlug === "best-sellers") {
+  if (categorySlug === "all" || categorySlug === "frontpage") {
+    title = "All Products";
+    description = "Shop all Arabian and European fragrances in Qatar.";
+  } else if (categorySlug === "best-sellers") {
     title = "Best Sellers";
     description = "Shop our top-selling perfumes and Arabian oud in Qatar.";
   } else if (categorySlug === "new-arrivals") {
     title = "New Arrivals";
     description = "Explore fresh luxury perfume releases and seasonal scents.";
+  } else if (categorySlug === "own-brand") {
+    title = "Own Brand";
+    description = "Exclusive perfumes formulated in Qatar by Ramillette.";
+  } else if (categorySlug === "inspired") {
+    title = "Inspired";
+    description = "Designer-inspired luxury fragrances with intense longevity.";
+  } else if (categorySlug === "luxury-perfumes") {
+    title = "Luxury Perfumes";
+    description = "Opulent Middle Eastern oud and amber compositions.";
   } else {
     const cat = await prisma.category.findUnique({
       where: { slug: categorySlug },
@@ -44,17 +59,22 @@ export async function generateMetadata({
   };
 }
 
-export default async function CategoryPage({ params }: PageProps) {
+export default async function CategoryPage({ params, searchParams }: PageProps) {
   const { categorySlug } = await params;
+  const resolvedSearchParams = searchParams ? await searchParams : {};
+  const initialSize = resolvedSearchParams?.size;
 
   const whereCondition: any = { active: true };
-  let currentCategory: {
-    name: string;
-    slug: string;
-    description?: string | null;
-  };
+  let currentCategory: CategoryInfo;
 
-  if (categorySlug === "best-sellers") {
+  if (categorySlug === "all" || categorySlug === "frontpage") {
+    currentCategory = {
+      name: "Products",
+      slug: "all",
+      description:
+        "Discover Ramillette's curated collection of Arabian and European perfumes, handcrafted with high-concentration oils for lasting sillage.",
+    };
+  } else if (categorySlug === "best-sellers") {
     whereCondition.bestseller = true;
     currentCategory = {
       name: "Best Sellers",
@@ -87,7 +107,13 @@ export default async function CategoryPage({ params }: PageProps) {
     };
   }
 
-  const [productsRaw, allCategoriesRaw] = await Promise.all([
+  const [
+    productsRaw,
+    allCategoriesRaw,
+    totalCount,
+    bestSellerCount,
+    newArrivalCount,
+  ] = await Promise.all([
     prisma.product.findMany({
       where: whereCondition,
       include: {
@@ -100,8 +126,16 @@ export default async function CategoryPage({ params }: PageProps) {
     }),
     prisma.category.findMany({
       where: { active: true },
+      include: {
+        _count: {
+          select: { products: { where: { active: true } } },
+        },
+      },
       orderBy: { sortOrder: "asc" },
     }),
+    prisma.product.count({ where: { active: true } }),
+    prisma.product.count({ where: { active: true, bestseller: true } }),
+    prisma.product.count({ where: { active: true, newArrival: true } }),
   ]);
 
   const products = productsRaw.map((p) => ({
@@ -137,13 +171,25 @@ export default async function CategoryPage({ params }: PageProps) {
     name: c.name,
     slug: c.slug,
     description: c.description,
+    count: c._count.products,
   }));
+
+  const categoryCounts: Record<string, number> = {
+    all: totalCount,
+    "best-sellers": bestSellerCount,
+    "new-arrivals": newArrivalCount,
+  };
+  allCategoriesRaw.forEach((c) => {
+    categoryCounts[c.slug] = c._count.products;
+  });
 
   return (
     <ShopListing
       category={currentCategory}
       products={products}
       allCategories={allCategories}
+      categoryCounts={categoryCounts}
+      initialSize={initialSize}
     />
   );
 }

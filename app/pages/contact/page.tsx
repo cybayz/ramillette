@@ -2,14 +2,19 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { MapPin, Phone, Mail, Clock, CheckCircle2, Send } from "lucide-react";
-import { Button } from "@/components/ui/Button";
+import { Mail, Phone, MessageSquare, Clock, MapPin, CheckCircle2 } from "lucide-react";
+import { useLanguageStore } from "@/lib/store/useLanguageStore";
 
 export default function ContactPage() {
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
-  const [message, setMessage] = useState("");
+  const { language } = useLanguageStore();
+  const isArabic = language === "ar";
+
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    message: "",
+  });
   const [submitted, setSubmitted] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -18,183 +23,219 @@ export default function ContactPage() {
   };
 
   return (
-    <div className="bg-[#ffffff] min-h-screen py-12">
-      <div className="ramillette-container max-w-5xl">
-        {/* Breadcrumb */}
-        <nav className="text-xs text-neutral-500 mb-8 flex items-center gap-2">
-          <Link href="/" className="hover:text-[#b6713e]">
-            Home
-          </Link>
-          <span>/</span>
-          <span className="text-[#1c1c1c] font-semibold">Contact Us</span>
-        </nav>
+    <div className="contact-page">
+      {/* Contact Hero Banner */}
+      <div className="contact-hero">
+        <div className="ramillette-container max-w-[1240px] mx-auto">
+          {/* Breadcrumb */}
+          <nav className="policy-breadcrumb" aria-label="Breadcrumb">
+            <Link href={isArabic ? "/ar" : "/"}>
+              {isArabic ? "الرئيسية" : "Home"}
+            </Link>
+            <span className="policy-breadcrumb__sep" aria-hidden="true">/</span>
+            <span className="policy-breadcrumb__current">
+              {isArabic ? "اتصل بنا" : "Contact"}
+            </span>
+          </nav>
 
-        <div className="text-center max-w-2xl mx-auto mb-12">
-          <span className="text-xs font-bold uppercase tracking-widest text-[#b6713e]">
-            Get In Touch
-          </span>
-          <h1 className="text-3xl sm:text-4xl font-extrabold text-[#1c1c1c] mt-1">
-            Visit Our Boutique or Contact Us
+          <p className="about-hero__eyebrow">
+            {isArabic ? "تواصل معنا" : "GET IN TOUCH"}
+          </p>
+          <h1 className="about-hero__title">
+            {isArabic ? "اتصل بنا" : "Contact"}
           </h1>
-          <p className="text-xs sm:text-sm text-neutral-500 mt-2">
-            Questions about an order, fragrance consultations, or corporate gifting? We'd love to assist you.
+          <p className="about-hero__tagline">
+            {isArabic
+              ? "هل لديك أسئلة حول طلب، أو عطر، أو زيارة متجرنا؟ يسعدنا دائماً أن نسمع منك."
+              : "Questions about an order, fragrance, or store visit? We'd love to hear from you."}
           </p>
         </div>
+      </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
-          {/* Left Column: Boutique Information */}
-          <div className="lg:col-span-5 space-y-6">
-            <div className="p-6 rounded-[8px] bg-[#fbf9f5] border border-[#ecdec1] space-y-5">
-              <h2 className="text-base font-bold text-[#1c1c1c] pb-3 border-b border-[#e5e5e5]">
-                Flagship Boutique
-              </h2>
+      {/* Main Two-Column Contact Layout */}
+      <div className="ramillette-container max-w-[1240px] mx-auto">
+        <div className="contact-layout">
+          {/* Left Column: Reach Us Card & Quick Links */}
+          <aside className="contact-aside">
+            <div className="contact-card">
+              <h2>{isArabic ? "معلومات الاتصال" : "Reach us"}</h2>
 
-              <div className="space-y-4 text-xs">
-                <div className="flex items-start gap-3">
-                  <MapPin size={18} className="text-[#b6713e] shrink-0 mt-0.5" />
-                  <div>
-                    <span className="font-bold text-[#1c1c1c] block">
-                      Location
-                    </span>
-                    <p className="text-neutral-600 mt-0.5">
-                      Souq Al Wakra Heritage Village, Building 45, Doha, Qatar
-                    </p>
-                  </div>
-                </div>
+              {/* Email */}
+              <a className="contact-row" href="mailto:contact@ramillette.com">
+                <span className="contact-row__icon" aria-hidden="true">
+                  <Mail size={18} strokeWidth={1.8} />
+                </span>
+                <span>
+                  <strong>{isArabic ? "البريد الإلكتروني" : "Email"}</strong>
+                  <span>contact@ramillette.com</span>
+                </span>
+              </a>
 
-                <div className="flex items-start gap-3">
-                  <Phone size={18} className="text-[#b6713e] shrink-0 mt-0.5" />
-                  <div>
-                    <span className="font-bold text-[#1c1c1c] block">
-                      Phone & WhatsApp
-                    </span>
-                    <p className="text-neutral-600 mt-0.5">+974 5555 1234</p>
-                    <p className="text-neutral-600">+974 6600 7788</p>
-                  </div>
-                </div>
+              {/* Phone */}
+              <a className="contact-row" href="tel:+97466097444">
+                <span className="contact-row__icon" aria-hidden="true">
+                  <Phone size={18} strokeWidth={1.8} />
+                </span>
+                <span>
+                  <strong>{isArabic ? "الهاتف" : "Phone"}</strong>
+                  <span>+97466097444</span>
+                </span>
+              </a>
 
-                <div className="flex items-start gap-3">
-                  <Mail size={18} className="text-[#b6713e] shrink-0 mt-0.5" />
-                  <div>
-                    <span className="font-bold text-[#1c1c1c] block">Email</span>
-                    <p className="text-neutral-600 mt-0.5">contact@ramillette.com</p>
-                  </div>
-                </div>
+              {/* WhatsApp */}
+              <a
+                className="contact-row"
+                href="https://wa.me/97466097444?text=Hi+Ramillette%21+I+have+a+question."
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <span className="contact-row__icon" aria-hidden="true">
+                  <MessageSquare size={18} strokeWidth={1.8} />
+                </span>
+                <span>
+                  <strong>{isArabic ? "واتساب" : "WhatsApp"}</strong>
+                  <span>{isArabic ? "تحدث مع فريقنا" : "Chat with our team"}</span>
+                </span>
+              </a>
 
-                <div className="flex items-start gap-3">
-                  <Clock size={18} className="text-[#b6713e] shrink-0 mt-0.5" />
-                  <div>
-                    <span className="font-bold text-[#1c1c1c] block">
-                      Boutique Hours
-                    </span>
-                    <p className="text-neutral-600 mt-0.5">
-                      Saturday – Thursday: 10:00 AM – 10:00 PM
-                    </p>
-                    <p className="text-neutral-600">
-                      Friday: 2:00 PM – 10:00 PM
-                    </p>
-                  </div>
-                </div>
+              {/* Hours */}
+              <div className="contact-row contact-row--static">
+                <span className="contact-row__icon" aria-hidden="true">
+                  <Clock size={18} strokeWidth={1.8} />
+                </span>
+                <span>
+                  <strong>{isArabic ? "ساعات العمل" : "Hours"}</strong>
+                  <span>
+                    {isArabic
+                      ? "السبت–الخميس 10ص–10م · الجمعة 2م–10م"
+                      : "Sat–Thu 10am–10pm · Fri 2pm–10pm"}
+                  </span>
+                </span>
+              </div>
+
+              {/* Location */}
+              <div className="contact-row contact-row--static">
+                <span className="contact-row__icon" aria-hidden="true">
+                  <MapPin size={18} strokeWidth={1.8} />
+                </span>
+                <span>
+                  <strong>{isArabic ? "الموقع" : "Location"}</strong>
+                  <span>
+                    {isArabic
+                      ? "سوق الوكرة، قطر — الإنتاج والبيع بالتجزئة أيضًا في الإمارات"
+                      : "Souq Al Wakra, Qatar — production & retail also in the UAE"}
+                  </span>
+                </span>
               </div>
             </div>
-          </div>
 
-          {/* Right Column: Interactive Form */}
-          <div className="lg:col-span-7">
-            <div className="p-6 sm:p-8 rounded-[8px] bg-white border border-[#e5e5e5] shadow-xs">
+            {/* Quick Links */}
+            <div className="contact-quick">
+              <Link href="/pages/help">{isArabic ? "المساعدة" : "Help"}</Link>
+              <Link href="/pages/faqs">{isArabic ? "الأسئلة الشائعة" : "FAQ"}</Link>
+              <Link href="/pages/returns-policy">
+                {isArabic ? "سياسة الإرجاع" : "Returns Policy"}
+              </Link>
+            </div>
+          </aside>
+
+          {/* Right Column: Send a Message Form + Embedded Location Map */}
+          <div className="contact-main">
+            <div className="contact-form-card">
+              <h2>{isArabic ? "أرسل رسالة" : "Send a message"}</h2>
+              <p className="contact-form-card__sub">
+                {isArabic
+                  ? "شاركنا بعض التفاصيل وسنعاود الاتصال بك في أقرب وقت ممكن."
+                  : "Share a few details and we'll get back to you as soon as we can."}
+              </p>
+
               {submitted ? (
-                <div className="text-center py-10 space-y-3">
-                  <div className="w-14 h-14 rounded-full bg-emerald-50 text-[#0d9d00] flex items-center justify-center mx-auto">
-                    <CheckCircle2 size={32} />
-                  </div>
-                  <h3 className="text-lg font-bold text-[#1c1c1c]">
-                    Message Sent Successfully!
-                  </h3>
-                  <p className="text-xs text-neutral-500 max-w-sm mx-auto">
-                    Thank you for reaching out to Ramillette. Our fragrance concierge will respond to you within 2 business hours.
-                  </p>
-                  <Button
-                    variant="primary"
-                    onClick={() => setSubmitted(false)}
-                    className="mt-4 text-xs h-9 px-4"
-                  >
-                    Send Another Message
-                  </Button>
+                <div className="contact-success flex items-center gap-2.5">
+                  <CheckCircle2 size={18} className="text-[#4E6548] shrink-0" />
+                  <span>
+                    {isArabic
+                      ? "شكراً لتواصلك معنا! سيقوم فريق خدمة العملاء بالرد عليك قريباً."
+                      : "Thank you for reaching out! Our team will get back to you as soon as possible."}
+                  </span>
                 </div>
-              ) : (
-                <form onSubmit={handleSubmit} className="space-y-4">
-                  <h2 className="text-base font-bold text-[#1c1c1c] mb-2">
-                    Send Us a Direct Message
-                  </h2>
+              ) : null}
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-bold uppercase tracking-wider text-neutral-700 mb-1">
-                        Full Name *
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={name}
-                        onChange={(e) => setName(e.target.value)}
-                        placeholder="Your full name"
-                        className="w-full text-xs p-3 border border-[#e5e5e5] rounded-[5px] focus:outline-none focus:border-[#b6713e]"
-                      />
-                    </div>
+              <form onSubmit={handleSubmit} className="contact-form">
+                <div className="contact-fields">
+                  {/* Name */}
+                  <label className="contact-field">
+                    <span>{isArabic ? "الاسم" : "Name"}</span>
+                    <input
+                      type="text"
+                      name="name"
+                      required
+                      value={formData.name}
+                      onChange={(e) =>
+                        setFormData({ ...formData, name: e.target.value })
+                      }
+                      autoComplete="name"
+                    />
+                  </label>
 
-                    <div>
-                      <label className="block text-xs font-bold uppercase tracking-wider text-neutral-700 mb-1">
-                        Phone (Optional)
-                      </label>
-                      <input
-                        type="tel"
-                        value={phone}
-                        onChange={(e) => setPhone(e.target.value)}
-                        placeholder="+974 5555 1234"
-                        className="w-full text-xs p-3 border border-[#e5e5e5] rounded-[5px] focus:outline-none focus:border-[#b6713e]"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-neutral-700 mb-1">
-                      Email Address *
-                    </label>
+                  {/* Email */}
+                  <label className="contact-field">
+                    <span>{isArabic ? "البريد الإلكتروني" : "Email"}</span>
                     <input
                       type="email"
+                      name="email"
                       required
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder="your@email.com"
-                      className="w-full text-xs p-3 border border-[#e5e5e5] rounded-[5px] focus:outline-none focus:border-[#b6713e]"
+                      value={formData.email}
+                      onChange={(e) =>
+                        setFormData({ ...formData, email: e.target.value })
+                      }
+                      autoComplete="email"
                     />
-                  </div>
+                  </label>
 
-                  <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-neutral-700 mb-1">
-                      Message *
-                    </label>
+                  {/* Phone */}
+                  <label className="contact-field contact-field--full">
+                    <span>{isArabic ? "الهاتف" : "Phone"}</span>
+                    <input
+                      type="tel"
+                      name="phone"
+                      value={formData.phone}
+                      onChange={(e) =>
+                        setFormData({ ...formData, phone: e.target.value })
+                      }
+                      autoComplete="tel"
+                    />
+                  </label>
+
+                  {/* Message */}
+                  <label className="contact-field contact-field--full">
+                    <span>{isArabic ? "الرسالة" : "Message"}</span>
                     <textarea
+                      name="message"
+                      rows={6}
                       required
-                      rows={4}
-                      value={message}
-                      onChange={(e) => setMessage(e.target.value)}
-                      placeholder="How can we assist you with our perfumes or deliveries in Qatar?"
-                      className="w-full text-xs p-3 border border-[#e5e5e5] rounded-[5px] focus:outline-none focus:border-[#b6713e]"
+                      value={formData.message}
+                      onChange={(e) =>
+                        setFormData({ ...formData, message: e.target.value })
+                      }
                     />
-                  </div>
+                  </label>
+                </div>
 
-                  <Button
-                    type="submit"
-                    variant="primary"
-                    size="lg"
-                    className="w-full h-12 text-xs font-semibold flex items-center justify-center gap-2"
-                  >
-                    <Send size={14} />
-                    <span>Submit Message</span>
-                  </Button>
-                </form>
-              )}
+                <button type="submit" className="contact-submit">
+                  {isArabic ? "إرسال الرسالة" : "Send message"}
+                </button>
+              </form>
+            </div>
+
+            {/* Embedded Google Map */}
+            <div className="contact-map">
+              <iframe
+                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3609.0!2d51.5310!3d25.2854!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3e45c534ffdce87f%3A0x11c4d9d0c0c0c0c0!2sDoha!5e0!3m2!1sen!2sqa!4v1700000000000!5m2!1sen!2sqa"
+                title="Ramillette location map"
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+                allowFullScreen
+              />
             </div>
           </div>
         </div>

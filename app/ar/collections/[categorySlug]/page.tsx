@@ -19,47 +19,23 @@ export async function generateMetadata({
   params,
 }: PageProps): Promise<Metadata> {
   const { categorySlug } = await params;
-
-  let title = "Products";
-  let description = "Luxury perfumes in Qatar from Ramillette.";
-
-  if (categorySlug === "all" || categorySlug === "frontpage") {
-    title = "All Products";
-    description = "Discover our complete catalog of luxury Arabian and European perfumes in Qatar.";
-  } else if (categorySlug === "best-sellers") {
-    title = "Best Sellers";
-    description = "Shop our top-selling perfumes and Arabian oud in Qatar.";
-  } else if (categorySlug === "new-arrivals") {
-    title = "New Arrivals";
-    description = "Explore fresh luxury perfume releases and seasonal scents.";
-  } else if (categorySlug === "own-brand") {
-    title = "Own Brand";
-    description = "Exclusive perfumes formulated in Qatar by Ramillette.";
-  } else if (categorySlug === "inspired") {
-    title = "Inspired";
-    description = "Designer-inspired luxury fragrances with intense longevity.";
-  } else if (categorySlug === "luxury-perfumes") {
-    title = "Luxury Perfumes";
-    description = "Opulent Middle Eastern oud and amber compositions.";
-  } else {
-    const cat = await prisma.category.findUnique({
-      where: { slug: categorySlug },
-    });
-    if (cat) {
-      title = cat.name;
-      description =
-        cat.description ||
-        `Explore the ${cat.name} luxury fragrance collection by Ramillette.`;
-    }
-  }
+  let title = "المنتجات";
+  if (categorySlug === "best-sellers") title = "الأكثر مبيعاً";
+  else if (categorySlug === "new-arrivals") title = "وصل حديثاً";
+  else if (categorySlug === "own-brand") title = "علامتنا التجارية";
+  else if (categorySlug === "inspired") title = "مستوحى";
+  else if (categorySlug === "luxury-perfumes") title = "عطور فاخرة";
 
   return {
-    title: `${title} | Ramillette Perfumes Qatar`,
-    description,
+    title: `${title} | عطور راميليت قطر`,
+    description: "تسوق أرقى العطور الفاخرة في قطر مع توصيل سريع خلال ساعتين في الدوحة.",
   };
 }
 
-export default async function CollectionPage({ params, searchParams }: PageProps) {
+export default async function ArabicCollectionPage({
+  params,
+  searchParams,
+}: PageProps) {
   const { categorySlug } = await params;
   const resolvedSearchParams = searchParams ? await searchParams : {};
   const initialSize = resolvedSearchParams?.size;
@@ -69,26 +45,23 @@ export default async function CollectionPage({ params, searchParams }: PageProps
 
   if (categorySlug === "all" || categorySlug === "frontpage") {
     currentCategory = {
-      name: "Products",
+      name: "المنتجات",
       slug: "all",
-      description:
-        "Discover Ramillette's curated collection of Arabian and European perfumes, handcrafted with high-concentration oils for lasting sillage.",
+      description: "اكتشف مجموعة عطور راميليت المميزة بتركيز عالٍ وثبات طويل.",
     };
   } else if (categorySlug === "best-sellers") {
     whereCondition.bestseller = true;
     currentCategory = {
-      name: "Best Sellers",
+      name: "الأكثر مبيعاً",
       slug: "best-sellers",
-      description:
-        "The most coveted and highly-rated perfumes in Qatar, featuring intense projection and long-lasting notes.",
+      description: "العطور الأكثر طلباً وتميزاً في الدوحة.",
     };
   } else if (categorySlug === "new-arrivals") {
     whereCondition.newArrival = true;
     currentCategory = {
-      name: "New Arrivals",
+      name: "وصل حديثاً",
       slug: "new-arrivals",
-      description:
-        "Newly introduced luxury drops, crafted with premium fragrance essences from Doha and Europe.",
+      description: "أحدث إصدارات العطور الفاخرة.",
     };
   } else {
     const dbCat = await prisma.category.findUnique({
@@ -107,32 +80,36 @@ export default async function CollectionPage({ params, searchParams }: PageProps
     };
   }
 
-  // Fetch products and category counts
-  const [productsRaw, allCategoriesRaw, totalCount, bestSellerCount, newArrivalCount] =
-    await Promise.all([
-      prisma.product.findMany({
-        where: whereCondition,
-        include: {
-          images: { orderBy: { sortOrder: "asc" } },
-          variants: { where: { active: true }, orderBy: { price: "asc" } },
-          reviews: { where: { approved: true } },
-          category: true,
+  const [
+    productsRaw,
+    allCategoriesRaw,
+    totalCount,
+    bestSellerCount,
+    newArrivalCount,
+  ] = await Promise.all([
+    prisma.product.findMany({
+      where: whereCondition,
+      include: {
+        images: { orderBy: { sortOrder: "asc" } },
+        variants: { where: { active: true }, orderBy: { price: "asc" } },
+        reviews: { where: { approved: true } },
+        category: true,
+      },
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.category.findMany({
+      where: { active: true },
+      include: {
+        _count: {
+          select: { products: { where: { active: true } } },
         },
-        orderBy: { createdAt: "desc" },
-      }),
-      prisma.category.findMany({
-        where: { active: true },
-        include: {
-          _count: {
-            select: { products: { where: { active: true } } },
-          },
-        },
-        orderBy: { sortOrder: "asc" },
-      }),
-      prisma.product.count({ where: { active: true } }),
-      prisma.product.count({ where: { active: true, bestseller: true } }),
-      prisma.product.count({ where: { active: true, newArrival: true } }),
-    ]);
+      },
+      orderBy: { sortOrder: "asc" },
+    }),
+    prisma.product.count({ where: { active: true } }),
+    prisma.product.count({ where: { active: true, bestseller: true } }),
+    prisma.product.count({ where: { active: true, newArrival: true } }),
+  ]);
 
   const products = productsRaw.map((p) => ({
     id: p.id,
@@ -186,6 +163,7 @@ export default async function CollectionPage({ params, searchParams }: PageProps
       allCategories={allCategories}
       categoryCounts={categoryCounts}
       initialSize={initialSize}
+      isArabic={true}
     />
   );
 }

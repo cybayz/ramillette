@@ -4,15 +4,30 @@ import { ShopListing } from "@/components/shop/ShopListing";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Shop All Fragrances | Ramillette Perfumes Qatar",
+  title: "Products | Ramillette Perfumes Qatar",
   description:
     "Browse our complete catalog of luxury Middle Eastern oud, amber, and designer-inspired perfumes in Qatar with 2-hour express delivery in Doha.",
 };
 
 export const revalidate = 60;
 
-export default async function ShopPage() {
-  const [productsRaw, categoriesRaw] = await Promise.all([
+interface ShopPageProps {
+  searchParams?: Promise<{
+    size?: string;
+  }>;
+}
+
+export default async function ShopPage({ searchParams }: ShopPageProps) {
+  const resolvedSearchParams = searchParams ? await searchParams : {};
+  const initialSize = resolvedSearchParams?.size;
+
+  const [
+    productsRaw,
+    categoriesRaw,
+    totalCount,
+    bestSellerCount,
+    newArrivalCount,
+  ] = await Promise.all([
     prisma.product.findMany({
       where: { active: true },
       include: {
@@ -25,8 +40,16 @@ export default async function ShopPage() {
     }),
     prisma.category.findMany({
       where: { active: true },
+      include: {
+        _count: {
+          select: { products: { where: { active: true } } },
+        },
+      },
       orderBy: { sortOrder: "asc" },
     }),
+    prisma.product.count({ where: { active: true } }),
+    prisma.product.count({ where: { active: true, bestseller: true } }),
+    prisma.product.count({ where: { active: true, newArrival: true } }),
   ]);
 
   const products = productsRaw.map((p) => ({
@@ -62,18 +85,30 @@ export default async function ShopPage() {
     name: c.name,
     slug: c.slug,
     description: c.description,
+    count: c._count.products,
   }));
+
+  const categoryCounts: Record<string, number> = {
+    all: totalCount,
+    "best-sellers": bestSellerCount,
+    "new-arrivals": newArrivalCount,
+  };
+  categoriesRaw.forEach((c) => {
+    categoryCounts[c.slug] = c._count.products;
+  });
 
   return (
     <ShopListing
       category={{
-        name: "All Fragrances",
+        name: "Products",
         slug: "all",
         description:
           "Discover Ramillette's curated collection of Arabian and European perfumes, handcrafted with high-concentration oils for lasting sillage.",
       }}
       products={products}
       allCategories={categories}
+      categoryCounts={categoryCounts}
+      initialSize={initialSize}
     />
   );
 }
