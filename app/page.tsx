@@ -1,21 +1,29 @@
 import prisma from "@/lib/db/prisma";
 import { StoryCircles } from "@/components/home/StoryCircles";
 import { HeroCarousel } from "@/components/home/HeroCarousel";
-import { CategoryShortcuts } from "@/components/home/CategoryShortcuts";
-import { BestSellersSection } from "@/components/home/BestSellersSection";
-import { OwnBrandSpotlight } from "@/components/home/OwnBrandSpotlight";
-import { InspiredSection } from "@/components/home/InspiredSection";
-import { LuxuryPerfumesSection } from "@/components/home/LuxuryPerfumesSection";
-import { PromotionalCTAs } from "@/components/home/PromotionalCTAs";
+import { HomeProductTabs } from "@/components/home/HomeProductTabs";
+import { FeaturedCollectionsBanners } from "@/components/home/FeaturedCollectionsBanners";
+import { ReelVideosSlider } from "@/components/home/ReelVideosSlider";
+import { TopLuxurySection } from "@/components/home/TopLuxurySection";
+import { DualPromoBanners } from "@/components/home/DualPromoBanners";
+import { BestSellersCarousel } from "@/components/home/BestSellersCarousel";
 import { ValueProps } from "@/components/home/ValueProps";
-import { CustomerReviewsSection } from "@/components/home/CustomerReviewsSection";
 
 export const revalidate = 60; // Revalidate every 60 seconds
 
 export default async function HomePage() {
-  // Fetch real data from Prisma database
-  const [bestSellersRaw, ownBrandProduct, inspiredRaw, luxuryRaw] =
+  // Fetch products for all 5 tabs and dedicated sections
+  const [allProductsRaw, bestSellersRaw, ownBrandRaw, inspiredRaw, luxuryRaw, newArrivalsRaw] =
     await Promise.all([
+      prisma.product.findMany({
+        where: { active: true },
+        include: {
+          images: { orderBy: { sortOrder: "asc" } },
+          variants: { where: { active: true }, orderBy: { price: "asc" } },
+          reviews: { where: { approved: true } },
+          category: true,
+        },
+      }),
       prisma.product.findMany({
         where: { active: true, bestseller: true },
         include: {
@@ -24,40 +32,47 @@ export default async function HomePage() {
           reviews: { where: { approved: true } },
           category: true,
         },
-        take: 8,
-      }),
-      prisma.product.findFirst({
-        where: { slug: "amber-code-45" },
-        include: {
-          images: { orderBy: { sortOrder: "asc" } },
-          variants: { where: { active: true } },
-        },
+        take: 12,
       }),
       prisma.product.findMany({
-        where: {
-          active: true,
-          category: { slug: "inspired" },
-        },
+        where: { active: true, category: { slug: "own-brand" } },
         include: {
           images: { orderBy: { sortOrder: "asc" } },
           variants: { where: { active: true }, orderBy: { price: "asc" } },
           reviews: { where: { approved: true } },
           category: true,
         },
-        take: 8,
+        take: 10,
       }),
       prisma.product.findMany({
-        where: {
-          active: true,
-          category: { slug: "luxury-perfumes" },
-        },
+        where: { active: true, category: { slug: "inspired" } },
         include: {
           images: { orderBy: { sortOrder: "asc" } },
           variants: { where: { active: true }, orderBy: { price: "asc" } },
           reviews: { where: { approved: true } },
           category: true,
         },
-        take: 8,
+        take: 12,
+      }),
+      prisma.product.findMany({
+        where: { active: true, category: { slug: "luxury-perfumes" } },
+        include: {
+          images: { orderBy: { sortOrder: "asc" } },
+          variants: { where: { active: true }, orderBy: { price: "asc" } },
+          reviews: { where: { approved: true } },
+          category: true,
+        },
+        take: 12,
+      }),
+      prisma.product.findMany({
+        where: { active: true, newArrival: true },
+        include: {
+          images: { orderBy: { sortOrder: "asc" } },
+          variants: { where: { active: true }, orderBy: { price: "asc" } },
+          reviews: { where: { approved: true } },
+          category: true,
+        },
+        take: 10,
       }),
     ]);
 
@@ -88,64 +103,92 @@ export default async function HomePage() {
               10
           ) / 10
         : 5,
-    reviewsCount: p.reviews?.length ?? 12,
+    reviewsCount: p.reviews && p.reviews.length >= 10 ? p.reviews.length : 10,
   });
 
-  const bestSellers = bestSellersRaw.map(formatCard);
-  const inspiredProducts = inspiredRaw.map(formatCard);
-  const luxuryPerfumes = luxuryRaw.map(formatCard);
+  // 1. Sort best sellers for HomeProductTabs
+  const tabFeaturedOrder = [
+    "sauvage-37",
+    "marj-27",
+    "oudh-roses-34",
+    "oudh-maracuja-33",
+    "oudh-lavender-35",
+  ];
+  const sortedBestSellers = [...bestSellersRaw].sort((a, b) => {
+    const idxA = tabFeaturedOrder.indexOf(a.slug);
+    const idxB = tabFeaturedOrder.indexOf(b.slug);
+    if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+    if (idxA !== -1) return -1;
+    if (idxB !== -1) return 1;
+    return 0;
+  });
 
-  const formattedOwnBrand = ownBrandProduct
-    ? {
-        id: ownBrandProduct.id,
-        name: ownBrandProduct.name,
-        slug: ownBrandProduct.slug,
-        description: ownBrandProduct.description,
-        basePrice: Number(ownBrandProduct.basePrice),
-        compareAtPrice: ownBrandProduct.compareAtPrice
-          ? Number(ownBrandProduct.compareAtPrice)
-          : null,
-        images: ownBrandProduct.images.map((img) => ({ url: img.url })),
-        variants: ownBrandProduct.variants.map((v) => ({
-          id: v.id,
-          name: v.name,
-          price: Number(v.price),
-          stock: v.stock,
-        })),
-      }
-    : undefined;
+  const bestSellers = sortedBestSellers.map(formatCard);
+  const ownBrand = ownBrandRaw.map(formatCard);
+  const inspired = inspiredRaw.map(formatCard);
+  const luxuryPerfumes = luxuryRaw.map(formatCard);
+  const newArrivals = (newArrivalsRaw.length > 0 ? newArrivalsRaw : inspiredRaw).map(formatCard);
+
+  // 2. Prepare Top Luxury section products (Screenshot 2: Sauvage, Marj, Tobacco Vanille, Oudh Maracuja, Khamrah)
+  const topLuxuryOrder = [
+    "sauvage-37",
+    "marj-27",
+    "tobacco-vanille-40",
+    "oudh-maracuja-33",
+    "khamrah-24",
+  ];
+  const topLuxuryProducts = topLuxuryOrder
+    .map((slug) => allProductsRaw.find((p) => p.slug === slug))
+    .filter(Boolean)
+    .map(formatCard);
+
+  // 3. Prepare Best Sellers section products (Screenshot 3: Sauvage, Marj, Oudh And Rose, Oudh Maracuja, Oudh Lavender)
+  const bestSellersOrder = [
+    "sauvage-37",
+    "marj-27",
+    "oudh-roses-34",
+    "oudh-maracuja-33",
+    "oudh-lavender-35",
+  ];
+  const bestSellersCarousel = bestSellersOrder
+    .map((slug) => allProductsRaw.find((p) => p.slug === slug))
+    .filter(Boolean)
+    .map(formatCard);
 
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex flex-col min-h-screen bg-white">
       {/* 1. Preloaded Circular Video Stories */}
       <StoryCircles />
 
       {/* 2. Hero Model Banner Carousel */}
       <HeroCarousel />
 
-      {/* 2. Visual Category Navigation Shortcuts */}
-      <CategoryShortcuts />
+      {/* 3. Tabbed Product Showcase (Best Sellers, Own brand, Inspired, Luxury Perfumes, New Arrivals) */}
+      <HomeProductTabs
+        bestSellers={bestSellers}
+        ownBrand={ownBrand}
+        inspired={inspired}
+        luxuryPerfumes={luxuryPerfumes}
+        newArrivals={newArrivals}
+      />
 
-      {/* 3. Best Sellers Carousel / Grid */}
-      <BestSellersSection products={bestSellers} />
+      {/* 4. Two Collection Cards: Own Brand & Inspired Collection */}
+      <FeaturedCollectionsBanners />
 
-      {/* 4. Own Brand Dedicated Showcase (Amber Code 80ml) */}
-      <OwnBrandSpotlight product={formattedOwnBrand} />
+      {/* 5. Video Section: Reels Horizontal Slider */}
+      <ReelVideosSlider />
 
-      {/* 5. Inspired Fragrances Collection */}
-      <InspiredSection products={inspiredProducts} />
+      {/* 6. Top Luxury Perfumes Carousel */}
+      <TopLuxurySection products={topLuxuryProducts} />
 
-      {/* 6. Luxury Perfumes (Arabian Oud & Amber) */}
-      <LuxuryPerfumesSection products={luxuryPerfumes} />
+      {/* 7. Two Promotional Cards: Amber Code & 10% OFF */}
+      <DualPromoBanners />
 
-      {/* 7. Promotional CTAs (Corporate Gifting & Refer & Earn) */}
-      <PromotionalCTAs />
+      {/* 8. Best Sellers Carousel */}
+      <BestSellersCarousel products={bestSellersCarousel} />
 
-      {/* 8. Service Value Propositions (Qatar Delivery, Authentic, COD) */}
+      {/* 9. Service Value Propositions (4 Badges) */}
       <ValueProps />
-
-      {/* 9. Verified Customer Reviews */}
-      <CustomerReviewsSection />
     </div>
   );
 }
