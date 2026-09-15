@@ -4,10 +4,9 @@ import { notFound } from "next/navigation";
 import prisma from "@/lib/db/prisma";
 import { ProductGallery } from "@/components/product/ProductGallery";
 import { ProductPurchaseForm } from "@/components/product/ProductPurchaseForm";
-import { FragranceNotesPyramid } from "@/components/product/FragranceNotesPyramid";
 import { ProductReviews } from "@/components/product/ProductReviews";
-import { ProductCard } from "@/components/product/ProductCard";
-import { RatingStars } from "@/components/ui/RatingStars";
+import { RelatedProductsCarousel } from "@/components/product/RelatedProductsCarousel";
+import { ValueProps } from "@/components/home/ValueProps";
 import type { Metadata } from "next";
 
 export const revalidate = 60;
@@ -61,12 +60,22 @@ export default async function ProductDetailPage({ params }: PageProps) {
     notFound();
   }
 
-  // Related products from the same category or bestsellers
+  // Related products: fetch reference products (Sauvage, Marj, Oudh Maracuja, Oudh Lavender, Khamrah)
+  const targetRelatedSlugs = [
+    "sauvage-37",
+    "marj-35",
+    "oudh-maracuja-39",
+    "oudh-lavender-38",
+    "khamrah-36",
+    "amber-code-1",
+    "tobacco-vanille-40",
+  ].filter((s) => s !== product.slug);
+
   const relatedRaw = await prisma.product.findMany({
     where: {
       active: true,
       id: { not: product.id },
-      ...(product.categoryId ? { categoryId: product.categoryId } : {}),
+      slug: { in: targetRelatedSlugs },
     },
     include: {
       images: { orderBy: { sortOrder: "asc" } },
@@ -74,10 +83,29 @@ export default async function ProductDetailPage({ params }: PageProps) {
       reviews: { where: { approved: true } },
       category: true,
     },
-    take: 4,
+    take: 5,
   });
 
-  const relatedProducts = relatedRaw.map((p) => ({
+  // If fewer than 5 found, fetch top bestsellers
+  let relatedFinal = relatedRaw;
+  if (relatedFinal.length < 5) {
+    const extra = await prisma.product.findMany({
+      where: {
+        active: true,
+        id: { notIn: [product.id, ...relatedFinal.map((p) => p.id)] },
+      },
+      include: {
+        images: { orderBy: { sortOrder: "asc" } },
+        variants: { where: { active: true }, orderBy: { price: "asc" } },
+        reviews: { where: { approved: true } },
+        category: true,
+      },
+      take: 5 - relatedFinal.length,
+    });
+    relatedFinal = [...relatedFinal, ...extra];
+  }
+
+  const relatedProducts = relatedFinal.map((p) => ({
     id: p.id,
     name: p.name,
     slug: p.slug,
@@ -103,17 +131,8 @@ export default async function ProductDetailPage({ params }: PageProps) {
               10
           ) / 10
         : 5,
-    reviewsCount: p.reviews.length ?? 8,
+    reviewsCount: p.reviews.length > 0 ? p.reviews.length : 10,
   }));
-
-  const avgRating =
-    product.reviews.length > 0
-      ? Math.round(
-          (product.reviews.reduce((sum, r) => sum + r.rating, 0) /
-            product.reviews.length) *
-            10
-        ) / 10
-      : 5;
 
   const formattedProduct = {
     id: product.id,
@@ -123,6 +142,14 @@ export default async function ProductDetailPage({ params }: PageProps) {
     compareAtPrice: product.compareAtPrice ? Number(product.compareAtPrice) : null,
     stock: product.stock,
     images: product.images.map((img) => ({ url: img.url, alt: img.alt })),
+    topNotes: product.topNotes,
+    heartNotes: product.heartNotes,
+    baseNotes: product.baseNotes,
+    inspiredBy: product.name.includes("Oudh And Rose") ? "Ahmed Al Maghribi" : undefined,
+    gender: "Unisex",
+    concentration: "Extrait de Parfum",
+    description: product.description,
+    reviewsCount: product.reviews.length > 0 ? product.reviews.length : 10,
   };
 
   const formattedVariants = product.variants.map((v) => ({
@@ -135,72 +162,38 @@ export default async function ProductDetailPage({ params }: PageProps) {
   }));
 
   return (
-    <div className="bg-[#ffffff] min-h-screen py-8">
-      <div className="ramillette-container">
-        {/* Breadcrumb Navigation */}
-        <nav className="text-xs text-neutral-500 mb-8 flex items-center gap-2 flex-wrap">
-          <Link href="/" className="hover:text-[#b6713e]">
-            Home
-          </Link>
-          <span>/</span>
-          <Link href="/shop" className="hover:text-[#b6713e]">
-            Shop
-          </Link>
-          {product.category && (
-            <>
-              <span>/</span>
-              <Link
-                href={`/shop/${product.category.slug}`}
-                className="hover:text-[#b6713e]"
-              >
-                {product.category.name}
-              </Link>
-            </>
-          )}
-          <span>/</span>
-          <span className="text-[#1c1c1c] font-semibold">{product.name}</span>
-        </nav>
+    <div className="bg-[#ffffff] min-h-screen pt-6 sm:pt-8">
+      <div className="ramillette-container max-w-[1320px] mx-auto">
+        {/* Luxury Breadcrumb Badge (Matching Reference Screenshot) */}
+        <div className="mb-6">
+          <div className="border border-[#ebdcc7] bg-[#fbf9f5] px-3.5 py-1.5 rounded-[4px] inline-flex items-center gap-1.5 text-[11px] font-bold text-[#8b6534] uppercase tracking-wider">
+            <Link href="/" className="hover:text-[#4E6548] transition-colors">
+              HOME
+            </Link>
+            <span className="text-[#8b6534]/50">›</span>
+            <Link href="/shop" className="hover:text-[#4E6548] transition-colors">
+              FRAGRANCES
+            </Link>
+            <span className="text-[#8b6534]/50">›</span>
+            <span className="text-[#1c1c1c] font-extrabold">{product.name}</span>
+          </div>
+        </div>
 
-        {/* Top Product Section (Gallery + Details) */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 pb-16">
-          {/* Left Column: Image Gallery */}
-          <div className="lg:col-span-7">
+        {/* Top Main PDP Section (Gallery on Left + Details/Tabs on Right) */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-14 pb-12">
+          {/* Left Column: Gallery with Vertical Thumbnails and Share/Heart floating buttons */}
+          <div className="lg:col-span-6 xl:col-span-7">
             <ProductGallery
               images={product.images}
               productName={product.name}
+              productId={product.id}
+              slug={product.slug}
+              price={Number(product.basePrice)}
             />
           </div>
 
-          {/* Right Column: Information & Actions */}
-          <div className="lg:col-span-5 space-y-4">
-            <div className="space-y-2">
-              <span className="text-xs font-bold uppercase tracking-widest text-[#b6713e]">
-                {product.brand || "Ramillette Perfumes"}
-              </span>
-
-              <h1 className="text-3xl sm:text-4xl font-extrabold text-[#1c1c1c] tracking-tight">
-                {product.name}
-              </h1>
-
-              {/* Rating header */}
-              <div className="flex items-center gap-2 pt-1">
-                <RatingStars
-                  rating={avgRating}
-                  reviewsCount={product.reviews.length}
-                  size={15}
-                />
-                <span className="text-xs text-neutral-500">
-                  • 2-Hour Doha Delivery
-                </span>
-              </div>
-            </div>
-
-            {/* Short Description */}
-            <p className="text-sm text-neutral-600 leading-relaxed pt-1">
-              {product.description}
-            </p>
-
-            {/* Purchase Form (Variants, Stepper, Add to Cart, Buy Now) */}
+          {/* Right Column: Information, Size Selector, Delivery, Actions, Tabs */}
+          <div className="lg:col-span-6 xl:col-span-5">
             <ProductPurchaseForm
               product={formattedProduct}
               variants={formattedVariants}
@@ -208,28 +201,9 @@ export default async function ProductDetailPage({ params }: PageProps) {
           </div>
         </div>
 
-        {/* Detailed Tabs / Accordions */}
-        <div className="pt-12 border-t border-[#e5e5e5] space-y-16">
-          {/* Section 1: Olfactory Pyramid */}
-          <div>
-            <div className="mb-6">
-              <span className="text-xs font-bold uppercase tracking-widest text-[#b6713e]">
-                Fragrance Architecture
-              </span>
-              <h2 className="text-2xl font-bold text-[#1c1c1c] mt-1">
-                Olfactory Notes & Sillage
-              </h2>
-            </div>
-            <FragranceNotesPyramid
-              topNotes={product.topNotes}
-              heartNotes={product.heartNotes}
-              baseNotes={product.baseNotes}
-              fragranceFamily={product.fragranceFamily}
-            />
-          </div>
-
-          {/* Section 2: Customer Reviews */}
-          <div className="pt-8 border-t border-[#e5e5e5]">
+        {/* Customer Reviews Section */}
+        {product.reviews.length > 0 && (
+          <div className="pt-8 pb-12 border-t border-[#ececec]">
             <ProductReviews
               productId={product.id}
               productName={product.name}
@@ -243,36 +217,20 @@ export default async function ProductDetailPage({ params }: PageProps) {
               }))}
             />
           </div>
-
-          {/* Section 3: Related Products */}
-          {relatedProducts.length > 0 && (
-            <div className="pt-8 border-t border-[#e5e5e5]">
-              <div className="flex items-center justify-between mb-8">
-                <div>
-                  <span className="text-xs font-bold uppercase tracking-widest text-[#b6713e]">
-                    You May Also Love
-                  </span>
-                  <h2 className="text-2xl font-bold text-[#1c1c1c] mt-1">
-                    Related Fragrances
-                  </h2>
-                </div>
-                <Link
-                  href="/shop"
-                  className="text-xs font-semibold text-[#1c1c1c] hover:text-[#b6713e]"
-                >
-                  View all
-                </Link>
-              </div>
-
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
-                {relatedProducts.map((p) => (
-                  <ProductCard key={p.id} product={p} />
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
+        )}
       </div>
+
+      {/* Vinova Product Related Section (The Missing 5-Item Carousel Section) */}
+      <RelatedProductsCarousel
+        products={relatedProducts}
+        title="Vinova Product Related"
+        titleAr="منتجات ذات صلة"
+        subtitle="Subtitle from happy customers"
+        subtitleAr="آراء وتفضيلات عملائنا السعداء"
+      />
+
+      {/* 4 Value Propositions Banner (Matching Reference Site Below Related Section) */}
+      <ValueProps />
     </div>
   );
 }

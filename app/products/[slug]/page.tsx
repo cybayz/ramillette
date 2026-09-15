@@ -1,10 +1,1 @@
-import { redirect } from "next/navigation";
-
-interface Props {
-  params: Promise<{ slug: string }>;
-}
-
-export default async function ProductsRedirect({ params }: Props) {
-  const { slug } = await params;
-  redirect(`/product/${slug}`);
-}
+export { default, generateMetadata } from "@/app/product/[slug]/page";
