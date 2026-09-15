@@ -8,10 +8,11 @@ import { TopLuxurySection } from "@/components/home/TopLuxurySection";
 import { DualPromoBanners } from "@/components/home/DualPromoBanners";
 import { BestSellersCarousel } from "@/components/home/BestSellersCarousel";
 import { ValueProps } from "@/components/home/ValueProps";
+import { ArabicPageSync } from "@/components/home/ArabicPageSync";
 
 export const revalidate = 60; // Revalidate every 60 seconds
 
-export default async function HomePage() {
+export default async function ArabicHomePage() {
   const {
     bestSellers,
     ownBrand,
@@ -23,14 +24,17 @@ export default async function HomePage() {
   } = await getHomeProducts();
 
   return (
-    <div className="flex flex-col min-h-screen bg-white">
+    <div className="flex flex-col min-h-screen bg-white" dir="rtl">
+      {/* Client-side sync for language store & document RTL */}
+      <ArabicPageSync />
+
       {/* 1. Preloaded Circular Video Stories */}
       <StoryCircles />
 
       {/* 2. Hero Model Banner Carousel */}
       <HeroCarousel />
 
-      {/* 3. Tabbed Product Showcase */}
+      {/* 3. Tabbed Product Showcase (الأكثر مبيعًا، علامة تجارية خاصة، مُلهم، عطور فاخرة، وصل حديثًا) */}
       <HomeProductTabs
         bestSellers={bestSellers}
         ownBrand={ownBrand}

@@ -44,12 +44,17 @@
     letter-spacing: -0.01em;
   }
 
-  [dir="rtl"] body {
-    font-family: var(--font-arabic), var(--font-body), "Cairo", sans-serif;
-  }
-
-  [dir="rtl"] h1, [dir="rtl"] h2, [dir="rtl"] h3, [dir="rtl"] h4, [dir="rtl"] h5, [dir="rtl"] h6 {
-    font-family: var(--font-arabic), var(--font-heading), "Cairo", sans-serif;
+  [dir="rtl"],
+  [dir="rtl"] body,
+  [dir="rtl"] h1, [dir="rtl"] h2, [dir="rtl"] h3, [dir="rtl"] h4, [dir="rtl"] h5, [dir="rtl"] h6,
+  [dir="rtl"] button,
+  [dir="rtl"] input,
+  [dir="rtl"] select,
+  [dir="rtl"] textarea,
+  [dir="rtl"] a,
+  [dir="rtl"] span,
+  [dir="rtl"] p {
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Arabic", "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans Arabic", sans-serif !important;
   }
 }
 

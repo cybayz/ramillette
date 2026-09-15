@@ -2,9 +2,15 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Check } from "lucide-react";
+import { useLanguageStore } from "@/lib/store/useLanguageStore";
 
 export function Footer() {
+  const pathname = usePathname();
+  const { language } = useLanguageStore();
+  const isAr = pathname?.startsWith("/ar") || language === "ar";
+
   const [email, setEmail] = useState("");
   const [isSubscribed, setIsSubscribed] = useState(false);
 
@@ -17,14 +23,76 @@ export function Footer() {
     }
   };
 
+  const tFooter = isAr
+    ? {
+        followUs: "تابعنا :",
+        emailPlaceholder: "أدخل بريدك الإلكتروني",
+        newsletterSub: "ابق على اطلاع بأحدث منتجاتنا وأخبارنا",
+        aboutTitle: "About Ramillette",
+        aboutDesc:
+          "عطور راميلليت هي دار عطور راقية تجمع بين التراث العطري للشرق الأوسط وصناعة العطور الفرنسية المعاصرة. صُنعت في الإمارات العربية المتحدة، مع بوتيكنا الرئيسي في سوق الوكرة التاريخي، قطر.",
+        destinationTitle: "Your Fragrance Destination",
+        destinationDesc:
+          "تسوق العطور المميزة، والزيوت المركزة، وأكثر من 50 عطرًا فاخرًا مستوحى عبر الإنترنت — مع التوصيل في جميع أنحاء قطر.",
+        getInTouch: "Get in touch",
+        aboutCol: "About",
+        accountCol: "Account",
+        policiesCol: "Policies",
+        aboutLink: "نبذة عنا",
+        contactLink: "اتصل بنا",
+        blogLink: "المدونة",
+        helpLink: "المساعدة",
+        faqLink: "الأسئلة الشائعة",
+        myBag: "سلتي",
+        wishlist: "قائمة الرغبات",
+        myOrders: "طلباتي",
+        cancellation: "سياسة الإلغاء",
+        returns: "سياسة الإرجاع",
+        refund: "سياسة الاسترداد",
+        exchange: "سياسة الاستبدال",
+        copyright: "© 2026 راميلليت. جميع الحقوق محفوظة.",
+        designedBy: "تصميم",
+        subscribedMsg: "شكرًا لاشتراكك في تحديثات راميلليت!",
+      }
+    : {
+        followUs: "Follow Us :",
+        emailPlaceholder: "Enter email id",
+        newsletterSub: "Stay up to date with our latest products and news",
+        aboutTitle: "About Ramillette",
+        aboutDesc:
+          "Ramillette Perfumes is an upscale fragrance house blending Middle Eastern aromatic heritage with contemporary French perfumery. Manufactured in the UAE, with our marquee retail boutique at historic Souq Al Wakra, Qatar.",
+        destinationTitle: "Your Fragrance Destination",
+        destinationDesc:
+          "Shop signature parfums, concentrated oils, and our 50+ luxury inspired collection online — with delivery across Qatar.",
+        getInTouch: "Get in touch",
+        aboutCol: "About",
+        accountCol: "Account",
+        policiesCol: "Policies",
+        aboutLink: "About",
+        contactLink: "Contact Us",
+        blogLink: "Blog",
+        helpLink: "Help",
+        faqLink: "FAQ",
+        myBag: "My Bag",
+        wishlist: "Wishlist",
+        myOrders: "My Orders",
+        cancellation: "Cancellation Policy",
+        returns: "Returns Policy",
+        refund: "Refund Policy",
+        exchange: "Exchange Policy",
+        copyright: "© 2026 Ramillette. All Right Reserved.",
+        designedBy: "Designed by",
+        subscribedMsg: "Thank you for subscribing to Ramillette updates!",
+      };
+
   return (
     <footer className="bg-[#050505] text-neutral-300 pt-12 pb-8 border-t border-[#1a1a1a]">
       <div className="ramillette-container">
         {/* Foot Top: Logo + Socials & Newsletter */}
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8 pb-10 border-b border-[#222]">
           {/* Logo & Follow Us */}
-          <div className="space-y-4">
-            <Link href="/" className="inline-block">
+          <div className="space-y-4 text-start">
+            <Link href={isAr ? "/ar" : "/"} className="inline-block">
               <img
                 src="/ramillette-logo-black.svg"
                 alt="Ramillette"
@@ -33,7 +101,7 @@ export function Footer() {
             </Link>
 
             <div className="flex items-center gap-3 text-xs text-neutral-400">
-              <span className="font-semibold text-white">Follow Us :</span>
+              <span className="font-semibold text-white">{tFooter.followUs}</span>
               {/* Instagram */}
               <a
                 href="https://www.instagram.com/ramillette_perfumes"
@@ -42,7 +110,15 @@ export function Footer() {
                 aria-label="Instagram"
                 className="w-7 h-7 rounded-full bg-[#1e1e1e] hover:bg-[#333] text-white flex items-center justify-center transition-colors"
               >
-                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <svg
+                  className="w-3.5 h-3.5"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
                   <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
                   <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
                   <line x1="17.5" y1="6.5" x2="17.51" y2="6.5" />
@@ -65,11 +141,11 @@ export function Footer() {
           </div>
 
           {/* Newsletter Box */}
-          <div className="w-full lg:w-auto">
+          <div className="w-full lg:w-auto text-start">
             {isSubscribed ? (
               <div className="flex items-center gap-2 p-3 bg-white/10 text-emerald-300 text-xs rounded-md border border-emerald-500/30">
                 <Check size={16} />
-                <span>Thank you for subscribing to Ramillette updates!</span>
+                <span>{tFooter.subscribedMsg}</span>
               </div>
             ) : (
               <form onSubmit={handleSubscribe} className="space-y-2 max-w-md">
@@ -78,20 +154,20 @@ export function Footer() {
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="Enter email id"
+                    placeholder={tFooter.emailPlaceholder}
                     required
-                    className="bg-white text-black placeholder:text-neutral-500 text-xs px-3.5 py-2.5 rounded-l-[4px] border-none focus:outline-none w-[200px] sm:w-[260px]"
+                    className="bg-white text-black placeholder:text-neutral-500 text-xs px-3.5 py-2.5 rounded-s-[4px] border-none focus:outline-none w-[200px] sm:w-[260px] text-start"
                   />
                   <button
                     type="submit"
                     aria-label="Subscribe"
-                    className="bg-black hover:bg-neutral-800 text-white px-3.5 py-2.5 rounded-r-[4px] border border-neutral-700 transition-colors flex items-center justify-center font-bold text-sm"
+                    className="bg-black hover:bg-neutral-800 text-white px-3.5 py-2.5 rounded-e-[4px] border border-neutral-700 transition-colors flex items-center justify-center font-bold text-sm"
                   >
-                    ↗
+                    {isAr ? "↖" : "↗"}
                   </button>
                 </div>
                 <p className="text-[11.5px] text-neutral-400">
-                  Stay up to date with our latest products and news
+                  {tFooter.newsletterSub}
                 </p>
               </form>
             )}
@@ -99,90 +175,94 @@ export function Footer() {
         </div>
 
         {/* Foot About Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 py-10 border-b border-[#222] text-xs leading-relaxed text-neutral-400">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 py-10 border-b border-[#222] text-xs leading-relaxed text-neutral-400 text-start">
           <div>
             <h4 className="text-sm font-semibold text-white mb-2 font-heading">
-              About Ramillette
+              {tFooter.aboutTitle}
             </h4>
-            <p>
-              Ramillette Perfumes is an upscale fragrance house blending Middle Eastern aromatic heritage with contemporary French perfumery. Manufactured in the UAE, with our marquee retail boutique at historic Souq Al Wakra, Qatar.
-            </p>
+            <p>{tFooter.aboutDesc}</p>
           </div>
 
           <div>
             <h4 className="text-sm font-semibold text-white mb-2 font-heading">
-              Your Fragrance Destination
+              {tFooter.destinationTitle}
             </h4>
-            <p>
-              Shop signature parfums, concentrated oils, and our 50+ luxury inspired collection online — with delivery across Qatar.
-            </p>
+            <p>{tFooter.destinationDesc}</p>
           </div>
         </div>
 
         {/* Foot Columns: Links */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-8 py-10 border-b border-[#222] text-xs">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-8 py-10 border-b border-[#222] text-xs text-start">
           {/* Col 1 */}
           <div>
-            <h5 className="text-sm font-semibold text-white mb-4">Get in touch</h5>
+            <h5 className="text-sm font-semibold text-white mb-4">
+              {tFooter.getInTouch}
+            </h5>
             <div className="space-y-2 text-neutral-400">
               <p>contact@ramillette.com</p>
-              <p>+97466097444</p>
+              <p dir="ltr" className="text-start">+97466097444</p>
             </div>
           </div>
 
           {/* Col 2 */}
           <div>
-            <h5 className="text-sm font-semibold text-white mb-4">About</h5>
+            <h5 className="text-sm font-semibold text-white mb-4">
+              {tFooter.aboutCol}
+            </h5>
             <div className="space-y-2.5 flex flex-col text-neutral-400">
               <Link href="/pages/about-us" className="hover:text-white transition-colors">
-                About
+                {tFooter.aboutLink}
               </Link>
               <Link href="/pages/contact" className="hover:text-white transition-colors">
-                Contact Us
+                {tFooter.contactLink}
               </Link>
               <Link href="/blogs/news" className="hover:text-white transition-colors">
-                Blog
+                {tFooter.blogLink}
               </Link>
               <Link href="/pages/help" className="hover:text-white transition-colors">
-                Help
+                {tFooter.helpLink}
               </Link>
               <Link href="/pages/faqs" className="hover:text-white transition-colors">
-                FAQ
+                {tFooter.faqLink}
               </Link>
             </div>
           </div>
 
           {/* Col 3 */}
           <div>
-            <h5 className="text-sm font-semibold text-white mb-4">Account</h5>
+            <h5 className="text-sm font-semibold text-white mb-4">
+              {tFooter.accountCol}
+            </h5>
             <div className="space-y-2.5 flex flex-col text-neutral-400">
               <Link href="/cart" className="hover:text-white transition-colors">
-                My Bag
+                {tFooter.myBag}
               </Link>
               <Link href="/pages/wishlist" className="hover:text-white transition-colors">
-                Wishlist
+                {tFooter.wishlist}
               </Link>
               <Link href="/account" className="hover:text-white transition-colors">
-                My Orders
+                {tFooter.myOrders}
               </Link>
             </div>
           </div>
 
           {/* Col 4 */}
           <div>
-            <h5 className="text-sm font-semibold text-white mb-4">Policies</h5>
+            <h5 className="text-sm font-semibold text-white mb-4">
+              {tFooter.policiesCol}
+            </h5>
             <div className="space-y-2.5 flex flex-col text-neutral-400">
               <Link href="/pages/cancellation-policy" className="hover:text-white transition-colors">
-                Cancellation Policy
+                {tFooter.cancellation}
               </Link>
               <Link href="/pages/returns-policy" className="hover:text-white transition-colors">
-                Returns Policy
+                {tFooter.returns}
               </Link>
               <Link href="/pages/refund-policy" className="hover:text-white transition-colors">
-                Refund Policy
+                {tFooter.refund}
               </Link>
               <Link href="/pages/exchange-policy" className="hover:text-white transition-colors">
-                Exchange Policy
+                {tFooter.exchange}
               </Link>
             </div>
           </div>
@@ -190,9 +270,9 @@ export function Footer() {
 
         {/* Foot Bottom: Copyright */}
         <div className="pt-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-neutral-500">
-          <div>© 2026 Ramillette. All Right Reserved.</div>
+          <div>{tFooter.copyright}</div>
           <div className="text-neutral-500">
-            Designed by{" "}
+            {tFooter.designedBy}{" "}
             <a
               href="https://wa.me/918848764059?text=i%20want%20ramillette%20type%20ecommerce%20website"
               target="_blank"

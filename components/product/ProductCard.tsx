@@ -3,9 +3,12 @@
 import React, { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Heart, ShoppingCart } from "lucide-react";
 import { useCartStore } from "@/lib/store/useCartStore";
 import { useWishlistStore } from "@/lib/store/useWishlistStore";
+import { useLanguageStore } from "@/lib/store/useLanguageStore";
+import { productArabicNames } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 export interface CardVariant {
@@ -35,11 +38,14 @@ export interface CardProduct {
 interface ProductCardProps {
   product: CardProduct;
   className?: string;
+  isArabic?: boolean;
 }
 
-export function ProductCard({ product, className }: ProductCardProps) {
+export function ProductCard({ product, className, isArabic }: ProductCardProps) {
+  const pathname = usePathname();
   const { addItem, openCart } = useCartStore();
   const { toggleWishlist, isInWishlist } = useWishlistStore();
+  const { language } = useLanguageStore();
 
   const [selectedVariant] = useState<CardVariant | null>(
     product.variants && product.variants.length > 0 ? product.variants[0] : null
@@ -56,6 +62,18 @@ export function ProductCard({ product, className }: ProductCardProps) {
   const currentPrice = selectedVariant
     ? selectedVariant.price
     : product.basePrice;
+
+  // Localized product name
+  const isAr = isArabic || pathname?.startsWith("/ar") || language === "ar";
+  const displayName = isAr
+    ? productArabicNames[product.slug] ||
+      productArabicNames[product.name] ||
+      product.name
+    : product.name;
+
+  const selectOptionsText = isAr ? "اختر الخيارات" : "Select options";
+  const chooseAndBuyText = isAr ? "اختر واشترِ" : "Choose & Buy";
+  const reviewsText = isAr ? "10 reviews" : "10 reviews";
 
   const handleChooseAndBuy = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -103,7 +121,7 @@ export function ProductCard({ product, className }: ProductCardProps) {
           onClick={handleWishlistClick}
           aria-label={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
           className={cn(
-            "absolute top-3 right-3 z-10 w-8 h-8 rounded-full bg-white shadow-sm flex items-center justify-center transition-all duration-200 cursor-pointer hover:scale-110",
+            "absolute top-3 end-3 z-10 w-8 h-8 rounded-full bg-white shadow-sm flex items-center justify-center transition-all duration-200 cursor-pointer hover:scale-110",
             isWishlisted ? "text-red-500" : "text-neutral-700 hover:text-[#4e6648]"
           )}
         >
@@ -119,7 +137,7 @@ export function ProductCard({ product, className }: ProductCardProps) {
         <Link href={`/product/${product.slug}`} className="block w-full h-full relative cursor-pointer">
           <Image
             src={primaryImage}
-            alt={product.name}
+            alt={displayName}
             fill
             unoptimized
             sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
@@ -134,7 +152,7 @@ export function ProductCard({ product, className }: ProductCardProps) {
           {hoverImage !== primaryImage && (
             <Image
               src={hoverImage}
-              alt={`${product.name} alternate view`}
+              alt={`${displayName} alternate view`}
               fill
               unoptimized
               sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
@@ -148,13 +166,13 @@ export function ProductCard({ product, className }: ProductCardProps) {
       </div>
 
       {/* Product Information */}
-      <div className="flex flex-col flex-1 pt-3">
+      <div className="flex flex-col flex-1 pt-3 text-start">
         {/* Product Title */}
         <Link
           href={`/product/${product.slug}`}
-          className="text-[15px] font-bold text-[#1c1c1c] hover:text-[#4e6648] transition-colors line-clamp-1 block text-left"
+          className="text-[15px] font-bold text-[#1c1c1c] hover:text-[#4e6648] transition-colors line-clamp-1 block text-start"
         >
-          {product.name}
+          {displayName}
         </Link>
 
         {/* Star Ratings: 5 Teal-Green Stars + reviews count */}
@@ -177,12 +195,12 @@ export function ProductCard({ product, className }: ProductCardProps) {
             ))}
           </div>
           <span className="text-[12px] text-neutral-600 font-normal">
-            {product.reviewsCount ?? 10} reviews
+            {reviewsText}
           </span>
         </div>
 
         {/* Price Row */}
-        <div className="mt-1.5 text-left">
+        <div className="mt-1.5 text-start">
           <span className="text-[15px] sm:text-base font-bold text-[#1c1c1c]">
             QAR {currentPrice.toFixed(2)}
           </span>
@@ -196,7 +214,7 @@ export function ProductCard({ product, className }: ProductCardProps) {
             className="w-full py-2 px-3 border border-[#d1d5db] hover:border-[#1c1c1c] rounded-[5px] text-[13px] font-medium text-[#1c1c1c] bg-white hover:bg-neutral-50 flex items-center justify-center gap-1.5 transition-colors cursor-pointer text-center"
           >
             <ShoppingCart size={15} className="stroke-[1.8]" />
-            <span>Select options</span>
+            <span>{selectOptionsText}</span>
           </Link>
 
           {/* 2. Choose & Buy button (Ramillette Olive Green) */}
@@ -205,7 +223,7 @@ export function ProductCard({ product, className }: ProductCardProps) {
             onClick={handleChooseAndBuy}
             className="w-full py-2 px-3 bg-[#4e6648] hover:bg-[#3d5239] text-white rounded-[5px] text-[13px] font-medium flex items-center justify-center transition-colors cursor-pointer shadow-xs active:scale-[0.99]"
           >
-            Choose & Buy
+            {chooseAndBuyText}
           </button>
         </div>
       </div>

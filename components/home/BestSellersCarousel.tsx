@@ -2,15 +2,20 @@
 
 import React, { useRef } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { ProductCard } from "@/components/product/ProductCard";
+import { useLanguageStore } from "@/lib/store/useLanguageStore";
 
 interface BestSellersCarouselProps {
   products: any[];
 }
 
 export function BestSellersCarousel({ products }: BestSellersCarouselProps) {
+  const pathname = usePathname();
   const scrollRef = useRef<HTMLDivElement>(null);
+  const { language } = useLanguageStore();
+  const isAr = pathname?.startsWith("/ar") || language === "ar";
 
   const scroll = (direction: "left" | "right") => {
     if (scrollRef.current) {
@@ -19,6 +24,12 @@ export function BestSellersCarousel({ products }: BestSellersCarouselProps) {
     }
   };
 
+  const title = "Best Sellers";
+  const subtitle = isAr
+    ? "ابق في صدارة اتجاهات العطور مع عطورنا الأكثر مبيعًا في قطر."
+    : "Stay ahead of the fragrance trends with our best-selling perfumes in Qatar.";
+  const viewAllLink = isAr ? "/ar/shop/best-sellers" : "/shop/best-sellers";
+
   return (
     <section className="py-8 md:py-12 bg-white">
       <div className="ramillette-container">
@@ -26,20 +37,20 @@ export function BestSellersCarousel({ products }: BestSellersCarouselProps) {
         <div className="flex flex-row items-end justify-between mb-6 pb-2 border-b border-neutral-100">
           <div>
             <h2 className="text-xl md:text-2xl lg:text-[28px] font-bold text-[#1a1a1a] tracking-tight font-heading">
-              Best Sellers
+              {title}
             </h2>
             <p className="text-xs md:text-sm text-neutral-500 mt-1">
-              Stay ahead of the fragrance trends with our best-selling perfumes in Qatar.
+              {subtitle}
             </p>
           </div>
 
           <Link
-            href="/shop/best-sellers"
+            href={viewAllLink}
             className="group flex items-center gap-1 text-xs md:text-sm font-semibold text-[#1a1a1a] hover:text-[#4e6648] transition-colors"
           >
             <span>View All</span>
             <span className="transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform text-xs">
-              ↗
+              {isAr ? "↖" : "↗"}
             </span>
           </Link>
         </div>
@@ -59,7 +70,7 @@ export function BestSellersCarousel({ products }: BestSellersCarouselProps) {
             ))}
           </div>
 
-          {/* Left Arrow Button (exact matching Screenshot 3) */}
+          {/* Left Arrow Button */}
           <button
             onClick={() => scroll("left")}
             aria-label="Previous products"
@@ -68,7 +79,7 @@ export function BestSellersCarousel({ products }: BestSellersCarouselProps) {
             <ChevronLeft size={20} />
           </button>
 
-          {/* Right Arrow Button (exact matching Screenshot 3) */}
+          {/* Right Arrow Button */}
           <button
             onClick={() => scroll("right")}
             aria-label="Next products"
