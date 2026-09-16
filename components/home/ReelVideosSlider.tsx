@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useRef, useState, useEffect } from "react";
-import { ChevronLeft, ChevronRight, X, Volume2, VolumeX, Play, Pause } from "lucide-react";
+import React, { useRef, useState } from "react";
+import { ChevronLeft, ChevronRight, Play } from "lucide-react";
+import { ReelModalPlayer } from "./ReelModalPlayer";
 
 interface ReelItem {
   id: number;
@@ -80,9 +81,6 @@ const REELS: ReelItem[] = [
 export function ReelVideosSlider() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [activeModalIndex, setActiveModalIndex] = useState<number | null>(null);
-  const [isMuted, setIsMuted] = useState(true);
-  const [isPlaying, setIsPlaying] = useState(true);
-  const modalVideoRef = useRef<HTMLVideoElement>(null);
 
   const scroll = (direction: "left" | "right") => {
     if (scrollRef.current) {
@@ -93,33 +91,11 @@ export function ReelVideosSlider() {
 
   const openReel = (index: number) => {
     setActiveModalIndex(index);
-    setIsMuted(false);
-    setIsPlaying(true);
   };
 
   const closeReel = () => {
     setActiveModalIndex(null);
   };
-
-  // Keyboard navigation for reel modal
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (activeModalIndex === null) return;
-      if (e.key === "Escape") closeReel();
-      if (e.key === "ArrowRight") {
-        setActiveModalIndex((prev) =>
-          prev !== null ? (prev + 1) % REELS.length : null
-        );
-      }
-      if (e.key === "ArrowLeft") {
-        setActiveModalIndex((prev) =>
-          prev !== null ? (prev - 1 + REELS.length) % REELS.length : null
-        );
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [activeModalIndex]);
 
   return (
     <section className="py-6 md:py-8 bg-white relative">
@@ -186,113 +162,13 @@ export function ReelVideosSlider() {
         </div>
       </div>
 
-      {/* Fullscreen Video Modal */}
-      {activeModalIndex !== null && (
-        <div
-          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4"
-          onClick={closeReel}
-        >
-          <div
-            className="relative w-full max-w-[380px] sm:max-w-[420px] aspect-[9/16] bg-black rounded-2xl overflow-hidden shadow-2xl flex flex-col justify-between"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Video */}
-            <video
-              ref={modalVideoRef}
-              src={REELS[activeModalIndex].video}
-              poster={REELS[activeModalIndex].thumb}
-              autoPlay
-              loop
-              playsInline
-              muted={isMuted}
-              className="absolute inset-0 w-full h-full object-cover"
-              onClick={() => {
-                if (modalVideoRef.current) {
-                  if (isPlaying) {
-                    modalVideoRef.current.pause();
-                    setIsPlaying(false);
-                  } else {
-                    modalVideoRef.current.play();
-                    setIsPlaying(true);
-                  }
-                }
-              }}
-            />
-
-            {/* Top Bar Controls */}
-            <div className="relative z-10 flex items-center justify-between p-4 bg-gradient-to-b from-black/70 to-transparent">
-              <span className="text-xs font-semibold text-white/90 uppercase tracking-widest">
-                Ramillette Moments
-              </span>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setIsMuted(!isMuted)}
-                  className="w-8 h-8 rounded-full bg-black/40 backdrop-blur-md text-white flex items-center justify-center hover:bg-black/60 transition-colors"
-                  aria-label={isMuted ? "Unmute" : "Mute"}
-                >
-                  {isMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
-                </button>
-                <button
-                  onClick={closeReel}
-                  className="w-8 h-8 rounded-full bg-black/40 backdrop-blur-md text-white flex items-center justify-center hover:bg-black/60 transition-colors"
-                  aria-label="Close"
-                >
-                  <X size={18} />
-                </button>
-              </div>
-            </div>
-
-            {/* Play/Pause center overlay indicator */}
-            {!isPlaying && (
-              <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
-                <div className="w-16 h-16 rounded-full bg-black/50 backdrop-blur-md flex items-center justify-center text-white">
-                  <Play size={28} fill="white" className="ml-1" />
-                </div>
-              </div>
-            )}
-
-            {/* Bottom Info Bar */}
-            <div className="relative z-10 p-5 bg-gradient-to-t from-black/90 via-black/50 to-transparent text-white space-y-2">
-              <h3 className="font-bold text-sm tracking-wide">
-                {REELS[activeModalIndex].title}
-              </h3>
-              <p className="text-xs text-white/80 leading-relaxed line-clamp-3">
-                {REELS[activeModalIndex].desc}
-              </p>
-              <div className="pt-2 flex items-center justify-between">
-                <a
-                  href="/shop"
-                  className="inline-block px-4 py-2 bg-white text-black font-semibold text-xs rounded-full shadow hover:bg-[#faedcd] transition-colors"
-                >
-                  Shop Now
-                </a>
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={() =>
-                      setActiveModalIndex(
-                        (activeModalIndex - 1 + REELS.length) % REELS.length
-                      )
-                    }
-                    className="w-7 h-7 rounded-full bg-white/20 hover:bg-white/30 text-white flex items-center justify-center transition-colors"
-                  >
-                    <ChevronLeft size={16} />
-                  </button>
-                  <button
-                    onClick={() =>
-                      setActiveModalIndex(
-                        (activeModalIndex + 1) % REELS.length
-                      )
-                    }
-                    className="w-7 h-7 rounded-full bg-white/20 hover:bg-white/30 text-white flex items-center justify-center transition-colors"
-                  >
-                    <ChevronRight size={16} />
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Fullscreen Video Modal with 3-Card Layout & Audio */}
+      <ReelModalPlayer
+        isOpen={activeModalIndex !== null}
+        items={REELS}
+        initialIndex={activeModalIndex ?? 0}
+        onClose={closeReel}
+      />
     </section>
   );
 }
