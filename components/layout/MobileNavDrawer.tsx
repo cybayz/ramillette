@@ -3,6 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { usePathname } from "next/navigation";
 import { Drawer } from "@/components/ui/Drawer";
 import { useCartStore } from "@/lib/store/useCartStore";
 import { useWishlistStore } from "@/lib/store/useWishlistStore";
@@ -27,31 +28,55 @@ interface MobileNavDrawerProps {
 }
 
 export function MobileNavDrawer({ isOpen, onClose }: MobileNavDrawerProps) {
+  const pathname = usePathname();
   const { getTotalItems, openCart } = useCartStore();
   const { items: wishlistItems } = useWishlistStore();
-  const { language, toggleLanguage, t } = useLanguageStore();
+  const { language, setLanguage, t } = useLanguageStore();
 
   const cartCount = getTotalItems();
   const wishlistCount = wishlistItems.length;
+  const isArabicPath = pathname?.startsWith("/ar");
+  const isAr = isArabicPath;
   const content = t();
 
+  const handleLanguageSwitch = () => {
+    onClose();
+    if (isAr) {
+      setLanguage("en");
+      let target = pathname.replace(/^\/ar(\/|$)/, "/") || "/";
+      if (!target.startsWith("/")) target = "/" + target;
+      window.location.href = target;
+    } else {
+      setLanguage("ar");
+      const target = pathname.startsWith("/ar")
+        ? pathname
+        : pathname === "/"
+        ? "/ar"
+        : `/ar${pathname}`;
+      window.location.href = target;
+    }
+  };
+
+  const prefix = isAr ? "/ar" : "";
+  const collectionsPrefix = isAr ? "/ar/collections" : "/collections";
+
   const navLinks = [
-    { label: content.header.home, href: "/", icon: Home },
-    { label: content.header.ownBrand, href: "/shop/own-brand", icon: Crown, highlight: true },
-    { label: content.header.inspired, href: "/shop/inspired", icon: Sparkles },
-    { label: "Luxury Perfumes", href: "/shop/luxury-perfumes", icon: Crown },
-    { label: "Best Sellers", href: "/shop/best-sellers", icon: Flame },
-    { label: "New Arrivals", href: "/shop/new-arrivals", icon: Sparkles },
-    { label: content.header.contact, href: "/pages/contact", icon: Phone },
-    { label: "FAQ & Help", href: "/pages/faqs", icon: HelpCircle },
+    { label: content.header.home, href: isAr ? "/ar" : "/", icon: Home },
+    { label: content.header.ownBrand, href: `${collectionsPrefix}/own-brand`, icon: Crown, highlight: true },
+    { label: content.header.inspired, href: `${collectionsPrefix}/inspired`, icon: Sparkles },
+    { label: isAr ? "عطور فاخرة" : "Luxury Perfumes", href: `${collectionsPrefix}/luxury-perfumes`, icon: Crown },
+    { label: isAr ? "الأكثر مبيعاً" : "Best Sellers", href: `${collectionsPrefix}/best-sellers`, icon: Flame },
+    { label: isAr ? "وصل حديثاً" : "New Arrivals", href: `${collectionsPrefix}/new-arrivals`, icon: Sparkles },
+    { label: content.header.contact, href: `${prefix}/pages/contact`, icon: Phone },
+    { label: isAr ? "الأسئلة الشائعة" : "FAQ & Help", href: `${prefix}/pages/faqs`, icon: HelpCircle },
   ];
 
   const policyLinks = [
-    { label: "Cancellation Policy", href: "/pages/cancellation-policy" },
-    { label: "Returns Policy", href: "/pages/returns-policy" },
-    { label: "Refund Policy", href: "/pages/refund-policy" },
-    { label: "Exchange Policy", href: "/pages/exchange-policy" },
-    { label: "Terms of Service", href: "/pages/term-and-services" },
+    { label: isAr ? "سياسة الإلغاء" : "Cancellation Policy", href: `${prefix}/pages/cancellation-policy` },
+    { label: isAr ? "سياسة الإرجاع" : "Returns Policy", href: `${prefix}/pages/returns-policy` },
+    { label: isAr ? "سياسة الاسترداد" : "Refund Policy", href: `${prefix}/pages/refund-policy` },
+    { label: isAr ? "سياسة الاستبدال" : "Exchange Policy", href: `${prefix}/pages/exchange-policy` },
+    { label: isAr ? "الشروط والأحكام" : "Terms of Service", href: `${prefix}/pages/term-and-services` },
   ];
 
   return (
@@ -79,7 +104,7 @@ export function MobileNavDrawer({ isOpen, onClose }: MobileNavDrawerProps) {
             <span className="text-xs text-neutral-600 font-medium">Language / اللغة</span>
             <button
               type="button"
-              onClick={toggleLanguage}
+              onClick={handleLanguageSwitch}
               className="flex items-center gap-1.5 text-xs font-semibold text-[#b6713e] hover:text-[#8c4c1d]"
             >
               <Globe size={14} />
@@ -89,22 +114,22 @@ export function MobileNavDrawer({ isOpen, onClose }: MobileNavDrawerProps) {
 
           <div className="grid grid-cols-3 gap-2 py-3 mb-4 border-b border-[#e5e5e5] text-center">
             <Link
-              href="/account"
+              href={isAr ? "/ar/account" : "/account"}
               onClick={onClose}
               className="flex flex-col items-center py-2 px-1 rounded-md hover:bg-[#fbf9f5] text-[#1c1c1c] text-xs font-medium"
             >
               <User size={18} className="text-[#b6713e] mb-1" />
-              <span>Account</span>
+              <span>{isAr ? "حسابي" : "Account"}</span>
             </Link>
 
             <Link
-              href="/wishlist"
+              href={isAr ? "/ar/wishlist" : "/wishlist"}
               scroll={true}
               onClick={onClose}
               className="relative flex flex-col items-center py-2 px-1 rounded-md hover:bg-[#fbf9f5] text-[#1c1c1c] text-xs font-medium"
             >
               <Heart size={18} className="text-[#b6713e] mb-1" />
-              <span>Wishlist</span>
+              <span>{isAr ? "المفضلة" : "Wishlist"}</span>
               {wishlistCount > 0 && (
                 <span className="absolute top-1 right-3 bg-[#b6713e] text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
                   {wishlistCount}

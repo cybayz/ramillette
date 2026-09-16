@@ -9,7 +9,7 @@ import { useLanguageStore } from "@/lib/store/useLanguageStore";
 export function Footer() {
   const pathname = usePathname();
   const { language } = useLanguageStore();
-  const isAr = pathname?.startsWith("/ar") || language === "ar";
+  const isAr = Boolean(pathname?.startsWith("/ar"));
 
   const [email, setEmail] = useState("");
   const [isSubscribed, setIsSubscribed] = useState(false);
@@ -210,19 +210,19 @@ export function Footer() {
               {tFooter.aboutCol}
             </h5>
             <div className="space-y-2.5 flex flex-col text-neutral-400">
-              <Link href="/pages/about-us" className="hover:text-white transition-colors">
+              <Link href={isAr ? "/ar/pages/about-us" : "/pages/about-us"} className="hover:text-white transition-colors">
                 {tFooter.aboutLink}
               </Link>
-              <Link href="/pages/contact" className="hover:text-white transition-colors">
+              <Link href={isAr ? "/ar/pages/contact" : "/pages/contact"} className="hover:text-white transition-colors">
                 {tFooter.contactLink}
               </Link>
-              <Link href="/blogs/news" className="hover:text-white transition-colors">
+              <Link href={isAr ? "/ar/blogs/news" : "/blogs/news"} className="hover:text-white transition-colors">
                 {tFooter.blogLink}
               </Link>
-              <Link href="/pages/help" className="hover:text-white transition-colors">
+              <Link href={isAr ? "/ar/pages/help" : "/pages/help"} className="hover:text-white transition-colors">
                 {tFooter.helpLink}
               </Link>
-              <Link href="/pages/faqs" className="hover:text-white transition-colors">
+              <Link href={isAr ? "/ar/pages/faqs" : "/pages/faqs"} className="hover:text-white transition-colors">
                 {tFooter.faqLink}
               </Link>
             </div>
@@ -234,13 +234,13 @@ export function Footer() {
               {tFooter.accountCol}
             </h5>
             <div className="space-y-2.5 flex flex-col text-neutral-400">
-              <Link href="/cart" scroll={true} className="hover:text-white transition-colors">
+              <Link href={isAr ? "/ar/cart" : "/cart"} scroll={true} className="hover:text-white transition-colors">
                 {tFooter.myBag}
               </Link>
-              <Link href="/pages/wishlist" scroll={true} className="hover:text-white transition-colors">
+              <Link href={isAr ? "/ar/wishlist" : "/wishlist"} scroll={true} className="hover:text-white transition-colors">
                 {tFooter.wishlist}
               </Link>
-              <Link href="/account" scroll={true} className="hover:text-white transition-colors">
+              <Link href={isAr ? "/ar/account" : "/account"} scroll={true} className="hover:text-white transition-colors">
                 {tFooter.myOrders}
               </Link>
             </div>
@@ -252,16 +252,16 @@ export function Footer() {
               {tFooter.policiesCol}
             </h5>
             <div className="space-y-2.5 flex flex-col text-neutral-400">
-              <Link href="/pages/cancellation-policy" className="hover:text-white transition-colors">
+              <Link href={isAr ? "/ar/pages/cancellation-policy" : "/pages/cancellation-policy"} className="hover:text-white transition-colors">
                 {tFooter.cancellation}
               </Link>
-              <Link href="/pages/returns-policy" className="hover:text-white transition-colors">
+              <Link href={isAr ? "/ar/pages/returns-policy" : "/pages/returns-policy"} className="hover:text-white transition-colors">
                 {tFooter.returns}
               </Link>
-              <Link href="/pages/refund-policy" className="hover:text-white transition-colors">
+              <Link href={isAr ? "/ar/pages/refund-policy" : "/pages/refund-policy"} className="hover:text-white transition-colors">
                 {tFooter.refund}
               </Link>
-              <Link href="/pages/exchange-policy" className="hover:text-white transition-colors">
+              <Link href={isAr ? "/ar/pages/exchange-policy" : "/pages/exchange-policy"} className="hover:text-white transition-colors">
                 {tFooter.exchange}
               </Link>
             </div>

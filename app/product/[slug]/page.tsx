@@ -13,6 +13,7 @@ export const revalidate = 60;
 
 interface PageProps {
   params: Promise<{ slug: string }>;
+  isArabic?: boolean;
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
@@ -43,7 +44,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   };
 }
 
-export default async function ProductDetailPage({ params }: PageProps) {
+export default async function ProductDetailPage({ params, isArabic = false }: PageProps) {
   const { slug } = await params;
 
   const product = await prisma.product.findUnique({
@@ -167,12 +168,12 @@ export default async function ProductDetailPage({ params }: PageProps) {
         {/* Luxury Breadcrumb Badge (Matching Reference Screenshot) */}
         <div className="mb-6">
           <div className="border border-[#ebdcc7] bg-[#fbf9f5] px-3.5 py-1.5 rounded-[4px] inline-flex items-center gap-1.5 text-[11px] font-bold text-[#8b6534] uppercase tracking-wider">
-            <Link href="/" className="hover:text-[#4E6548] transition-colors">
-              HOME
+            <Link href={isArabic ? "/ar" : "/"} className="hover:text-[#4E6548] transition-colors">
+              {isArabic ? "الرئيسية" : "HOME"}
             </Link>
             <span className="text-[#8b6534]/50">›</span>
-            <Link href="/shop" className="hover:text-[#4E6548] transition-colors">
-              FRAGRANCES
+            <Link href={isArabic ? "/ar/collections/all" : "/collections/all"} className="hover:text-[#4E6548] transition-colors">
+              {isArabic ? "العطور" : "FRAGRANCES"}
             </Link>
             <span className="text-[#8b6534]/50">›</span>
             <span className="text-[#1c1c1c] font-extrabold">{product.name}</span>

@@ -44,7 +44,7 @@ export function ShopListing({
   const searchParams = useSearchParams();
   const { language } = useLanguageStore();
 
-  const isAr = isArabic || pathname?.startsWith("/ar") || language === "ar";
+  const isAr = isArabic !== undefined ? isArabic : Boolean(pathname?.startsWith("/ar"));
 
   // URL query search params
   const urlSize = searchParams?.get("size") || initialSize || "All";
@@ -183,42 +183,44 @@ export function ShopListing({
     return cMap;
   }, [products, categoryCounts]);
 
+  const categoryPrefix = isAr ? "/ar/collections" : "/collections";
+
   // Standard category links list matching reference site screenshots
   const categoryLinks = [
     {
       name: isAr ? "جميع المنتجات" : "All Products",
       slug: "all",
-      href: "/collections/all",
+      href: `${categoryPrefix}/all`,
       count: counts.all ?? products.length,
     },
     {
       name: isAr ? "الأكثر مبيعاً" : "Best Sellers",
       slug: "best-sellers",
-      href: "/collections/best-sellers",
+      href: `${categoryPrefix}/best-sellers`,
       count: counts["best-sellers"] ?? 13,
     },
     {
       name: isAr ? "مستوحى" : "Inspired",
       slug: "inspired",
-      href: "/collections/inspired",
+      href: `${categoryPrefix}/inspired`,
       count: counts.inspired ?? 38,
     },
     {
       name: isAr ? "عطور فاخرة" : "Luxury Perfumes",
       slug: "luxury-perfumes",
-      href: "/collections/luxury-perfumes",
+      href: `${categoryPrefix}/luxury-perfumes`,
       count: counts["luxury-perfumes"] ?? 15,
     },
     {
       name: isAr ? "وصل حديثاً" : "New Arrivals",
       slug: "new-arrivals",
-      href: "/collections/new-arrivals",
+      href: `${categoryPrefix}/new-arrivals`,
       count: counts["new-arrivals"] ?? 11,
     },
     {
       name: isAr ? "علامتنا التجارية" : "Own brand",
       slug: "own-brand",
-      href: "/collections/own-brand",
+      href: `${categoryPrefix}/own-brand`,
       count: counts["own-brand"] ?? 1,
     },
   ];
@@ -334,7 +336,7 @@ export function ShopListing({
             aria-label="Breadcrumb"
             className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#f0f0ee] rounded-[4px] text-[11px] font-bold uppercase tracking-wider text-neutral-500 select-none"
           >
-            <Link href="/" className="hover:text-neutral-900 transition-colors">
+            <Link href={isAr ? "/ar" : "/"} className="hover:text-neutral-900 transition-colors">
               {isAr ? "الرئيسية" : "HOME"}
             </Link>
             <span className="text-neutral-400 font-normal">›</span>

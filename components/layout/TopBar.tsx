@@ -12,26 +12,35 @@ export function TopBar() {
   const [mounted, setMounted] = useState(false);
 
   const isArabicPath = pathname?.startsWith("/ar");
-  const isAr = isArabicPath || (mounted && language === "ar");
+  const isAr = isArabicPath;
 
   useEffect(() => {
     setMounted(true);
-    if (isArabicPath && language !== "ar") {
-      setLanguage("ar");
-    } else if (!isArabicPath && language === "ar" && pathname === "/") {
-      setLanguage("en");
+    if (isArabicPath) {
+      if (language !== "ar") {
+        setLanguage("ar");
+      }
+    } else {
+      if (language !== "en") {
+        setLanguage("en");
+      }
     }
-  }, [pathname, isArabicPath, language, setLanguage]);
+  }, [isArabicPath]);
 
   const handleLanguageSwitch = () => {
-    if (isArabicPath) {
+    if (isAr) {
       setLanguage("en");
-      const target = pathname.replace(/^\/ar(\/|$)/, "/") || "/";
-      router.push(target);
+      let target = pathname.replace(/^\/ar(\/|$)/, "/") || "/";
+      if (!target.startsWith("/")) target = "/" + target;
+      window.location.href = target;
     } else {
       setLanguage("ar");
-      const target = pathname === "/" ? "/ar" : `/ar${pathname}`;
-      router.push(target);
+      const target = pathname.startsWith("/ar")
+        ? pathname
+        : pathname === "/"
+        ? "/ar"
+        : `/ar${pathname}`;
+      window.location.href = target;
     }
   };
 

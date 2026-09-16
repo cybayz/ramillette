@@ -16,17 +16,16 @@ import {
   User,
   Menu,
 } from "lucide-react";
+import { translations } from "@/lib/i18n";
 
 export function Header() {
   const pathname = usePathname();
   const { getTotalItems, openCart } = useCartStore();
   const { items: wishlistItems } = useWishlistStore();
-  const { language, t } = useLanguageStore();
-
+  const [mounted, setMounted] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
-  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -37,25 +36,23 @@ export function Header() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  const isAr = Boolean(pathname?.startsWith("/ar"));
   const totalCartItems = mounted ? getTotalItems() : 0;
   const totalWishlistItems = mounted ? wishlistItems.length : 0;
-  const content = mounted ? t().header : {
-    searchPlaceholder: "Search Products",
-    home: "Home",
-    ownBrand: "Own brand",
-    inspired: "Inspired",
-    contact: "Contact",
-    wishlist: "Wishlist",
-    myCart: "My Cart",
-    registerLogin: "Register / Login",
-    account: "My Account",
-  };
+  const content = isAr ? translations.ar.header : translations.en.header;
+
+  const homeHref = isAr ? "/ar" : "/";
+  const ownBrandHref = isAr ? "/ar/collections/own-brand" : "/collections/own-brand";
+  const inspiredHref = isAr ? "/ar/collections/inspired" : "/collections/inspired";
+  const contactHref = isAr ? "/ar/pages/contact" : "/pages/contact";
+  const wishlistHref = isAr ? "/ar/wishlist" : "/wishlist";
+  const accountHref = isAr ? "/ar/account" : "/account";
 
   const navLinks = [
-    { label: content.home, href: "/" },
-    { label: content.ownBrand, href: "/shop/own-brand" },
-    { label: content.inspired, href: "/shop/inspired" },
-    { label: content.contact, href: "/pages/contact" },
+    { label: content.home, href: homeHref },
+    { label: content.ownBrand, href: ownBrandHref },
+    { label: content.inspired, href: inspiredHref },
+    { label: content.contact, href: contactHref },
   ];
 
   return (
@@ -104,7 +101,7 @@ export function Header() {
 
             {/* Center: Official Ramillette Script Logo Image */}
             <div className="flex items-center justify-center flex-1 lg:flex-initial">
-              <Link href="/" className="inline-block relative py-1" aria-label="Ramillette Home">
+              <Link href={homeHref} className="inline-block relative py-1" aria-label="Ramillette Home">
                 <Image
                   src="/ramillette-logo-black.svg"
                   alt="Ramillette"
@@ -140,7 +137,7 @@ export function Header() {
               <div className="flex items-center gap-4 sm:gap-6">
                 {/* Wishlist with Vertical Label */}
                 <Link
-                  href="/wishlist"
+                  href={wishlistHref}
                   scroll={true}
                   className="hidden sm:flex flex-col items-center justify-center text-[#1c1c1c] hover:text-[#b6713e] transition-colors group relative cursor-pointer"
                   aria-label="Wishlist"
@@ -180,7 +177,7 @@ export function Header() {
 
                 {/* Register / Login with Vertical Label */}
                 <Link
-                  href="/account"
+                  href={accountHref}
                   className="flex flex-col items-center justify-center text-[#1c1c1c] hover:text-[#b6713e] transition-colors group relative cursor-pointer"
                   aria-label="Account"
                 >

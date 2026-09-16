@@ -55,6 +55,9 @@ export function ProductCard({
   const { toggleWishlist, isInWishlist } = useWishlistStore();
   const { language } = useLanguageStore();
 
+  const isArabicActive = isArabic ?? Boolean(pathname?.startsWith("/ar"));
+  const productHref = isArabicActive ? `/ar/product/${product.slug}` : `/product/${product.slug}`;
+
   // Find variant matching selectedSize, or default to first variant
   const activeVariant = React.useMemo(() => {
     if (!product.variants || product.variants.length === 0) return null;
@@ -175,7 +178,7 @@ export function ProductCard({
         </button>
 
         {/* Primary and Hover Image Cross-Fade */}
-        <Link href={`/product/${product.slug}`} className="block w-full h-full relative cursor-pointer">
+        <Link href={productHref} className="block w-full h-full relative cursor-pointer">
           <Image
             src={primaryImage}
             alt={displayName}
@@ -213,7 +216,7 @@ export function ProductCard({
             {brandName}
           </span>
           <Link
-            href={`/product/${product.slug}`}
+            href={productHref}
             className="text-[14px] sm:text-[15px] font-bold text-neutral-900 hover:text-[#4e6648] transition-colors line-clamp-1 block text-start"
           >
             {displayName}
@@ -239,7 +242,7 @@ export function ProductCard({
         /* Standard View Card Details (Star ratings + dual action buttons) */
         <div className="flex flex-col flex-1 pt-3 text-start">
           <Link
-            href={`/product/${product.slug}`}
+            href={productHref}
             className="text-[15px] font-bold text-[#1c1c1c] hover:text-[#4e6648] transition-colors line-clamp-1 block text-start"
           >
             {displayName}
@@ -276,7 +279,7 @@ export function ProductCard({
 
           <div className="mt-3 flex flex-col gap-2">
             <Link
-              href={`/product/${product.slug}`}
+              href={productHref}
               className="w-full py-2 px-3 border border-[#d1d5db] hover:border-[#1c1c1c] rounded-[5px] text-[13px] font-medium text-[#1c1c1c] bg-white hover:bg-neutral-50 flex items-center justify-center gap-1.5 transition-colors cursor-pointer text-center"
             >
               <ShoppingCart size={15} className="stroke-[1.8]" />
