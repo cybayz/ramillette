@@ -12,6 +12,8 @@ export interface WishlistItem {
 
 interface WishlistStore {
   items: WishlistItem[];
+  setItems: (items: WishlistItem[]) => void;
+  mergeItems: (items: WishlistItem[]) => void;
   toggleWishlist: (item: WishlistItem) => void;
   isInWishlist: (productId: string) => boolean;
   removeItem: (productId: string) => void;
@@ -22,6 +24,18 @@ export const useWishlistStore = create<WishlistStore>()(
   persist(
     (set, get) => ({
       items: [],
+
+      setItems: (items) => set({ items }),
+
+      mergeItems: (incomingItems) => {
+        const currentItems = [...get().items];
+        incomingItems.forEach((incoming) => {
+          if (!currentItems.some((i) => i.productId === incoming.productId)) {
+            currentItems.push(incoming);
+          }
+        });
+        set({ items: currentItems });
+      },
 
       toggleWishlist: (item) => {
         const exists = get().items.some((i) => i.productId === item.productId);

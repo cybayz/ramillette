@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { useCartStore } from "@/lib/store/useCartStore";
 import { Button } from "@/components/ui/Button";
 import { formatPrice } from "@/lib/utils";
@@ -16,10 +16,14 @@ import {
   AlertCircle,
   CheckCircle2,
   Lock,
+  Loader2,
 } from "lucide-react";
 
 export default function CheckoutPage() {
   const router = useRouter();
+  const pathname = usePathname();
+  const isAr = Boolean(pathname?.startsWith("/ar"));
+
   const {
     items,
     clearCart,
@@ -30,6 +34,7 @@ export default function CheckoutPage() {
   } = useCartStore();
 
   const [mounted, setMounted] = useState(false);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [customerName, setCustomerName] = useState("");
   const [customerEmail, setCustomerEmail] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
@@ -43,22 +48,51 @@ export default function CheckoutPage() {
 
   useEffect(() => {
     setMounted(true);
-    // Autofill with logged in user if available
+
     fetch("/api/auth/me")
       .then((r) => r.json())
       .then((data) => {
-        if (data.user) {
-          setCustomerName(
-            `${data.user.firstName || ""} ${data.user.lastName || ""}`.trim()
-          );
-          setCustomerEmail(data.user.email || "");
-          setCustomerPhone(data.user.phone || "");
+        if (!data.user) {
+          const target = isAr
+            ? "/ar/account/login?redirect=/ar/checkout"
+            : "/account/login?redirect=/checkout";
+          window.location.href = target;
+          return;
+        }
+
+        setIsCheckingAuth(false);
+        setCustomerName(
+          `${data.user.firstName || ""} ${data.user.lastName || ""}`.trim() || data.user.email
+        );
+        setCustomerEmail(data.user.email || "");
+        setCustomerPhone(data.user.phone || "");
+
+        // Prefill default address if available
+        if (data.user.addresses && data.user.addresses.length > 0) {
+          const defAddr = data.user.addresses[0];
+          setAddressLine1(defAddr.addressLine1 || "");
+          setAddressLine2(defAddr.addressLine2 || "");
+          if (defAddr.area) setArea(defAddr.area);
         }
       })
-      .catch(() => {});
-  }, []);
+      .catch(() => {
+        const target = isAr
+          ? "/ar/account/login?redirect=/ar/checkout"
+          : "/account/login?redirect=/checkout";
+        window.location.href = target;
+      });
+  }, [isAr]);
 
-  if (!mounted) return null;
+  if (!mounted || isCheckingAuth) {
+    return (
+      <div className="min-h-[70vh] flex flex-col items-center justify-center py-16 bg-[#ffffff] gap-3">
+        <Loader2 className="w-8 h-8 text-[#b6713e] animate-spin" />
+        <p className="text-xs font-semibold text-neutral-600">
+          {isAr ? "جاري التحقق من الحساب..." : "Verifying your account..."}
+        </p>
+      </div>
+    );
+  }
 
   if (items.length === 0) {
     return (
@@ -70,8 +104,8 @@ export default function CheckoutPage() {
           <p className="text-xs text-neutral-500 mb-6">
             Please add perfumes to your bag before proceeding to checkout.
           </p>
-          <Link href="/shop" className="btn-primary h-10 px-6 text-xs">
-            Shop Perfumes
+          <Link href={isAr ? "/ar/shop" : "/shop"} className="btn-primary h-10 px-6 text-xs">
+            {isAr ? "تسوق العطور" : "Shop Perfumes"}
           </Link>
         </div>
       </div>
@@ -121,7 +155,8 @@ export default function CheckoutPage() {
         setIsSubmitting(false);
       } else {
         clearCart();
-        router.push(`/checkout/success?orderNumber=${data.orderNumber}`);
+        const successUrl = `${isAr ? "/ar" : ""}/checkout/success?orderNumber=${data.orderNumber}`;
+        router.push(successUrl);
       }
     } catch (err) {
       setErrorMessage("A network or server error occurred. Please try again.");
@@ -147,7 +182,7 @@ export default function CheckoutPage() {
       <div className="ramillette-container">
         {/* Header */}
         <div className="flex items-center justify-between pb-6 mb-8 border-b border-[#e5e5e5]">
-          <Link href="/" className="inline-block">
+          <Link href={isAr ? "/ar" : "/"} className="inline-block">
             <span className="font-extrabold text-2xl tracking-[0.18em] text-[#1c1c1c] uppercase font-heading">
               Ramillette
             </span>

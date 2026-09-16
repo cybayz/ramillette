@@ -28,6 +28,8 @@ interface CartStore {
   coupon: CouponState | null;
   
   // Actions
+  setItems: (items: CartItem[]) => void;
+  mergeItems: (incomingItems: CartItem[]) => void;
   addItem: (item: Omit<CartItem, "id">) => void;
   removeItem: (id: string) => void;
   updateQuantity: (id: string, quantity: number) => void;
@@ -53,6 +55,26 @@ export const useCartStore = create<CartStore>()(
       isOpen: false,
       orderNote: "",
       coupon: null,
+
+      setItems: (items) => set({ items }),
+
+      mergeItems: (incomingItems) => {
+        const currentItems = [...get().items];
+        incomingItems.forEach((incoming) => {
+          const id = incoming.id || `${incoming.productId}_${incoming.variantId || "default"}`;
+          const existingIndex = currentItems.findIndex((item) => item.id === id);
+          if (existingIndex > -1) {
+            const max = incoming.maxStock ?? currentItems[existingIndex].maxStock ?? 99;
+            currentItems[existingIndex].quantity = Math.min(
+              currentItems[existingIndex].quantity + incoming.quantity,
+              max
+            );
+          } else {
+            currentItems.push({ ...incoming, id });
+          }
+        });
+        set({ items: currentItems });
+      },
 
       addItem: (newItem) => {
         const id = `${newItem.productId}_${newItem.variantId || "default"}`;

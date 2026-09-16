@@ -15,20 +15,25 @@ import {
   ShoppingBag,
   User,
   Menu,
+  LogOut,
 } from "lucide-react";
 import { translations } from "@/lib/i18n";
+import { useAuthStore } from "@/lib/store/useAuthStore";
 
 export function Header() {
   const pathname = usePathname();
   const { getTotalItems, openCart } = useCartStore();
   const { items: wishlistItems } = useWishlistStore();
+  const { user, checkAuth, logout } = useAuthStore();
   const [mounted, setMounted] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
+  const [isAccountDropdownOpen, setIsAccountDropdownOpen] = useState(false);
 
   useEffect(() => {
     setMounted(true);
+    checkAuth();
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 15);
     };
@@ -175,17 +180,83 @@ export function Header() {
                   </span>
                 </button>
 
-                {/* Register / Login with Vertical Label */}
-                <Link
-                  href={accountHref}
-                  className="flex flex-col items-center justify-center text-[#1c1c1c] hover:text-[#b6713e] transition-colors group relative cursor-pointer"
-                  aria-label="Account"
-                >
-                  <User size={20} className="stroke-[1.6] group-hover:scale-110 transition-transform" />
-                  <span className="text-[11px] font-medium text-[#444444] mt-1 group-hover:text-[#b6713e] whitespace-nowrap">
-                    {content.registerLogin}
-                  </span>
-                </Link>
+                {/* Account / Login Action */}
+                {mounted && user ? (
+                  <div
+                    className="relative"
+                    onMouseEnter={() => setIsAccountDropdownOpen(true)}
+                    onMouseLeave={() => setIsAccountDropdownOpen(false)}
+                  >
+                    <Link
+                      href={accountHref}
+                      className="flex flex-col items-center justify-center text-[#1c1c1c] hover:text-[#b6713e] transition-colors group relative cursor-pointer"
+                      aria-label="My Account"
+                    >
+                      <div className="relative">
+                        <User size={20} className="stroke-[1.6] text-[#b6713e] group-hover:scale-110 transition-transform" />
+                        <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-white" />
+                      </div>
+                      <span className="text-[11px] font-semibold text-[#b6713e] mt-1 whitespace-nowrap">
+                        {user.firstName ? (isAr ? user.firstName : `Hi, ${user.firstName}`) : content.account}
+                      </span>
+                    </Link>
+
+                    {/* Dropdown Menu */}
+                    {isAccountDropdownOpen && (
+                      <div
+                        className={`absolute top-full mt-2 w-48 bg-white rounded-lg shadow-xl border border-[#e5e5e5] py-2 z-50 animate-in fade-in slide-in-from-top-1 duration-150 ${
+                          isAr ? "left-0" : "right-0"
+                        }`}
+                      >
+                        <div className="px-3.5 py-2 border-b border-[#f0f0f0]">
+                          <p className="text-xs font-bold text-[#1c1c1c] truncate">
+                            {user.firstName ? `${user.firstName} ${user.lastName || ""}`.trim() : user.email}
+                          </p>
+                          <p className="text-[10px] text-neutral-400 truncate">{user.email}</p>
+                        </div>
+                        <Link
+                          href={accountHref}
+                          onClick={() => setIsAccountDropdownOpen(false)}
+                          className="flex items-center gap-2 px-3.5 py-2 text-xs text-neutral-700 hover:bg-[#fbf9f5] hover:text-[#b6713e] transition-colors"
+                        >
+                          <User size={13} />
+                          <span>{content.account}</span>
+                        </Link>
+                        {user.role === "ADMIN" && (
+                          <Link
+                            href="/admin"
+                            onClick={() => setIsAccountDropdownOpen(false)}
+                            className="flex items-center gap-2 px-3.5 py-2 text-xs text-[#b6713e] font-semibold hover:bg-[#fbf9f5] transition-colors"
+                          >
+                            <span>Admin Portal</span>
+                          </Link>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsAccountDropdownOpen(false);
+                            logout(isAr ? "ar" : "en");
+                          }}
+                          className="w-full flex items-center gap-2 px-3.5 py-2 text-xs text-red-600 hover:bg-red-50 transition-colors cursor-pointer text-left rtl:text-right border-t border-[#f0f0f0]"
+                        >
+                          <LogOut size={13} />
+                          <span>{content.logout}</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <Link
+                    href={isAr ? "/ar/account/login" : "/account/login"}
+                    className="flex flex-col items-center justify-center text-[#1c1c1c] hover:text-[#b6713e] transition-colors group relative cursor-pointer"
+                    aria-label="Register or Login"
+                  >
+                    <User size={20} className="stroke-[1.6] group-hover:scale-110 transition-transform" />
+                    <span className="text-[11px] font-medium text-[#444444] mt-1 group-hover:text-[#b6713e] whitespace-nowrap">
+                      {content.registerLogin}
+                    </span>
+                  </Link>
+                )}
               </div>
             </div>
           </div>

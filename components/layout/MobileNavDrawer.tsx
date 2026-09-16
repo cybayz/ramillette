@@ -20,7 +20,9 @@ import {
   HelpCircle,
   MapPin,
   Globe,
+  LogOut,
 } from "lucide-react";
+import { useAuthStore } from "@/lib/store/useAuthStore";
 
 interface MobileNavDrawerProps {
   isOpen: boolean;
@@ -32,6 +34,7 @@ export function MobileNavDrawer({ isOpen, onClose }: MobileNavDrawerProps) {
   const { getTotalItems, openCart } = useCartStore();
   const { items: wishlistItems } = useWishlistStore();
   const { language, setLanguage, t } = useLanguageStore();
+  const { user, logout } = useAuthStore();
 
   const cartCount = getTotalItems();
   const wishlistCount = wishlistItems.length;
@@ -114,12 +117,16 @@ export function MobileNavDrawer({ isOpen, onClose }: MobileNavDrawerProps) {
 
           <div className="grid grid-cols-3 gap-2 py-3 mb-4 border-b border-[#e5e5e5] text-center">
             <Link
-              href={isAr ? "/ar/account" : "/account"}
+              href={user ? (isAr ? "/ar/account" : "/account") : (isAr ? "/ar/account/login" : "/account/login")}
               onClick={onClose}
               className="flex flex-col items-center py-2 px-1 rounded-md hover:bg-[#fbf9f5] text-[#1c1c1c] text-xs font-medium"
             >
               <User size={18} className="text-[#b6713e] mb-1" />
-              <span>{isAr ? "حسابي" : "Account"}</span>
+              <span>
+                {user
+                  ? (user.firstName ? (isAr ? user.firstName : `Hi, ${user.firstName}`) : (isAr ? "حسابي" : "My Account"))
+                  : (isAr ? "تسجيل / دخول" : "Sign In")}
+              </span>
             </Link>
 
             <Link
@@ -201,6 +208,22 @@ export function MobileNavDrawer({ isOpen, onClose }: MobileNavDrawerProps) {
               ))}
             </div>
           </div>
+
+          {user && (
+            <div className="px-3 mt-4">
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  logout(isAr ? "ar" : "en");
+                }}
+                className="w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-md text-xs font-semibold text-red-600 bg-red-50 border border-red-200 hover:bg-red-100 transition-colors cursor-pointer"
+              >
+                <LogOut size={14} />
+                <span>{isAr ? "تسجيل الخروج" : "Sign Out"}</span>
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Footer info inside Drawer */}

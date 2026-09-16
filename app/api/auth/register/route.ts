@@ -2,11 +2,12 @@ import { NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
 import bcrypt from "bcryptjs";
 import { createSession } from "@/lib/auth/session";
+import { mergeUserCartAndWishlist } from "@/lib/cart/mergeCart";
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { email, password, firstName, lastName, phone } = body;
+    const { email, password, firstName, lastName, phone, guestCart, guestWishlist } = body;
 
     if (!email || !password) {
       return NextResponse.json(
@@ -48,6 +49,13 @@ export async function POST(request: Request) {
       name: `${user.firstName || ""} ${user.lastName || ""}`.trim() || user.email,
     });
 
+    // Transfer and initialize user cart & wishlist in database
+    const { cart: mergedCart, wishlist: mergedWishlist } = await mergeUserCartAndWishlist(
+      user.id,
+      guestCart,
+      guestWishlist
+    );
+
     return NextResponse.json({
       success: true,
       user: {
@@ -58,6 +66,8 @@ export async function POST(request: Request) {
         phone: user.phone,
         role: user.role,
       },
+      mergedCart,
+      mergedWishlist,
     });
   } catch (error) {
     console.error("Registration error:", error);

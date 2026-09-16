@@ -97,7 +97,7 @@ export function ProductPurchaseForm({
     openCart();
   };
 
-  const handleBuyNow = () => {
+  const handleBuyNow = async () => {
     addItem({
       productId: product.id,
       variantId: selectedVariant.id !== "default" ? selectedVariant.id : undefined,
@@ -109,7 +109,22 @@ export function ProductPurchaseForm({
       quantity: 1,
       maxStock: selectedVariant.stock ?? 50,
     });
-    router.push("/checkout");
+
+    try {
+      const res = await fetch("/api/auth/me");
+      const data = await res.json();
+      if (data?.user) {
+        window.location.href = isArabic ? "/ar/checkout" : "/checkout";
+      } else {
+        window.location.href = isArabic
+          ? "/ar/account/login?redirect=/ar/checkout"
+          : "/account/login?redirect=/checkout";
+      }
+    } catch {
+      window.location.href = isArabic
+        ? "/ar/account/login?redirect=/ar/checkout"
+        : "/account/login?redirect=/checkout";
+    }
   };
 
   // Helper to parse notes string into chips array

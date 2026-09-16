@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { useCartStore } from "@/lib/store/useCartStore";
 import { QuantityStepper } from "@/components/ui/QuantityStepper";
 import { FreeShippingBar } from "@/components/ui/FreeShippingBar";
@@ -23,6 +23,9 @@ import {
 
 export default function CartPage() {
   const router = useRouter();
+  const pathname = usePathname();
+  const isAr = Boolean(pathname?.startsWith("/ar"));
+
   const {
     items,
     removeItem,
@@ -39,6 +42,27 @@ export default function CartPage() {
   const [couponInput, setCouponInput] = useState("");
   const [couponError, setCouponError] = useState("");
   const [isValidatingCoupon, setIsValidatingCoupon] = useState(false);
+  const [isRedirecting, setIsRedirecting] = useState(false);
+
+  const handleProceedToCheckout = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsRedirecting(true);
+    try {
+      const res = await fetch("/api/auth/me");
+      const data = await res.json();
+      if (data?.user) {
+        window.location.href = isAr ? "/ar/checkout" : "/checkout";
+      } else {
+        window.location.href = isAr
+          ? "/ar/account/login?redirect=/ar/checkout"
+          : "/account/login?redirect=/checkout";
+      }
+    } catch {
+      window.location.href = isAr
+        ? "/ar/account/login?redirect=/ar/checkout"
+        : "/account/login?redirect=/checkout";
+    }
+  };
 
   const subtotal = getSubtotal();
   const discount = getDiscountTotal();
@@ -325,16 +349,17 @@ export default function CartPage() {
 
               {/* Checkout Button */}
               <div className="pt-2">
-                <Link href="/checkout" className="block w-full">
-                  <Button
-                    variant="primary"
-                    size="lg"
-                    className="w-full h-13 text-sm font-semibold flex items-center justify-center gap-2"
-                  >
-                    <span>Proceed to Checkout</span>
-                    <ArrowRight size={16} />
-                  </Button>
-                </Link>
+                <Button
+                  type="button"
+                  variant="primary"
+                  size="lg"
+                  onClick={handleProceedToCheckout}
+                  isLoading={isRedirecting}
+                  className="w-full h-13 text-sm font-semibold flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <span>{isAr ? "المتابعة إلى الدفع" : "Proceed to Checkout"}</span>
+                  <ArrowRight size={16} />
+                </Button>
               </div>
 
               {/* Trust Badges */}

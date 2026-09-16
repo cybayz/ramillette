@@ -7,21 +7,26 @@ import { Button } from "@/components/ui/Button";
 
 interface PageProps {
   searchParams: Promise<{ orderNumber?: string }>;
+  isAr?: boolean;
 }
 
-export default async function OrderSuccessPage({ searchParams }: PageProps) {
+export default async function OrderSuccessPage({ searchParams, isAr = false }: PageProps) {
   const { orderNumber } = await searchParams;
 
   if (!orderNumber) {
     return (
       <div className="min-h-[70vh] flex items-center justify-center py-16">
         <div className="text-center max-w-md mx-auto p-4">
-          <h1 className="text-2xl font-bold text-[#1c1c1c] mb-2">Order Notice</h1>
+          <h1 className="text-2xl font-bold text-[#1c1c1c] mb-2">
+            {isAr ? "إشعار الطلب" : "Order Notice"}
+          </h1>
           <p className="text-xs text-neutral-500 mb-6">
-            No order number was provided. Please check your email or order history in your account.
+            {isAr
+              ? "لم يتم تحديد رقم الطلب. يرجى التحقق من بريدك الإلكتروني أو سجل الطلبات في حسابك."
+              : "No order number was provided. Please check your email or order history in your account."}
           </p>
-          <Link href="/shop" className="btn-primary h-10 px-6 text-xs inline-flex items-center">
-            Back to Shop
+          <Link href={isAr ? "/ar/shop" : "/shop"} className="btn-primary h-10 px-6 text-xs inline-flex items-center">
+            {isAr ? "العودة للتسوق" : "Back to Shop"}
           </Link>
         </div>
       </div>
@@ -37,12 +42,16 @@ export default async function OrderSuccessPage({ searchParams }: PageProps) {
     return (
       <div className="min-h-[70vh] flex items-center justify-center py-16">
         <div className="text-center max-w-md mx-auto p-4">
-          <h1 className="text-2xl font-bold text-[#1c1c1c] mb-2">Order Not Found</h1>
+          <h1 className="text-2xl font-bold text-[#1c1c1c] mb-2">
+            {isAr ? "الطلب غير موجود" : "Order Not Found"}
+          </h1>
           <p className="text-xs text-neutral-500 mb-6">
-            We could not find order #{orderNumber}.
+            {isAr
+              ? `لم نتمكن من العثور على الطلب #${orderNumber}.`
+              : `We could not find order #${orderNumber}.`}
           </p>
-          <Link href="/" className="btn-primary h-10 px-6 text-xs inline-flex items-center">
-            Return Home
+          <Link href={isAr ? "/ar" : "/"} className="btn-primary h-10 px-6 text-xs inline-flex items-center">
+            {isAr ? "العودة للرئيسية" : "Return Home"}
           </Link>
         </div>
       </div>
@@ -175,15 +184,15 @@ export default async function OrderSuccessPage({ searchParams }: PageProps) {
 
           {/* Buttons */}
           <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-[#e5e5e5]">
-            <Link href="/shop" className="flex-1">
+            <Link href={isAr ? "/ar/shop" : "/shop"} className="flex-1">
               <Button variant="primary" size="lg" className="w-full text-xs font-semibold">
-                <span>Continue Shopping</span>
-                <ArrowRight size={15} />
+                <span>{isAr ? "متابعة التسوق" : "Continue Shopping"}</span>
+                <ArrowRight size={15} className={isAr ? "rotate-180" : ""} />
               </Button>
             </Link>
-            <Link href="/account" className="flex-1">
+            <Link href={isAr ? "/ar/account" : "/account"} className="flex-1">
               <button className="btn-secondary w-full h-13 text-xs font-semibold flex items-center justify-center gap-1.5">
-                <span>View in My Account</span>
+                <span>{isAr ? "عرض في حسابي" : "View in My Account"}</span>
               </button>
             </Link>
           </div>

@@ -6,6 +6,14 @@ import { getPaymentProvider } from "@/lib/payments";
 export async function POST(request: Request) {
   try {
     const session = await getSession();
+
+    if (!session || !session.userId) {
+      return NextResponse.json(
+        { error: "Please sign in or create an account to proceed with your order." },
+        { status: 401 }
+      );
+    }
+
     const body = await request.json();
 
     const {

@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useCartStore } from "@/lib/store/useCartStore";
 import { Drawer } from "@/lib/../components/ui/Drawer";
 import { FreeShippingBar } from "@/lib/../components/ui/FreeShippingBar";
@@ -12,6 +13,9 @@ import { formatPrice } from "@/lib/utils";
 import { ShoppingBag, Trash2, ArrowRight } from "lucide-react";
 
 export function CartDrawer() {
+  const pathname = usePathname();
+  const isAr = Boolean(pathname?.startsWith("/ar"));
+
   const {
     items,
     isOpen,
@@ -26,6 +30,27 @@ export function CartDrawer() {
 
   const [agreedToTerms, setAgreedToTerms] = useState(true);
   const [showNoteInput, setShowNoteInput] = useState(false);
+  const [isRedirecting, setIsRedirecting] = useState(false);
+
+  const handleProceedToCheckout = async () => {
+    setIsRedirecting(true);
+    closeCart();
+    try {
+      const res = await fetch("/api/auth/me");
+      const data = await res.json();
+      if (data?.user) {
+        window.location.href = isAr ? "/ar/checkout" : "/checkout";
+      } else {
+        window.location.href = isAr
+          ? "/ar/account/login?redirect=/ar/checkout"
+          : "/account/login?redirect=/checkout";
+      }
+    } catch {
+      window.location.href = isAr
+        ? "/ar/account/login?redirect=/ar/checkout"
+        : "/account/login?redirect=/checkout";
+    }
+  };
 
   const subtotal = getSubtotal();
   const totalCount = getTotalItems();
@@ -196,16 +221,17 @@ export function CartDrawer() {
 
               {/* Buttons */}
               <div className="space-y-2">
-                <Link href="/checkout" onClick={closeCart} className="block w-full">
-                  <Button
-                    variant="primary"
-                    disabled={!agreedToTerms}
-                    className="w-full h-12 text-sm font-semibold flex items-center justify-center gap-2"
-                  >
-                    <span>Proceed to Checkout</span>
-                    <ArrowRight size={16} />
-                  </Button>
-                </Link>
+                <Button
+                  type="button"
+                  variant="primary"
+                  disabled={!agreedToTerms}
+                  onClick={handleProceedToCheckout}
+                  isLoading={isRedirecting}
+                  className="w-full h-12 text-sm font-semibold flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <span>{isAr ? "المتابعة إلى الدفع" : "Proceed to Checkout"}</span>
+                  <ArrowRight size={16} />
+                </Button>
 
                 <Link href="/cart" onClick={closeCart} className="block w-full">
                   <Button variant="secondary" className="w-full h-10 text-xs">

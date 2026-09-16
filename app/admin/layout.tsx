@@ -11,9 +11,9 @@ import {
   Users,
   Settings,
   Store,
-  LogOut,
   ShieldAlert,
 } from "lucide-react";
+import { LogoutButton } from "@/components/account/LogoutButton";
 
 export default async function AdminLayout({
   children,
@@ -94,15 +94,10 @@ export default async function AdminLayout({
             <Store size={15} />
             <span>View Live Store</span>
           </Link>
-          <form action="/api/auth/logout" method="POST">
-            <button
-              type="submit"
-              className="w-full flex items-center gap-2.5 px-3.5 py-2 rounded-[5px] text-xs text-red-400 hover:text-red-300 hover:bg-[#2c2c2c] transition-colors cursor-pointer"
-            >
-              <LogOut size={15} />
-              <span>Sign Out</span>
-            </button>
-          </form>
+          <LogoutButton
+            className="w-full flex items-center gap-2.5 px-3.5 py-2 rounded-[5px] text-xs text-red-400 hover:text-red-300 hover:bg-[#2c2c2c] transition-colors cursor-pointer"
+            label="Sign Out"
+          />
         </div>
       </aside>
 

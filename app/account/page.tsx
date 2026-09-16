@@ -8,10 +8,10 @@ import {
   User,
   Package,
   MapPin,
-  LogOut,
   ShoppingBag,
   ExternalLink,
 } from "lucide-react";
+import { LogoutButton } from "@/components/account/LogoutButton";
 
 export default async function AccountPage() {
   const session = await getSession();
@@ -64,15 +64,7 @@ export default async function AccountPage() {
             </div>
           </div>
 
-          <form action="/api/auth/logout" method="POST">
-            <button
-              type="submit"
-              className="btn-secondary h-9 px-4 text-xs font-semibold flex items-center gap-2 text-neutral-700 hover:text-red-600"
-            >
-              <LogOut size={14} />
-              <span>Sign Out</span>
-            </button>
-          </form>
+          <LogoutButton />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
