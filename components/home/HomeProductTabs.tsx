@@ -86,9 +86,15 @@ export function HomeProductTabs({
 
   const scroll = (direction: "left" | "right") => {
     if (scrollContainerRef.current) {
-      const scrollAmount = 350;
+      const isRtl = isAr;
+      const scrollAmount = Math.min(scrollContainerRef.current.clientWidth * 0.8, 380);
+      const moveLeft =
+        direction === "left"
+          ? (isRtl ? scrollAmount : -scrollAmount)
+          : (isRtl ? -scrollAmount : scrollAmount);
+
       scrollContainerRef.current.scrollBy({
-        left: direction === "left" ? -scrollAmount : scrollAmount,
+        left: moveLeft,
         behavior: "smooth",
       });
     }
@@ -98,7 +104,7 @@ export function HomeProductTabs({
     <section className="py-8 md:py-12 bg-white">
       <div className="ramillette-container">
         {/* Tab Selection Buttons Bar */}
-        <div className="flex items-center justify-center gap-2 sm:gap-3 md:gap-4 overflow-x-auto no-scrollbar py-2 mb-8">
+        <div className="flex items-center justify-start sm:justify-center gap-2 sm:gap-3 md:gap-4 overflow-x-auto no-scrollbar py-2 mb-8 -mx-4 px-4 sm:mx-0 sm:px-0">
           {tabs.map((tab) => {
             const isActive = activeTab === tab.key;
             return (
@@ -119,15 +125,15 @@ export function HomeProductTabs({
         </div>
 
         {/* Carousel Container with Products */}
-        <div className="relative group/carousel">
-          {/* Scrollable Row */}
+        <div className="relative group/carousel -mx-4 px-4 sm:mx-0 sm:px-0">
+          {/* Scrollable Row with Mobile Peeking Card */}
           <div
             ref={scrollContainerRef}
-            className="grid grid-flow-col auto-cols-[calc(50%-8px)] sm:auto-cols-[calc(33.333%-12px)] md:auto-cols-[calc(25%-12px)] lg:auto-cols-[calc(20%-13px)] gap-3 md:gap-4 overflow-x-auto no-scrollbar scroll-smooth py-1"
+            className="grid grid-flow-col auto-cols-[calc(43.5%-6px)] sm:auto-cols-[calc(33.333%-12px)] md:auto-cols-[calc(25%-12px)] lg:auto-cols-[calc(20%-13px)] gap-3 md:gap-4 overflow-x-auto no-scrollbar scroll-smooth py-1 snap-x snap-mandatory"
             style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
           >
             {activeProducts.map((product) => (
-              <div key={product.id} className="min-w-0">
+              <div key={product.id} className="min-w-0 snap-start">
                 <ProductCard product={product} />
               </div>
             ))}
@@ -135,20 +141,22 @@ export function HomeProductTabs({
 
           {/* Left Navigation Arrow */}
           <button
+            type="button"
             onClick={() => scroll("left")}
             aria-label="Previous products"
-            className="hidden sm:flex absolute left-2 md:left-4 top-[32%] -translate-y-1/2 z-20 w-10 h-10 md:w-11 md:h-11 rounded-full bg-white/95 border border-neutral-100 shadow-[0_4px_12px_rgba(0,0,0,0.15)] items-center justify-center text-neutral-800 hover:text-black hover:bg-white hover:scale-105 active:scale-95 transition-all"
+            className="flex absolute left-1 sm:left-2 md:left-4 top-[32%] -translate-y-1/2 z-20 w-8 h-8 sm:w-10 sm:h-10 md:w-11 md:h-11 rounded-full bg-white/95 border border-neutral-200/80 shadow-[0_3px_10px_rgba(0,0,0,0.15)] items-center justify-center text-neutral-800 hover:text-black hover:bg-white hover:scale-105 active:scale-95 transition-all cursor-pointer"
           >
-            <ChevronLeft size={20} />
+            {isAr ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
           </button>
 
           {/* Right Navigation Arrow */}
           <button
+            type="button"
             onClick={() => scroll("right")}
             aria-label="Next products"
-            className="hidden sm:flex absolute right-2 md:right-4 top-[32%] -translate-y-1/2 z-20 w-10 h-10 md:w-11 md:h-11 rounded-full bg-white/95 border border-neutral-100 shadow-[0_4px_12px_rgba(0,0,0,0.15)] items-center justify-center text-neutral-800 hover:text-black hover:bg-white hover:scale-105 active:scale-95 transition-all"
+            className="flex absolute right-1 sm:right-2 md:right-4 top-[32%] -translate-y-1/2 z-20 w-8 h-8 sm:w-10 sm:h-10 md:w-11 md:h-11 rounded-full bg-white/95 border border-neutral-200/80 shadow-[0_3px_10px_rgba(0,0,0,0.15)] items-center justify-center text-neutral-800 hover:text-black hover:bg-white hover:scale-105 active:scale-95 transition-all cursor-pointer"
           >
-            <ChevronRight size={20} />
+            {isAr ? <ChevronLeft size={18} /> : <ChevronRight size={18} />}
           </button>
         </div>
 
