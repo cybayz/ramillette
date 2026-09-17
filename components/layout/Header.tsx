@@ -107,10 +107,10 @@ export function Header() {
               <button
                 type="button"
                 onClick={() => setIsMobileNavOpen(true)}
-                className="lg:hidden p-2 text-[#1c1c1c] hover:text-[#b6713e] transition-colors cursor-pointer"
+                className="lg:hidden p-1.5 text-[#0088cc] hover:text-[#006699] transition-colors cursor-pointer"
                 aria-label="Open mobile menu"
               >
-                <Menu size={24} />
+                <Menu size={26} className="stroke-[2.3]" />
               </button>
 
               {/* Desktop Rounded Search Pill */}
@@ -122,16 +122,6 @@ export function Header() {
               >
                 <Search size={16} className="text-[#9ca3af] group-hover:text-[#1c1c1c] transition-colors flex-shrink-0" />
                 <span className="truncate text-[13px]">{content.searchPlaceholder}</span>
-              </button>
-
-              {/* Mobile Search Button */}
-              <button
-                type="button"
-                onClick={() => setIsSearchOpen(true)}
-                className="lg:hidden p-2 text-[#1c1c1c] hover:text-[#b6713e] transition-colors cursor-pointer"
-                aria-label="Search fragrances"
-              >
-                <Search size={20} />
               </button>
             </div>
 
@@ -169,8 +159,33 @@ export function Header() {
                 })}
               </nav>
 
-              {/* Action Icons Stack (Wishlist, My Cart, Register/Login) */}
-              <div className="flex items-center gap-4 sm:gap-6">
+              {/* Mobile Right Actions: Circular Search & Circular Cart */}
+              <div className="flex lg:hidden items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsSearchOpen(true)}
+                  className="w-10 h-10 rounded-full bg-neutral-50/90 hover:bg-neutral-100 border border-neutral-200/90 flex items-center justify-center text-[#1c1c1c] transition-colors cursor-pointer"
+                  aria-label="Search fragrances"
+                >
+                  <Search size={19} className="stroke-[2]" />
+                </button>
+                <button
+                  type="button"
+                  onClick={openCart}
+                  className="w-10 h-10 rounded-full bg-neutral-50/90 hover:bg-neutral-100 border border-neutral-200/90 flex items-center justify-center text-[#1c1c1c] transition-colors cursor-pointer relative"
+                  aria-label="My Cart"
+                >
+                  <ShoppingBag size={19} className="stroke-[2]" />
+                  {totalCartItems > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-[#1c1c1c] text-white text-[9px] font-bold h-4 min-w-[16px] px-0.5 rounded-full flex items-center justify-center ring-2 ring-white">
+                      {totalCartItems}
+                    </span>
+                  )}
+                </button>
+              </div>
+
+              {/* Desktop Action Icons Stack (Wishlist, My Cart, Register/Login) */}
+              <div className="hidden lg:flex items-center gap-4 sm:gap-6">
                 {/* Wishlist with Vertical Label */}
                 <Link
                   href={wishlistHref}

@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Heart, ShoppingCart } from "lucide-react";
+import { Heart, ShoppingCart, X } from "lucide-react";
 import { useCartStore } from "@/lib/store/useCartStore";
 import { useWishlistStore } from "@/lib/store/useWishlistStore";
 import { useLanguageStore } from "@/lib/store/useLanguageStore";
@@ -73,10 +73,14 @@ export function ProductCard({
   }, [product.variants, selectedSize]);
 
   const [selectedVariant, setSelectedVariant] = useState<CardVariant | null>(activeVariant);
+  const hasMultipleVariants = Boolean(product.variants && product.variants.length > 1);
+  const [isOptionsModalOpen, setIsOptionsModalOpen] = useState(false);
+  const [modalVariant, setModalVariant] = useState<CardVariant | null>(activeVariant);
 
   React.useEffect(() => {
     if (activeVariant) {
       setSelectedVariant(activeVariant);
+      setModalVariant(activeVariant);
     }
   }, [activeVariant]);
 
@@ -116,16 +120,24 @@ export function ProductCard({
     e.preventDefault();
     e.stopPropagation();
 
+    // If product has multiple ML volume options, show the ML selection popup first
+    if (hasMultipleVariants) {
+      setIsOptionsModalOpen(true);
+      return;
+    }
+
+    // If product has single option, directly add to cart
+    const chosen = selectedVariant || (product.variants && product.variants[0]);
     addItem({
       productId: product.id,
-      variantId: selectedVariant?.id,
+      variantId: chosen?.id,
       name: product.name,
-      variantName: selectedVariant?.name,
+      variantName: chosen?.name,
       slug: product.slug,
-      price: currentPrice,
+      price: chosen ? chosen.price : currentPrice,
       image: primaryImage,
       quantity: 1,
-      maxStock: selectedVariant?.stock ?? 50,
+      maxStock: chosen?.stock ?? 50,
     });
     openCart();
   };
@@ -293,6 +305,132 @@ export function ProductCard({
             >
               {chooseAndBuyText}
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Multiple ML Options Selection Popup */}
+      {isOptionsModalOpen && product.variants && product.variants.length > 0 && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setIsOptionsModalOpen(false);
+          }}
+        >
+          <div
+            className="bg-white rounded-2xl w-full max-w-sm p-5 shadow-2xl border border-neutral-200 relative text-start animate-in zoom-in-95 duration-150"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Close Button */}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsOptionsModalOpen(false);
+              }}
+              className="absolute top-3.5 right-3.5 rtl:right-auto rtl:left-3.5 w-8 h-8 rounded-full bg-neutral-100 hover:bg-neutral-200 text-neutral-600 flex items-center justify-center transition-colors cursor-pointer"
+              aria-label="Close"
+            >
+              <X size={18} />
+            </button>
+
+            {/* Product Thumbnail & Details */}
+            <div className="flex items-center gap-3 pr-8 rtl:pr-0 rtl:pl-8">
+              <div className="relative w-14 h-14 rounded-xl overflow-hidden bg-[#f7f5f0] flex-shrink-0 border border-neutral-200/80">
+                <Image
+                  src={primaryImage}
+                  alt={displayName}
+                  fill
+                  unoptimized
+                  className="object-cover"
+                />
+              </div>
+              <div className="flex-1 min-w-0">
+                <span className="text-[10px] uppercase font-bold text-neutral-400 tracking-wider block">
+                  {brandName}
+                </span>
+                <h4 className="text-sm font-bold text-neutral-900 truncate">
+                  {displayName}
+                </h4>
+                <div className="mt-0.5 flex items-baseline gap-2">
+                  <span className="text-base font-bold text-[#4e6648]">
+                    QAR {(modalVariant?.price ?? currentPrice).toFixed(2)}
+                  </span>
+                  {modalVariant?.compareAtPrice && modalVariant.compareAtPrice > modalVariant.price && (
+                    <span className="text-xs text-neutral-400 line-through">
+                      QAR {modalVariant.compareAtPrice.toFixed(2)}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Volume / ML Options Selector */}
+            <div className="mt-4 pt-3 border-t border-neutral-100">
+              <label className="text-xs font-semibold text-neutral-700 block mb-2">
+                {isAr ? "اختر الحجم (مل):" : "Select Size (ML):"}
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                {product.variants.map((v) => {
+                  const isSelected = (modalVariant?.id || selectedVariant?.id) === v.id;
+                  return (
+                    <button
+                      key={v.id}
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setModalVariant(v);
+                      }}
+                      className={`py-2 px-1.5 rounded-xl border text-center transition-all cursor-pointer ${
+                        isSelected
+                          ? "border-[#4e6648] bg-[#f2f6f1] text-[#233324] ring-1 ring-[#4e6648] font-bold"
+                          : "border-neutral-200 hover:border-neutral-400 bg-white text-neutral-800"
+                      }`}
+                    >
+                      <div className="text-xs font-bold">{v.name}</div>
+                      <div className="text-[11px] text-neutral-500 mt-0.5 font-medium">
+                        QAR {v.price}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Confirm & Add to Cart Button */}
+            <div className="mt-5">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const finalVariant = modalVariant || selectedVariant || product.variants![0];
+                  addItem({
+                    productId: product.id,
+                    variantId: finalVariant.id,
+                    name: product.name,
+                    variantName: finalVariant.name,
+                    slug: product.slug,
+                    price: finalVariant.price,
+                    image: primaryImage,
+                    quantity: 1,
+                    maxStock: finalVariant.stock ?? 50,
+                  });
+                  setSelectedVariant(finalVariant);
+                  setIsOptionsModalOpen(false);
+                  openCart();
+                }}
+                className="w-full py-2.5 bg-[#4e6648] hover:bg-[#3d5239] text-white font-semibold text-xs rounded-lg flex items-center justify-center gap-2 transition-colors cursor-pointer shadow-sm active:scale-[0.99]"
+              >
+                <ShoppingCart size={15} className="stroke-[2]" />
+                <span>
+                  {addToCartText} • QAR {(modalVariant?.price ?? currentPrice).toFixed(2)}
+                </span>
+              </button>
+            </div>
           </div>
         </div>
       )}

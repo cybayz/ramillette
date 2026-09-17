@@ -26,7 +26,7 @@ export function FloatingWhatsApp() {
   return (
     <aside
       aria-label="Action Controls"
-      className="fixed bottom-6 right-6 z-40 flex flex-col items-center gap-3"
+      className="fixed bottom-[76px] right-4 md:bottom-6 md:right-6 z-40 flex flex-col items-center gap-3"
     >
       {/* Scroll to Top Button */}
       {showBackToTop && (

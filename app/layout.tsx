@@ -7,6 +7,7 @@ import { Footer } from "@/components/layout/Footer";
 import { CartDrawer } from "@/components/cart/CartDrawer";
 import { FloatingWhatsApp } from "@/components/layout/FloatingWhatsApp";
 import { ScrollToTopOnNavigation } from "@/components/layout/ScrollToTopOnNavigation";
+import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
 
 const outfit = Outfit({
   variable: "--font-heading",
@@ -80,14 +81,17 @@ export default function RootLayout({
         {/* Sticky Luxury Header */}
         <Header />
 
-        {/* Page Content */}
-        <main className="flex-1">{children}</main>
+        {/* Page Content with safe padding for mobile bottom bar */}
+        <main className="flex-1 pb-16 md:pb-0">{children}</main>
 
         {/* Global Slideout Cart Drawer */}
         <CartDrawer />
 
         {/* Floating WhatsApp Support Button */}
         <FloatingWhatsApp />
+
+        {/* Persistent Mobile Bottom Navigation Bar */}
+        <MobileBottomNav />
 
         {/* Comprehensive Luxury Footer */}
         <Footer />

@@ -77,11 +77,11 @@ export function TopBar() {
           <button
             type="button"
             onClick={handleLanguageSwitch}
-            className="flex items-center gap-1.5 text-neutral-300 hover:text-white transition-colors cursor-pointer text-[12px] font-medium"
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-neutral-700 bg-neutral-900/90 text-neutral-200 hover:text-white hover:border-neutral-500 transition-all cursor-pointer text-[12px] font-medium"
             aria-label="Toggle language"
           >
+            <Globe size={13} className="text-white flex-shrink-0" />
             <span>{content.languageToggle}</span>
-            <Globe size={13} className="text-[#faedcd] flex-shrink-0" />
           </button>
 
           <a
