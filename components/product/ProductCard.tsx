@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Heart, ShoppingCart, X } from "lucide-react";
+import { Heart, ShoppingCart, X, Bell, Check } from "lucide-react";
 import { useCartStore } from "@/lib/store/useCartStore";
 import { useWishlistStore } from "@/lib/store/useWishlistStore";
 import { useLanguageStore } from "@/lib/store/useLanguageStore";
@@ -33,6 +33,7 @@ export interface CardProduct {
   variants?: CardVariant[];
   rating?: number;
   reviewsCount?: number;
+  stock?: number;
 }
 
 interface ProductCardProps {
@@ -58,24 +59,55 @@ export function ProductCard({
   const isArabicActive = isArabic ?? Boolean(pathname?.startsWith("/ar"));
   const productHref = isArabicActive ? `/ar/product/${product.slug}` : `/product/${product.slug}`;
 
+  // Check if product or its variants are out of stock
+  const isOutOfStock = React.useMemo(() => {
+    if (product.stock !== undefined && product.stock <= 0) return true;
+    if (product.variants && product.variants.length > 0) {
+      return product.variants.every((v) => v.stock !== undefined && v.stock <= 0);
+    }
+    return false;
+  }, [product.stock, product.variants]);
+
+  // Guaranteed list of variants (synthesize fallback if none provided)
+  const availableVariants: CardVariant[] = React.useMemo(() => {
+    if (product.variants && product.variants.length > 0) {
+      return product.variants;
+    }
+    return [
+      {
+        id: "default",
+        name: selectedSize && selectedSize !== "all" && selectedSize !== "All" ? selectedSize : "50ml",
+        price: product.basePrice,
+        compareAtPrice: product.compareAtPrice,
+        stock: product.stock ?? 50,
+      },
+    ];
+  }, [product.variants, product.basePrice, product.compareAtPrice, product.stock, selectedSize]);
+
   // Find variant matching selectedSize, or default to first variant
   const activeVariant = React.useMemo(() => {
-    if (!product.variants || product.variants.length === 0) return null;
+    if (availableVariants.length === 0) return null;
     if (selectedSize && selectedSize !== "all" && selectedSize !== "All") {
-      const match = product.variants.find(
+      const match = availableVariants.find(
         (v) =>
           v.name.toLowerCase() === selectedSize.toLowerCase() ||
           v.name.toLowerCase().includes(selectedSize.toLowerCase())
       );
       if (match) return match;
     }
-    return product.variants[0];
-  }, [product.variants, selectedSize]);
+    return availableVariants[0];
+  }, [availableVariants, selectedSize]);
 
   const [selectedVariant, setSelectedVariant] = useState<CardVariant | null>(activeVariant);
-  const hasMultipleVariants = Boolean(product.variants && product.variants.length > 1);
   const [isOptionsModalOpen, setIsOptionsModalOpen] = useState(false);
   const [modalVariant, setModalVariant] = useState<CardVariant | null>(activeVariant);
+
+  // Notify Me modal state
+  const [isNotifyModalOpen, setIsNotifyModalOpen] = useState(false);
+  const [notifyEmail, setNotifyEmail] = useState("");
+  const [notifyPhone, setNotifyPhone] = useState("");
+  const [notifySubmitted, setNotifySubmitted] = useState(false);
+  const [notifyLoading, setNotifyLoading] = useState(false);
 
   React.useEffect(() => {
     if (activeVariant) {
@@ -100,9 +132,9 @@ export function ProductCard({
   const sizeBadge =
     selectedSize && selectedSize !== "all" && selectedSize !== "All"
       ? selectedSize
-      : selectedVariant?.name || product.variants?.[0]?.name || "30ml";
+      : selectedVariant?.name || availableVariants[0]?.name || "50ml";
 
-  // Localized product name
+  // Localized product name and labels
   const isAr = isArabic || pathname?.startsWith("/ar") || language === "ar";
   const displayName = isAr
     ? productArabicNames[product.slug] ||
@@ -110,36 +142,24 @@ export function ProductCard({
       product.name
     : product.name;
 
-  const selectOptionsText = isAr ? "اختر الخيارات" : "Select options";
   const chooseAndBuyText = isAr ? "اختر واشترِ" : "Choose & Buy";
   const addToCartText = isAr ? "أضف إلى السلة" : "Add to cart";
+  const notifyMeText = isAr ? "أعلمني عند التوفر" : "Notify Me";
+  const outOfStockText = isAr ? "نفدت الكمية" : "Out of Stock";
   const brandName = isAr ? "راميليت" : (product.brand || "RAMILLETTE");
-  const reviewsText = isAr ? "10 reviews" : "10 reviews";
+  const reviewsText = isAr ? "10 تقييمات" : "10 reviews";
 
-  const handleChooseAndBuy = (e: React.MouseEvent) => {
+  const handleAddToCartClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
 
-    // If product has multiple ML volume options, show the ML selection popup first
-    if (hasMultipleVariants) {
-      setIsOptionsModalOpen(true);
+    if (isOutOfStock) {
+      setIsNotifyModalOpen(true);
       return;
     }
 
-    // If product has single option, directly add to cart
-    const chosen = selectedVariant || (product.variants && product.variants[0]);
-    addItem({
-      productId: product.id,
-      variantId: chosen?.id,
-      name: product.name,
-      variantName: chosen?.name,
-      slug: product.slug,
-      price: chosen ? chosen.price : currentPrice,
-      image: primaryImage,
-      quantity: 1,
-      maxStock: chosen?.stock ?? 50,
-    });
-    openCart();
+    // Always show the ML volume popup for consistency (even if 1 variant)
+    setIsOptionsModalOpen(true);
   };
 
   const handleWishlistClick = (e: React.MouseEvent) => {
@@ -168,6 +188,13 @@ export function ProductCard({
         {sizeBadge && (
           <span className="absolute top-2.5 start-2.5 z-10 bg-white/95 text-neutral-900 text-[11px] font-bold px-2 py-0.5 rounded-[4px] shadow-xs">
             {sizeBadge}
+          </span>
+        )}
+
+        {/* Out of stock badge */}
+        {isOutOfStock && (
+          <span className="absolute bottom-2.5 start-2.5 z-10 bg-neutral-900/85 backdrop-blur-xs text-white text-[10.5px] font-bold px-2.5 py-0.5 rounded-[4px] shadow-xs">
+            {outOfStockText}
           </span>
         )}
 
@@ -222,7 +249,7 @@ export function ProductCard({
       </div>
 
       {variant === "collection" ? (
-        /* Collection View Card Details (matching reference site exactly) */
+        /* Collection View Card Details */
         <div className="flex flex-col flex-1 pt-2.5 text-start">
           <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-neutral-400 block mb-0.5">
             {brandName}
@@ -239,15 +266,39 @@ export function ProductCard({
             </span>
           </div>
 
-          <div className="mt-3">
-            <button
-              type="button"
-              onClick={handleChooseAndBuy}
-              className="w-full py-2 px-3 border border-neutral-200 hover:border-[#233324] hover:bg-[#233324] hover:text-white rounded-[6px] text-xs font-semibold text-neutral-900 bg-white flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-2xs"
+          <div className="mt-3 flex flex-col gap-1.5">
+            {/* Button 1: Add to Cart (or Notify Me if Out of Stock) */}
+            {isOutOfStock ? (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setIsNotifyModalOpen(true);
+                }}
+                className="w-full py-2 px-3 border border-amber-500/40 hover:border-amber-600 bg-amber-50/80 hover:bg-amber-100 text-amber-900 rounded-[6px] text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-2xs"
+              >
+                <Bell size={14} className="stroke-[2] text-amber-700" />
+                <span>{notifyMeText}</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={handleAddToCartClick}
+                className="w-full py-2 px-3 border border-neutral-200 hover:border-[#233324] hover:bg-[#233324] hover:text-white rounded-[6px] text-xs font-semibold text-neutral-900 bg-white flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-2xs"
+              >
+                <ShoppingCart size={14} className="stroke-[2]" />
+                <span>{addToCartText}</span>
+              </button>
+            )}
+
+            {/* Button 2: Choose & Buy (Navigates to Product Detail Page) */}
+            <Link
+              href={productHref}
+              className="w-full py-1.5 px-3 bg-[#4e6648] hover:bg-[#3d5239] text-white rounded-[6px] text-xs font-semibold flex items-center justify-center transition-colors cursor-pointer shadow-2xs text-center"
             >
-              <ShoppingCart size={14} className="stroke-[2]" />
-              <span>{addToCartText}</span>
-            </button>
+              {chooseAndBuyText}
+            </Link>
           </div>
         </div>
       ) : (
@@ -290,27 +341,44 @@ export function ProductCard({
           </div>
 
           <div className="mt-3 flex flex-col gap-2">
+            {/* Button 1: Add to Cart to show popup & add to cart (or Notify Me if Out of Stock) */}
+            {isOutOfStock ? (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setIsNotifyModalOpen(true);
+                }}
+                className="w-full py-2 px-3 border border-amber-500/40 hover:border-amber-600 bg-amber-50/80 hover:bg-amber-100 text-amber-900 rounded-[5px] text-[13px] font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
+              >
+                <Bell size={15} className="stroke-[2] text-amber-700" />
+                <span>{notifyMeText}</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={handleAddToCartClick}
+                className="w-full py-2 px-3 border border-[#cfd3db] hover:border-[#1c1c1c] rounded-[5px] text-[13px] font-semibold text-[#1c1c1c] bg-white hover:bg-neutral-50 flex items-center justify-center gap-1.5 transition-colors cursor-pointer text-center shadow-2xs"
+              >
+                <ShoppingCart size={15} className="stroke-[1.8]" />
+                <span>{addToCartText}</span>
+              </button>
+            )}
+
+            {/* Button 2: Choose & Buy (Navigates directly to Product Detail Page) */}
             <Link
               href={productHref}
-              className="w-full py-2 px-3 border border-[#d1d5db] hover:border-[#1c1c1c] rounded-[5px] text-[13px] font-medium text-[#1c1c1c] bg-white hover:bg-neutral-50 flex items-center justify-center gap-1.5 transition-colors cursor-pointer text-center"
-            >
-              <ShoppingCart size={15} className="stroke-[1.8]" />
-              <span>{selectOptionsText}</span>
-            </Link>
-
-            <button
-              type="button"
-              onClick={handleChooseAndBuy}
-              className="w-full py-2 px-3 bg-[#4e6648] hover:bg-[#3d5239] text-white rounded-[5px] text-[13px] font-medium flex items-center justify-center transition-colors cursor-pointer shadow-xs active:scale-[0.99]"
+              className="w-full py-2 px-3 bg-[#4e6648] hover:bg-[#3d5239] text-white rounded-[5px] text-[13px] font-semibold flex items-center justify-center transition-colors cursor-pointer shadow-xs active:scale-[0.99] text-center"
             >
               {chooseAndBuyText}
-            </button>
+            </Link>
           </div>
         </div>
       )}
 
-      {/* Multiple ML Options Selection Popup */}
-      {isOptionsModalOpen && product.variants && product.variants.length > 0 && (
+      {/* ML Options Selection Popup (Consistent across all products, even 1 variant) */}
+      {isOptionsModalOpen && (
         <div
           role="dialog"
           aria-modal="true"
@@ -340,7 +408,7 @@ export function ProductCard({
 
             {/* Product Thumbnail & Details */}
             <div className="flex items-center gap-3 pr-8 rtl:pr-0 rtl:pl-8">
-              <div className="relative w-14 h-14 rounded-xl overflow-hidden bg-[#f7f5f0] flex-shrink-0 border border-neutral-200/80">
+              <div className="relative w-14 h-14 rounded-xl overflow-hidden bg-[#f7f5f0] shrink-0 border border-neutral-200/80">
                 <Image
                   src={primaryImage}
                   alt={displayName}
@@ -374,26 +442,40 @@ export function ProductCard({
               <label className="text-xs font-semibold text-neutral-700 block mb-2">
                 {isAr ? "اختر الحجم (مل):" : "Select Size (ML):"}
               </label>
-              <div className="grid grid-cols-3 gap-2">
-                {product.variants.map((v) => {
+              <div
+                className={cn(
+                  "grid gap-2",
+                  availableVariants.length === 1
+                    ? "grid-cols-1"
+                    : availableVariants.length === 2
+                    ? "grid-cols-2"
+                    : "grid-cols-3"
+                )}
+              >
+                {availableVariants.map((v) => {
                   const isSelected = (modalVariant?.id || selectedVariant?.id) === v.id;
+                  const isVarOutOfStock = v.stock !== undefined && v.stock <= 0;
                   return (
                     <button
                       key={v.id}
                       type="button"
+                      disabled={isVarOutOfStock}
                       onClick={(e) => {
                         e.stopPropagation();
                         setModalVariant(v);
                       }}
-                      className={`py-2 px-1.5 rounded-xl border text-center transition-all cursor-pointer ${
-                        isSelected
+                      className={cn(
+                        "py-2 px-1.5 rounded-xl border text-center transition-all cursor-pointer",
+                        isVarOutOfStock
+                          ? "border-neutral-200 bg-neutral-100/60 text-neutral-400 opacity-60 cursor-not-allowed line-through"
+                          : isSelected
                           ? "border-[#4e6648] bg-[#f2f6f1] text-[#233324] ring-1 ring-[#4e6648] font-bold"
                           : "border-neutral-200 hover:border-neutral-400 bg-white text-neutral-800"
-                      }`}
+                      )}
                     >
                       <div className="text-xs font-bold">{v.name}</div>
                       <div className="text-[11px] text-neutral-500 mt-0.5 font-medium">
-                        QAR {v.price}
+                        {isVarOutOfStock ? outOfStockText : `QAR ${v.price}`}
                       </div>
                     </button>
                   );
@@ -403,38 +485,202 @@ export function ProductCard({
 
             {/* Confirm & Add to Cart Button */}
             <div className="mt-5">
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  const finalVariant = modalVariant || selectedVariant || product.variants![0];
-                  addItem({
-                    productId: product.id,
-                    variantId: finalVariant.id,
-                    name: product.name,
-                    variantName: finalVariant.name,
-                    slug: product.slug,
-                    price: finalVariant.price,
-                    image: primaryImage,
-                    quantity: 1,
-                    maxStock: finalVariant.stock ?? 50,
-                  });
-                  setSelectedVariant(finalVariant);
-                  setIsOptionsModalOpen(false);
-                  openCart();
-                }}
-                className="w-full py-2.5 bg-[#4e6648] hover:bg-[#3d5239] text-white font-semibold text-xs rounded-lg flex items-center justify-center gap-2 transition-colors cursor-pointer shadow-sm active:scale-[0.99]"
-              >
-                <ShoppingCart size={15} className="stroke-[2]" />
-                <span>
-                  {addToCartText} • QAR {(modalVariant?.price ?? currentPrice).toFixed(2)}
-                </span>
-              </button>
+              {modalVariant?.stock !== undefined && modalVariant.stock <= 0 ? (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsOptionsModalOpen(false);
+                    setIsNotifyModalOpen(true);
+                  }}
+                  className="w-full py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-semibold text-xs rounded-lg flex items-center justify-center gap-2 transition-colors cursor-pointer shadow-sm active:scale-[0.99]"
+                >
+                  <Bell size={15} />
+                  <span>{notifyMeText}</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const finalVariant = modalVariant || selectedVariant || availableVariants[0];
+                    addItem({
+                      productId: product.id,
+                      variantId: finalVariant.id !== "default" ? finalVariant.id : undefined,
+                      name: product.name,
+                      variantName: finalVariant.name,
+                      slug: product.slug,
+                      price: finalVariant.price,
+                      image: primaryImage,
+                      quantity: 1,
+                      maxStock: finalVariant.stock ?? 50,
+                    });
+                    setSelectedVariant(finalVariant);
+                    setIsOptionsModalOpen(false);
+                    openCart();
+                  }}
+                  className="w-full py-2.5 bg-[#4e6648] hover:bg-[#3d5239] text-white font-semibold text-xs rounded-lg flex items-center justify-center gap-2 transition-colors cursor-pointer shadow-sm active:scale-[0.99]"
+                >
+                  <ShoppingCart size={15} className="stroke-[2]" />
+                  <span>
+                    {addToCartText} • QAR {(modalVariant?.price ?? currentPrice).toFixed(2)}
+                  </span>
+                </button>
+              )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Out of Stock Notify Me Modal */}
+      {isNotifyModalOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setIsNotifyModalOpen(false);
+            setNotifySubmitted(false);
+          }}
+        >
+          <div
+            className="bg-white rounded-2xl w-full max-w-sm p-5 shadow-2xl border border-neutral-200 relative text-start animate-in zoom-in-95 duration-150"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Close Button */}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsNotifyModalOpen(false);
+                setNotifySubmitted(false);
+              }}
+              className="absolute top-3.5 right-3.5 rtl:right-auto rtl:left-3.5 w-8 h-8 rounded-full bg-neutral-100 hover:bg-neutral-200 text-neutral-600 flex items-center justify-center transition-colors cursor-pointer"
+              aria-label="Close"
+            >
+              <X size={18} />
+            </button>
+
+            {/* Product Thumbnail & Details */}
+            <div className="flex items-center gap-3 pr-8 rtl:pr-0 rtl:pl-8">
+              <div className="relative w-14 h-14 rounded-xl overflow-hidden bg-[#f7f5f0] shrink-0 border border-neutral-200/80">
+                <Image
+                  src={primaryImage}
+                  alt={displayName}
+                  fill
+                  unoptimized
+                  className="object-cover"
+                />
+              </div>
+              <div className="flex-1 min-w-0">
+                <span className="text-[10px] uppercase font-bold text-neutral-400 tracking-wider block">
+                  {brandName}
+                </span>
+                <h4 className="text-sm font-bold text-neutral-900 truncate">
+                  {displayName}
+                </h4>
+                <span className="inline-block mt-0.5 text-[11px] font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-sm">
+                  {outOfStockText}
+                </span>
+              </div>
+            </div>
+
+            {notifySubmitted ? (
+              <div className="mt-5 py-4 text-center">
+                <div className="w-12 h-12 mx-auto rounded-full bg-[#f2f6f1] text-[#4e6648] flex items-center justify-center mb-3">
+                  <Check size={24} className="stroke-[2.5]" />
+                </div>
+                <h5 className="text-sm font-bold text-neutral-900">
+                  {isAr ? "تم تسجيل طلبك بنجاح!" : "You're on the waitlist!"}
+                </h5>
+                <p className="text-xs text-neutral-600 mt-1 leading-relaxed">
+                  {isAr
+                    ? "سنرسل إليك إشعاراً فور توفر هذا العطر مجدداً في متجرنا."
+                    : "We'll send you an update as soon as this item is back in stock."}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsNotifyModalOpen(false);
+                    setNotifySubmitted(false);
+                  }}
+                  className="mt-4 px-5 py-2 bg-[#4e6648] hover:bg-[#3d5239] text-white text-xs font-semibold rounded-lg transition-colors cursor-pointer"
+                >
+                  {isAr ? "حسناً" : "Got it"}
+                </button>
+              </div>
+            ) : (
+              <form
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if (!notifyEmail && !notifyPhone) return;
+                  setNotifyLoading(true);
+                  try {
+                    await fetch("/api/notify-stock", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        productId: product.id,
+                        productName: product.name,
+                        variantName: modalVariant?.name || selectedVariant?.name,
+                        email: notifyEmail,
+                        phone: notifyPhone,
+                      }),
+                    });
+                  } catch {
+                    // Gracefully handle
+                  } finally {
+                    setNotifyLoading(false);
+                    setNotifySubmitted(true);
+                  }
+                }}
+                className="mt-4 pt-3 border-t border-neutral-100"
+              >
+                <div className="flex items-center gap-1.5 mb-1.5 text-neutral-900">
+                  <Bell size={16} className="text-[#4e6648]" />
+                  <span className="text-xs font-bold">
+                    {isAr ? "أعلمني عند توفر المنتج" : "Notify me when available"}
+                  </span>
+                </div>
+                <p className="text-[11.5px] text-neutral-500 mb-3 leading-relaxed">
+                  {isAr
+                    ? "أدخل بريدك الإلكتروني أو رقم هاتفك وسنبلغك فور توفر هذا المنتج مجدداً."
+                    : "Leave your email or phone and we will notify you the moment this fragrance arrives."}
+                </p>
+
+                <div className="space-y-2">
+                  <input
+                    type="email"
+                    value={notifyEmail}
+                    onChange={(e) => setNotifyEmail(e.target.value)}
+                    placeholder={isAr ? "البريد الإلكتروني (name@example.com)" : "Email address (name@example.com)"}
+                    className="w-full px-3 py-2 text-xs border border-neutral-200 rounded-lg focus:outline-none focus:border-[#4e6648] focus:ring-1 focus:ring-[#4e6648] bg-neutral-50/50"
+                  />
+                  <input
+                    type="tel"
+                    value={notifyPhone}
+                    onChange={(e) => setNotifyPhone(e.target.value)}
+                    placeholder={isAr ? "رقم الهاتف / واتساب (اختياري)" : "Phone / WhatsApp (optional)"}
+                    className="w-full px-3 py-2 text-xs border border-neutral-200 rounded-lg focus:outline-none focus:border-[#4e6648] focus:ring-1 focus:ring-[#4e6648] bg-neutral-50/50"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={notifyLoading || (!notifyEmail && !notifyPhone)}
+                  className="w-full mt-3.5 py-2.5 bg-[#4e6648] hover:bg-[#3d5239] disabled:opacity-50 text-white font-semibold text-xs rounded-lg flex items-center justify-center gap-2 transition-colors cursor-pointer shadow-sm active:scale-[0.99]"
+                >
+                  <Bell size={14} />
+                  <span>{notifyLoading ? (isAr ? "جاري الإرسال..." : "Sending...") : notifyMeText}</span>
+                </button>
+              </form>
+            )}
           </div>
         </div>
       )}
     </div>
   );
 }
-

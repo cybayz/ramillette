@@ -13,6 +13,9 @@ import {
   Truck,
   Sparkles,
   Package,
+  Bell,
+  Check,
+  X,
 } from "lucide-react";
 
 export interface VariantData {
@@ -67,6 +70,17 @@ export function ProductPurchaseForm({
 
   const [selectedVariant, setSelectedVariant] = useState<VariantData>(defaultVariant);
   const [activeTab, setActiveTab] = useState<"description" | "notes" | "specifications">("notes");
+
+  // Out of stock calculation
+  const isOutOfStock =
+    (selectedVariant.stock !== undefined && selectedVariant.stock <= 0) ||
+    (variants.length === 0 && product.stock <= 0);
+
+  const [isNotifyModalOpen, setIsNotifyModalOpen] = useState(false);
+  const [notifyEmail, setNotifyEmail] = useState("");
+  const [notifyPhone, setNotifyPhone] = useState("");
+  const [notifySubmitted, setNotifySubmitted] = useState(false);
+  const [notifyLoading, setNotifyLoading] = useState(false);
 
   // Sync URL query if variant changes
   useEffect(() => {
@@ -246,27 +260,40 @@ export function ProductPurchaseForm({
         </span>
       </div>
 
-      {/* Add to Cart & Buy Now Buttons */}
-      <div className="grid grid-cols-2 gap-3 my-3">
-        {/* Add to Cart (Outline style) */}
-        <button
-          type="button"
-          onClick={handleAddToCart}
-          className="py-3 px-4 rounded-[8px] border border-[#cfcfcf] hover:border-black bg-white text-[#1c1c1c] text-[14px] font-bold flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xs active:scale-[0.99]"
-        >
-          <ShoppingCart size={17} className="stroke-[1.8]" />
-          <span>{isArabic ? "أضف إلى السلة" : "Add to cart"}</span>
-        </button>
+      {/* Add to Cart & Buy Now Buttons OR Notify Me if Out of Stock */}
+      {isOutOfStock ? (
+        <div className="my-3">
+          <button
+            type="button"
+            onClick={() => setIsNotifyModalOpen(true)}
+            className="w-full py-3.5 px-4 rounded-[8px] border border-amber-500/40 hover:border-amber-600 bg-amber-50/80 hover:bg-amber-100 text-amber-900 text-[14px] font-bold flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xs"
+          >
+            <Bell size={18} className="stroke-[2] text-amber-700" />
+            <span>{isArabic ? "أعلمني عند التوفر" : "Notify Me When Available"}</span>
+          </button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 gap-3 my-3">
+          {/* Add to Cart (Outline style) */}
+          <button
+            type="button"
+            onClick={handleAddToCart}
+            className="py-3 px-4 rounded-[8px] border border-[#cfcfcf] hover:border-black bg-white text-[#1c1c1c] text-[14px] font-bold flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xs active:scale-[0.99]"
+          >
+            <ShoppingCart size={17} className="stroke-[1.8]" />
+            <span>{isArabic ? "أضف إلى السلة" : "Add to cart"}</span>
+          </button>
 
-        {/* Buy Now (Solid Black style) */}
-        <button
-          type="button"
-          onClick={handleBuyNow}
-          className="py-3 px-4 rounded-[8px] bg-black hover:bg-neutral-800 text-white text-[14px] font-bold flex items-center justify-center transition-all cursor-pointer shadow-xs active:scale-[0.99]"
-        >
-          <span>{isArabic ? "اشترِ الآن" : "Buy Now"}</span>
-        </button>
-      </div>
+          {/* Buy Now (Solid Black style) */}
+          <button
+            type="button"
+            onClick={handleBuyNow}
+            className="py-3 px-4 rounded-[8px] bg-black hover:bg-neutral-800 text-white text-[14px] font-bold flex items-center justify-center transition-all cursor-pointer shadow-xs active:scale-[0.99]"
+          >
+            <span>{isArabic ? "اشترِ الآن" : "Buy Now"}</span>
+          </button>
+        </div>
+      )}
 
       {/* Value Prop Highlights */}
       <ul className="space-y-2 py-2.5 text-[13px] text-neutral-700">
@@ -458,6 +485,150 @@ export function ProductPurchaseForm({
           )}
         </div>
       </div>
+
+      {/* Out of Stock Notify Modal */}
+      {isNotifyModalOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150"
+          onClick={() => {
+            setIsNotifyModalOpen(false);
+            setNotifySubmitted(false);
+          }}
+        >
+          <div
+            className="bg-white rounded-2xl w-full max-w-sm p-5 shadow-2xl border border-neutral-200 relative text-start animate-in zoom-in-95 duration-150"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => {
+                setIsNotifyModalOpen(false);
+                setNotifySubmitted(false);
+              }}
+              className="absolute top-3.5 right-3.5 rtl:right-auto rtl:left-3.5 w-8 h-8 rounded-full bg-neutral-100 hover:bg-neutral-200 text-neutral-600 flex items-center justify-center transition-colors cursor-pointer"
+              aria-label="Close"
+            >
+              <X size={18} />
+            </button>
+
+            <div className="flex items-center gap-3 pr-8 rtl:pr-0 rtl:pl-8">
+              <div className="relative w-14 h-14 rounded-xl overflow-hidden bg-[#f7f5f0] shrink-0 border border-neutral-200/80">
+                <Image
+                  src={product.images[0]?.url || ""}
+                  alt={displayName}
+                  fill
+                  unoptimized
+                  className="object-cover"
+                />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h4 className="text-sm font-bold text-neutral-900 truncate">
+                  {displayName}
+                </h4>
+                <div className="text-xs text-neutral-500 font-medium">
+                  {selectedVariant.name.replace(/'/g, "")}
+                </div>
+                <span className="inline-block mt-0.5 text-[11px] font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-sm">
+                  {isArabic ? "نفدت الكمية" : "Out of Stock"}
+                </span>
+              </div>
+            </div>
+
+            {notifySubmitted ? (
+              <div className="mt-5 py-4 text-center">
+                <div className="w-12 h-12 mx-auto rounded-full bg-[#f2f6f1] text-[#4e6648] flex items-center justify-center mb-3">
+                  <Check size={24} className="stroke-[2.5]" />
+                </div>
+                <h5 className="text-sm font-bold text-neutral-900">
+                  {isArabic ? "تم تسجيل طلبك بنجاح!" : "You're on the waitlist!"}
+                </h5>
+                <p className="text-xs text-neutral-600 mt-1 leading-relaxed">
+                  {isArabic
+                    ? "سنرسل إليك إشعاراً فور توفر هذا العطر مجدداً في متجرنا."
+                    : "We'll send you an update as soon as this item is back in stock."}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsNotifyModalOpen(false);
+                    setNotifySubmitted(false);
+                  }}
+                  className="mt-4 px-5 py-2 bg-[#4e6648] hover:bg-[#3d5239] text-white text-xs font-semibold rounded-lg transition-colors cursor-pointer"
+                >
+                  {isArabic ? "حسناً" : "Got it"}
+                </button>
+              </div>
+            ) : (
+              <form
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  if (!notifyEmail && !notifyPhone) return;
+                  setNotifyLoading(true);
+                  try {
+                    await fetch("/api/notify-stock", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        productId: product.id,
+                        productName: product.name,
+                        variantName: selectedVariant.name,
+                        email: notifyEmail,
+                        phone: notifyPhone,
+                      }),
+                    });
+                  } catch {
+                    // ignore
+                  } finally {
+                    setNotifyLoading(false);
+                    setNotifySubmitted(true);
+                  }
+                }}
+                className="mt-4 pt-3 border-t border-neutral-100"
+              >
+                <div className="flex items-center gap-1.5 mb-1.5 text-neutral-900">
+                  <Bell size={16} className="text-[#4e6648]" />
+                  <span className="text-xs font-bold">
+                    {isArabic ? "أعلمني عند توفر المنتج" : "Notify me when available"}
+                  </span>
+                </div>
+                <p className="text-[11.5px] text-neutral-500 mb-3 leading-relaxed">
+                  {isArabic
+                    ? "أدخل بريدك الإلكتروني أو رقم هاتفك وسنبلغك فور توفر هذا المنتج مجدداً."
+                    : "Leave your email or phone and we will notify you the moment this fragrance arrives."}
+                </p>
+
+                <div className="space-y-2">
+                  <input
+                    type="email"
+                    value={notifyEmail}
+                    onChange={(e) => setNotifyEmail(e.target.value)}
+                    placeholder={isArabic ? "البريد الإلكتروني (name@example.com)" : "Email address (name@example.com)"}
+                    className="w-full px-3 py-2 text-xs border border-neutral-200 rounded-lg focus:outline-none focus:border-[#4e6648] focus:ring-1 focus:ring-[#4e6648] bg-neutral-50/50"
+                  />
+                  <input
+                    type="tel"
+                    value={notifyPhone}
+                    onChange={(e) => setNotifyPhone(e.target.value)}
+                    placeholder={isArabic ? "رقم الهاتف / واتساب (اختياري)" : "Phone / WhatsApp (optional)"}
+                    className="w-full px-3 py-2 text-xs border border-neutral-200 rounded-lg focus:outline-none focus:border-[#4e6648] focus:ring-1 focus:ring-[#4e6648] bg-neutral-50/50"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={notifyLoading || (!notifyEmail && !notifyPhone)}
+                  className="w-full mt-3.5 py-2.5 bg-[#4e6648] hover:bg-[#3d5239] disabled:opacity-50 text-white font-semibold text-xs rounded-lg flex items-center justify-center gap-2 transition-colors cursor-pointer shadow-sm active:scale-[0.99]"
+                >
+                  <Bell size={14} />
+                  <span>{notifyLoading ? (isArabic ? "جاري الإرسال..." : "Sending...") : (isArabic ? "أعلمني عند التوفر" : "Notify Me")}</span>
+                </button>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

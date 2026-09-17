@@ -1,4 +1,4 @@
-import React from "react";
+import React, { cache } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import prisma from "@/lib/db/prisma";
@@ -16,12 +16,54 @@ interface PageProps {
   isArabic?: boolean;
 }
 
+// Deduplicate product query between generateMetadata and Page component
+const getProduct = cache(async (slug: string) => {
+  return prisma.product.findUnique({
+    where: { slug },
+    include: {
+      images: { orderBy: { sortOrder: "asc" } },
+      variants: { where: { active: true }, orderBy: { price: "asc" } },
+      reviews: { where: { approved: true }, orderBy: { createdAt: "desc" } },
+      category: true,
+    },
+  });
+});
+
+// Single optimized query for related products
+const getRelatedProducts = cache(async (productId: string, categoryId?: string | null) => {
+  return prisma.product.findMany({
+    where: {
+      active: true,
+      id: { not: productId },
+      ...(categoryId ? { categoryId } : {}),
+    },
+    include: {
+      images: { orderBy: { sortOrder: "asc" }, take: 2 },
+      variants: { where: { active: true }, orderBy: { price: "asc" }, take: 1 },
+      reviews: { where: { approved: true } },
+      category: true,
+    },
+    take: 5,
+  });
+});
+
+// Pre-render all product pages at build time for instant 0ms navigation
+export async function generateStaticParams() {
+  try {
+    const products = await prisma.product.findMany({
+      where: { active: true },
+      select: { slug: true },
+    });
+    return products.map((p) => ({ slug: p.slug }));
+  } catch (error) {
+    console.error("Error generating static params:", error);
+    return [];
+  }
+}
+
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
-  const product = await prisma.product.findUnique({
-    where: { slug },
-    include: { images: true },
-  });
+  const product = await getProduct(slug);
 
   if (!product) {
     return { title: "Product Not Found | Ramillette" };
@@ -46,65 +88,14 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function ProductDetailPage({ params, isArabic = false }: PageProps) {
   const { slug } = await params;
-
-  const product = await prisma.product.findUnique({
-    where: { slug },
-    include: {
-      images: { orderBy: { sortOrder: "asc" } },
-      variants: { where: { active: true }, orderBy: { price: "asc" } },
-      reviews: { where: { approved: true }, orderBy: { createdAt: "desc" } },
-      category: true,
-    },
-  });
+  const product = await getProduct(slug);
 
   if (!product) {
     notFound();
   }
 
-  // Related products: fetch reference products (Sauvage, Marj, Oudh Maracuja, Oudh Lavender, Khamrah)
-  const targetRelatedSlugs = [
-    "sauvage-37",
-    "marj-35",
-    "oudh-maracuja-39",
-    "oudh-lavender-38",
-    "khamrah-36",
-    "amber-code-1",
-    "tobacco-vanille-40",
-  ].filter((s) => s !== product.slug);
-
-  const relatedRaw = await prisma.product.findMany({
-    where: {
-      active: true,
-      id: { not: product.id },
-      slug: { in: targetRelatedSlugs },
-    },
-    include: {
-      images: { orderBy: { sortOrder: "asc" } },
-      variants: { where: { active: true }, orderBy: { price: "asc" } },
-      reviews: { where: { approved: true } },
-      category: true,
-    },
-    take: 5,
-  });
-
-  // If fewer than 5 found, fetch top bestsellers
-  let relatedFinal = relatedRaw;
-  if (relatedFinal.length < 5) {
-    const extra = await prisma.product.findMany({
-      where: {
-        active: true,
-        id: { notIn: [product.id, ...relatedFinal.map((p) => p.id)] },
-      },
-      include: {
-        images: { orderBy: { sortOrder: "asc" } },
-        variants: { where: { active: true }, orderBy: { price: "asc" } },
-        reviews: { where: { approved: true } },
-        category: true,
-      },
-      take: 5 - relatedFinal.length,
-    });
-    relatedFinal = [...relatedFinal, ...extra];
-  }
+  // Fetch related products in a single fast parallel/cached query
+  const relatedFinal = await getRelatedProducts(product.id, product.categoryId);
 
   const relatedProducts = relatedFinal.map((p) => ({
     id: p.id,

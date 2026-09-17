@@ -1,6 +1,9 @@
-import ProductDetailPage, { generateMetadata as baseMetadata } from "@/app/product/[slug]/page";
+import ProductDetailPage, {
+  generateMetadata as baseMetadata,
+  generateStaticParams as baseStaticParams,
+} from "@/app/product/[slug]/page";
 
-export { baseMetadata as generateMetadata };
+export { baseMetadata as generateMetadata, baseStaticParams as generateStaticParams };
 
 interface PageProps {
   params: Promise<{ slug: string }>;
