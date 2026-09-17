@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
@@ -30,6 +30,22 @@ export function Header() {
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [isAccountDropdownOpen, setIsAccountDropdownOpen] = useState(false);
+  const accountDropdownRef = useRef<HTMLDivElement>(null);
+  const dropdownTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const handleDropdownEnter = () => {
+    if (dropdownTimeoutRef.current) {
+      clearTimeout(dropdownTimeoutRef.current);
+      dropdownTimeoutRef.current = null;
+    }
+    setIsAccountDropdownOpen(true);
+  };
+
+  const handleDropdownLeave = () => {
+    dropdownTimeoutRef.current = setTimeout(() => {
+      setIsAccountDropdownOpen(false);
+    }, 250);
+  };
 
   useEffect(() => {
     setMounted(true);
@@ -37,8 +53,23 @@ export function Header() {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 15);
     };
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        accountDropdownRef.current &&
+        !accountDropdownRef.current.contains(event.target as Node)
+      ) {
+        setIsAccountDropdownOpen(false);
+      }
+    };
     window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      document.removeEventListener("mousedown", handleClickOutside);
+      if (dropdownTimeoutRef.current) {
+        clearTimeout(dropdownTimeoutRef.current);
+      }
+    };
   }, []);
 
   const isAr = Boolean(pathname?.startsWith("/ar"));
@@ -183,14 +214,18 @@ export function Header() {
                 {/* Account / Login Action */}
                 {mounted && user ? (
                   <div
+                    ref={accountDropdownRef}
                     className="relative"
-                    onMouseEnter={() => setIsAccountDropdownOpen(true)}
-                    onMouseLeave={() => setIsAccountDropdownOpen(false)}
+                    onMouseEnter={handleDropdownEnter}
+                    onMouseLeave={handleDropdownLeave}
                   >
-                    <Link
-                      href={accountHref}
-                      className="flex flex-col items-center justify-center text-[#1c1c1c] hover:text-[#b6713e] transition-colors group relative cursor-pointer"
-                      aria-label="My Account"
+                    <button
+                      type="button"
+                      onClick={() => setIsAccountDropdownOpen((prev) => !prev)}
+                      className="flex flex-col items-center justify-center text-[#1c1c1c] hover:text-[#b6713e] transition-colors group relative cursor-pointer select-none"
+                      aria-expanded={isAccountDropdownOpen}
+                      aria-haspopup="true"
+                      aria-label="Account menu"
                     >
                       <div className="relative">
                         <User size={20} className="stroke-[1.6] text-[#b6713e] group-hover:scale-110 transition-transform" />
@@ -199,49 +234,56 @@ export function Header() {
                       <span className="text-[11px] font-semibold text-[#b6713e] mt-1 whitespace-nowrap">
                         {user.firstName ? (isAr ? user.firstName : `Hi, ${user.firstName}`) : content.account}
                       </span>
-                    </Link>
+                    </button>
 
-                    {/* Dropdown Menu */}
+                    {/* Dropdown Menu with Seamless Hover Bridge (pt-2 wrapper prevents gap disconnect) */}
                     {isAccountDropdownOpen && (
                       <div
-                        className={`absolute top-full mt-2 w-48 bg-white rounded-lg shadow-xl border border-[#e5e5e5] py-2 z-50 animate-in fade-in slide-in-from-top-1 duration-150 ${
+                        className={`absolute top-full pt-2 w-52 z-50 animate-in fade-in duration-150 ${
                           isAr ? "left-0" : "right-0"
                         }`}
+                        onMouseEnter={handleDropdownEnter}
+                        onMouseLeave={handleDropdownLeave}
                       >
-                        <div className="px-3.5 py-2 border-b border-[#f0f0f0]">
-                          <p className="text-xs font-bold text-[#1c1c1c] truncate">
-                            {user.firstName ? `${user.firstName} ${user.lastName || ""}`.trim() : user.email}
-                          </p>
-                          <p className="text-[10px] text-neutral-400 truncate">{user.email}</p>
+                        <div className="bg-white rounded-xl shadow-2xl border border-[#e8e2d8] py-2 overflow-hidden ring-1 ring-black/5">
+                          <div className="px-3.5 py-2.5 border-b border-[#f0ebe1] bg-[#fbf9f5]">
+                            <p className="text-xs font-bold text-[#1c1c1c] truncate">
+                              {user.firstName ? `${user.firstName} ${user.lastName || ""}`.trim() : user.email}
+                            </p>
+                            <p className="text-[10px] text-neutral-500 truncate mt-0.5">{user.email}</p>
+                          </div>
+                          <div className="py-1">
+                            <Link
+                              href={accountHref}
+                              onClick={() => setIsAccountDropdownOpen(false)}
+                              className="flex items-center gap-2.5 px-3.5 py-2 text-xs font-medium text-neutral-700 hover:bg-[#fbf9f5] hover:text-[#b6713e] transition-colors"
+                            >
+                              <User size={14} className="text-[#b6713e]" />
+                              <span>{content.account}</span>
+                            </Link>
+                            {user.role === "ADMIN" && (
+                              <Link
+                                href="/admin"
+                                onClick={() => setIsAccountDropdownOpen(false)}
+                                className="flex items-center gap-2.5 px-3.5 py-2 text-xs text-[#b6713e] font-semibold hover:bg-[#fbf9f5] transition-colors"
+                              >
+                                <span className="w-1.5 h-1.5 rounded-full bg-[#b6713e]" />
+                                <span>Admin Portal</span>
+                              </Link>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setIsAccountDropdownOpen(false);
+                                logout(isAr ? "ar" : "en");
+                              }}
+                              className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 transition-colors cursor-pointer text-left rtl:text-right border-t border-[#f0ebe1] mt-1"
+                            >
+                              <LogOut size={14} />
+                              <span>{content.logout}</span>
+                            </button>
+                          </div>
                         </div>
-                        <Link
-                          href={accountHref}
-                          onClick={() => setIsAccountDropdownOpen(false)}
-                          className="flex items-center gap-2 px-3.5 py-2 text-xs text-neutral-700 hover:bg-[#fbf9f5] hover:text-[#b6713e] transition-colors"
-                        >
-                          <User size={13} />
-                          <span>{content.account}</span>
-                        </Link>
-                        {user.role === "ADMIN" && (
-                          <Link
-                            href="/admin"
-                            onClick={() => setIsAccountDropdownOpen(false)}
-                            className="flex items-center gap-2 px-3.5 py-2 text-xs text-[#b6713e] font-semibold hover:bg-[#fbf9f5] transition-colors"
-                          >
-                            <span>Admin Portal</span>
-                          </Link>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setIsAccountDropdownOpen(false);
-                            logout(isAr ? "ar" : "en");
-                          }}
-                          className="w-full flex items-center gap-2 px-3.5 py-2 text-xs text-red-600 hover:bg-red-50 transition-colors cursor-pointer text-left rtl:text-right border-t border-[#f0f0f0]"
-                        >
-                          <LogOut size={13} />
-                          <span>{content.logout}</span>
-                        </button>
                       </div>
                     )}
                   </div>
