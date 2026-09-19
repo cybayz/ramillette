@@ -39,6 +39,10 @@ export default async function AdminOrdersPage() {
       area: shipping.area,
       deliveryNotes: o.deliveryNotes,
       paymentGatewayRef: o.paymentGatewayRef,
+      carrierName: o.carrierName,
+      trackingNumber: o.trackingNumber,
+      trackingUrl: o.trackingUrl,
+      shippedAt: o.shippedAt ? o.shippedAt.toISOString() : null,
       itemsCount: o.items.length,
       items: o.items.map((it) => ({
         id: it.id,

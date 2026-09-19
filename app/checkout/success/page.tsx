@@ -2,7 +2,7 @@ import React from "react";
 import Link from "next/link";
 import prisma from "@/lib/db/prisma";
 import { formatPrice } from "@/lib/utils";
-import { CheckCircle2, Package, MapPin, Truck, ArrowRight } from "lucide-react";
+import { CheckCircle2, Package, MapPin, Truck, ArrowRight, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 
 interface PageProps {
@@ -70,7 +70,13 @@ export default async function OrderSuccessPage({ searchParams, isAr = false }: P
               <CheckCircle2 size={36} />
             </div>
             <span className="text-xs font-bold uppercase tracking-widest text-[#0d9d00]">
-              Order Confirmed
+              {order.status === "SHIPPED"
+                ? isAr
+                  ? "تم شحن الطلب"
+                  : "Order Shipped & Dispatched"
+                : isAr
+                ? "تم تأكيد الطلب"
+                : "Order Confirmed"}
             </span>
             <h1 className="text-2xl sm:text-3xl font-extrabold text-[#1c1c1c]">
               Thank You, {order.customerName}!
@@ -79,6 +85,55 @@ export default async function OrderSuccessPage({ searchParams, isAr = false }: P
               Your order <strong className="text-[#1c1c1c]">#{order.orderNumber}</strong> has been received and is being prepared for express delivery from our Souq Al Wakra boutique.
             </p>
           </div>
+
+          {/* Live Shipment Tracking Banner */}
+          {(order.status === "SHIPPED" || order.trackingNumber) && (
+            <div className="p-5 rounded-[8px] bg-blue-50/70 border border-blue-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="space-y-1 text-xs">
+                <div className="flex items-center gap-2">
+                  <Truck size={18} className="text-blue-700" />
+                  <span className="text-sm font-bold text-blue-950">
+                    {isAr ? "شحنتك في طريقها إليك!" : "Your Shipment is on the Way!"}
+                  </span>
+                  {order.carrierName && (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-100 text-blue-900 border border-blue-300">
+                      {order.carrierName}
+                    </span>
+                  )}
+                </div>
+
+                {order.trackingNumber && (
+                  <p className="text-neutral-700 pt-1">
+                    <span className="text-neutral-500 font-medium">
+                      {isAr ? "رقم التتبع / بوليصة الشحن: " : "Tracking ID / Waybill: "}
+                    </span>
+                    <code className="font-mono font-bold text-[#1c1c1c] bg-white px-2 py-0.5 rounded border border-blue-200 text-xs">
+                      {order.trackingNumber}
+                    </code>
+                  </p>
+                )}
+
+                {order.shippedAt && (
+                  <p className="text-[11px] text-neutral-500">
+                    {isAr ? "تاريخ الشحن: " : "Dispatched on "}
+                    {new Date(order.shippedAt).toLocaleString(isAr ? "ar-QA" : "en-QA")}
+                  </p>
+                )}
+              </div>
+
+              {order.trackingUrl && (
+                <a
+                  href={order.trackingUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-[6px] bg-[#b6713e] text-white text-xs font-bold hover:bg-[#965a2f] transition-all shadow-sm shrink-0"
+                >
+                  <span>{isAr ? "تتبع الشحنة الآن" : "Track Shipment Online"}</span>
+                  <ExternalLink size={14} />
+                </a>
+              )}
+            </div>
+          )}
 
           {/* Delivery Details Card */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-5 rounded-[8px] bg-[#fbf9f5] border border-[#ecdec1]">

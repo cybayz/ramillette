@@ -16,6 +16,9 @@ import {
   CheckCircle2,
   Clock,
   Percent,
+  Edit2,
+  Copy,
+  Check,
 } from "lucide-react";
 import { formatPrice } from "@/lib/utils";
 
@@ -50,6 +53,10 @@ export interface AdminOrder {
   area?: string | null;
   deliveryNotes?: string | null;
   paymentGatewayRef?: string | null;
+  carrierName?: string | null;
+  trackingNumber?: string | null;
+  trackingUrl?: string | null;
+  shippedAt?: string | null;
   itemsCount: number;
   items: AdminOrderItem[];
   createdAt: string;
@@ -75,6 +82,63 @@ export function OrdersTable({
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<AdminOrder | null>(null);
 
+  // Shipment tracking popup modal state
+  const [shippingModalOrder, setShippingModalOrder] = useState<AdminOrder | null>(null);
+  const [shippingCarrier, setShippingCarrier] = useState("Aramex");
+  const [shippingTrackingNumber, setShippingTrackingNumber] = useState("");
+  const [shippingTrackingUrl, setShippingTrackingUrl] = useState("");
+  const [isSavingShipment, setIsSavingShipment] = useState(false);
+
+  const CARRIER_PRESETS = [
+    {
+      name: "Aramex",
+      generateUrl: (num: string) =>
+        num ? `https://www.aramex.com/track/results?shipmentNumber=${encodeURIComponent(num)}` : "",
+    },
+    {
+      name: "DHL Express",
+      generateUrl: (num: string) =>
+        num ? `https://www.dhl.com/en/express/tracking.html?AWB=${encodeURIComponent(num)}` : "",
+    },
+    {
+      name: "Qatar Post",
+      generateUrl: (num: string) =>
+        num ? `https://qatarpost.qa/track?trackingNumber=${encodeURIComponent(num)}` : "",
+    },
+    {
+      name: "SMSA Express",
+      generateUrl: (num: string) =>
+        num ? `https://www.smsaexpress.com/track/${encodeURIComponent(num)}` : "",
+    },
+    {
+      name: "Fetchr",
+      generateUrl: (num: string) =>
+        num ? `https://track.fetchr.us/${encodeURIComponent(num)}` : "",
+    },
+    {
+      name: "Boutique Courier",
+      generateUrl: () => "",
+    },
+  ];
+
+  const handleSelectCarrier = (cName: string) => {
+    setShippingCarrier(cName);
+    const preset = CARRIER_PRESETS.find((p) => p.name === cName);
+    if (preset && shippingTrackingNumber) {
+      const generated = preset.generateUrl(shippingTrackingNumber);
+      if (generated) setShippingTrackingUrl(generated);
+    }
+  };
+
+  const handleTrackingNumberChange = (val: string) => {
+    setShippingTrackingNumber(val);
+    const preset = CARRIER_PRESETS.find((p) => p.name === shippingCarrier);
+    if (preset) {
+      const generated = preset.generateUrl(val);
+      if (generated) setShippingTrackingUrl(generated);
+    }
+  };
+
   const statuses = [
     "PENDING",
     "CONFIRMED",
@@ -85,6 +149,17 @@ export function OrdersTable({
   ];
 
   const handleStatusChange = async (orderId: string, newStatus: string) => {
+    if (newStatus === "SHIPPED") {
+      const order = orders.find((o) => o.id === orderId);
+      if (order) {
+        setShippingModalOrder(order);
+        setShippingCarrier(order.carrierName || "Aramex");
+        setShippingTrackingNumber(order.trackingNumber || "");
+        setShippingTrackingUrl(order.trackingUrl || "");
+        return; // Intercept to show shipment popup modal!
+      }
+    }
+
     setUpdatingId(orderId);
     try {
       const res = await fetch(`/api/admin/orders/${orderId}`, {
@@ -105,6 +180,48 @@ export function OrdersTable({
       console.error("Failed to update status:", err);
     } finally {
       setUpdatingId(null);
+    }
+  };
+
+  const handleConfirmShipment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!shippingModalOrder) return;
+
+    setIsSavingShipment(true);
+    try {
+      const payload = {
+        status: "SHIPPED",
+        fulfillmentStatus: "FULFILLED",
+        carrierName: shippingCarrier.trim() || "Courier",
+        trackingNumber: shippingTrackingNumber.trim(),
+        trackingUrl: shippingTrackingUrl.trim() || undefined,
+        shippedAt: new Date().toISOString(),
+      };
+
+      const res = await fetch(`/api/admin/orders/${shippingModalOrder.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (res.ok) {
+        setOrders(
+          orders.map((o) =>
+            o.id === shippingModalOrder.id ? { ...o, ...payload } : o
+          )
+        );
+        if (selectedOrder && selectedOrder.id === shippingModalOrder.id) {
+          setSelectedOrder({ ...selectedOrder, ...payload });
+        }
+        setShippingModalOrder(null);
+      } else {
+        alert("Failed to update order tracking details. Please try again.");
+      }
+    } catch (err) {
+      console.error("Failed to ship order:", err);
+      alert("Network error updating order tracking details.");
+    } finally {
+      setIsSavingShipment(false);
     }
   };
 
@@ -299,6 +416,14 @@ export function OrdersTable({
                         className="absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none text-neutral-500"
                       />
                     </div>
+
+                    {/* Tracking ID Badge preview in row if shipped */}
+                    {order.trackingNumber && (
+                      <div className="mt-1 flex items-center gap-1 text-[10px] text-blue-700 font-mono">
+                        <Truck size={10} />
+                        <span className="truncate max-w-[100px]">{order.trackingNumber}</span>
+                      </div>
+                    )}
                   </td>
 
                   {/* View Details */}
@@ -383,6 +508,62 @@ export function OrdersTable({
                   )}
                 </div>
               </div>
+
+              {/* Tracking Information Card in Modal */}
+              {(selectedOrder.status === "SHIPPED" || selectedOrder.trackingNumber) && (
+                <div className="p-3.5 bg-blue-50/70 border border-blue-200 rounded-[8px] space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-blue-900 font-bold">
+                      <Truck size={15} />
+                      <span>Shipment Tracking Details</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShippingModalOrder(selectedOrder);
+                        setShippingCarrier(selectedOrder.carrierName || "Aramex");
+                        setShippingTrackingNumber(selectedOrder.trackingNumber || "");
+                        setShippingTrackingUrl(selectedOrder.trackingUrl || "");
+                      }}
+                      className="text-[11px] font-bold text-blue-700 hover:underline flex items-center gap-1"
+                    >
+                      <Edit2 size={11} />
+                      <span>Edit Tracking Details</span>
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs pt-1">
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-neutral-400 block">Courier</span>
+                      <span className="font-semibold text-[#1c1c1c]">{selectedOrder.carrierName || "Standard Express"}</span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-neutral-400 block">Tracking Number</span>
+                      <span className="font-mono font-bold text-[#1c1c1c]">{selectedOrder.trackingNumber || "—"}</span>
+                    </div>
+                  </div>
+
+                  {selectedOrder.trackingUrl && (
+                    <div className="pt-1">
+                      <a
+                        href={selectedOrder.trackingUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs font-bold text-blue-700 hover:text-blue-900 inline-flex items-center gap-1 underline"
+                      >
+                        <span>Track on {selectedOrder.carrierName || "Courier"} Website</span>
+                        <ExternalLink size={12} />
+                      </a>
+                    </div>
+                  )}
+
+                  {selectedOrder.shippedAt && (
+                    <p className="text-[10px] text-neutral-400 pt-0.5">
+                      Dispatched on {new Date(selectedOrder.shippedAt).toLocaleString()}
+                    </p>
+                  )}
+                </div>
+              )}
 
               {/* Items List */}
               <div>
@@ -498,6 +679,129 @@ export function OrdersTable({
                 Done
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Shipment Tracking Popup Modal */}
+      {shippingModalOrder && (
+        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="bg-white rounded-[10px] shadow-2xl w-full max-w-lg border border-[#e5e5e5] overflow-hidden">
+            {/* Header */}
+            <div className="px-6 py-4 border-b border-[#e5e5e5] flex items-center justify-between bg-[#fbf9f5]">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-full bg-[#faedcd] border border-[#ecdec1] flex items-center justify-center text-[#b6713e]">
+                  <Truck size={18} />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-[#1c1c1c]">
+                    Shipment Tracking & Fulfillment
+                  </h3>
+                  <p className="text-xs text-neutral-500">
+                    Order #{shippingModalOrder.orderNumber} • {shippingModalOrder.customerName}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShippingModalOrder(null)}
+                className="text-neutral-400 hover:text-neutral-700 p-1.5 rounded-md hover:bg-neutral-100"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Form */}
+            <form onSubmit={handleConfirmShipment} className="p-6 space-y-4 text-xs">
+              {/* Carrier Selection */}
+              <div>
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-neutral-700 mb-1.5">
+                  Shipping Courier / Carrier *
+                </label>
+                <div className="flex flex-wrap gap-1.5 mb-2">
+                  {CARRIER_PRESETS.map((preset) => {
+                    const isSel = shippingCarrier.toLowerCase() === preset.name.toLowerCase();
+                    return (
+                      <button
+                        key={preset.name}
+                        type="button"
+                        onClick={() => handleSelectCarrier(preset.name)}
+                        className={`px-2.5 py-1 rounded-[4px] border text-xs font-semibold transition-all ${
+                          isSel
+                            ? "bg-[#faedcd] border-[#b6713e] text-[#1c1c1c]"
+                            : "bg-neutral-50 border-neutral-200 text-neutral-600 hover:border-neutral-400"
+                        }`}
+                      >
+                        {preset.name}
+                      </button>
+                    );
+                  })}
+                </div>
+                <input
+                  type="text"
+                  required
+                  value={shippingCarrier}
+                  onChange={(e) => setShippingCarrier(e.target.value)}
+                  placeholder="e.g. Aramex, DHL, Qatar Post, etc."
+                  className="w-full text-xs p-2.5 border border-[#e5e5e5] rounded-[5px] focus:outline-none focus:border-[#b6713e]"
+                />
+              </div>
+
+              {/* Tracking Number */}
+              <div>
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-neutral-700 mb-1">
+                  Tracking ID / Waybill Number *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={shippingTrackingNumber}
+                  onChange={(e) => handleTrackingNumberChange(e.target.value)}
+                  placeholder="e.g. ARMX-89230198 or DHL-902341"
+                  className="w-full text-xs p-2.5 border border-[#e5e5e5] rounded-[5px] focus:outline-none focus:border-[#b6713e] font-mono"
+                />
+              </div>
+
+              {/* Tracking Link URL */}
+              <div>
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-neutral-700 mb-1">
+                  Customer Tracking URL / Link (Optional)
+                </label>
+                <input
+                  type="url"
+                  value={shippingTrackingUrl}
+                  onChange={(e) => setShippingTrackingUrl(e.target.value)}
+                  placeholder="https://www.aramex.com/track/results?shipmentNumber=..."
+                  className="w-full text-xs p-2.5 border border-[#e5e5e5] rounded-[5px] focus:outline-none focus:border-[#b6713e]"
+                />
+                <p className="text-[10px] text-neutral-400 mt-1">
+                  Customers can click this link directly from their Order History page to track their shipment in real-time.
+                </p>
+              </div>
+
+              {/* Actions */}
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#f0ece1]">
+                <button
+                  type="button"
+                  onClick={() => setShippingModalOrder(null)}
+                  className="px-4 py-2 border border-[#e5e5e5] text-xs font-semibold text-neutral-600 rounded-[5px] hover:bg-neutral-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingShipment}
+                  className="btn-primary h-9 px-5 text-xs font-bold inline-flex items-center gap-1.5 shadow-sm"
+                >
+                  {isSavingShipment ? (
+                    <Loader2 size={13} className="animate-spin" />
+                  ) : (
+                    <Truck size={13} />
+                  )}
+                  <span>Save & Mark as Shipped</span>
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

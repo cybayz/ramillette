@@ -10,6 +10,7 @@ import {
   MapPin,
   ShoppingBag,
   ExternalLink,
+  Truck,
 } from "lucide-react";
 import { LogoutButton } from "@/components/account/LogoutButton";
 import { SavedAddressesManager } from "@/components/account/SavedAddressesManager";
@@ -161,6 +162,61 @@ export default async function AccountPage() {
                         </div>
                       ))}
                     </div>
+
+                    {/* Shipment & Live Tracking Card */}
+                    {(order.status === "SHIPPED" || order.trackingNumber) && (
+                      <div className="my-3 p-3.5 bg-[#fbf9f5] border border-[#ecdec1] rounded-[6px] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <Truck size={15} className="text-[#b6713e]" />
+                            <span className="text-xs font-bold text-[#1c1c1c]">
+                              Shipment Dispatched
+                            </span>
+                            {order.carrierName && (
+                              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-50 text-blue-800 border border-blue-200">
+                                {order.carrierName}
+                              </span>
+                            )}
+                          </div>
+
+                          {order.trackingNumber && (
+                            <p className="text-xs text-neutral-600">
+                              <span className="text-neutral-400">Tracking ID: </span>
+                              <code className="font-mono font-bold text-[#1c1c1c] bg-white px-1.5 py-0.5 rounded border border-[#e5e5e5]">
+                                {order.trackingNumber}
+                              </code>
+                            </p>
+                          )}
+
+                          {order.shippedAt && (
+                            <p className="text-[10px] text-neutral-400">
+                              Dispatched on{" "}
+                              {new Date(order.shippedAt).toLocaleDateString("en-QA", {
+                                year: "numeric",
+                                month: "short",
+                                day: "numeric",
+                              })}
+                            </p>
+                          )}
+                        </div>
+
+                        {order.trackingUrl ? (
+                          <a
+                            href={order.trackingUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-[5px] bg-[#b6713e] text-white text-xs font-bold hover:bg-[#965a2f] transition-all shadow-xs shrink-0"
+                          >
+                            <span>Track Shipment</span>
+                            <ExternalLink size={12} />
+                          </a>
+                        ) : order.trackingNumber ? (
+                          <span className="text-[11px] font-semibold text-[#b6713e] shrink-0">
+                            In Transit
+                          </span>
+                        ) : null}
+                      </div>
+                    )}
 
                     <div className="pt-2 flex justify-end">
                       <Link

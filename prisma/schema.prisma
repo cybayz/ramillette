@@ -262,6 +262,10 @@ model Order {
   country           String            @default("QA") // "QA", "AE", "BH"
   paymentMethod     String            @default("COD") // COD or ONLINE
   paymentGatewayRef String?
+  carrierName       String?           // e.g. "Aramex", "DHL Express", "Qatar Post", etc.
+  trackingNumber    String?           // Waybill / tracking number
+  trackingUrl       String?           // Full tracking link for the customer
+  shippedAt         DateTime?         // Timestamp when order was marked shipped
   createdAt         DateTime          @default(now())
   updatedAt         DateTime          @updatedAt
   items             OrderItem[]
