@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
-import { COUNTRIES as fallbackCountries } from "@/lib/country/config";
+import { COUNTRIES as fallbackCountries, resolvePaymentMethods } from "@/lib/country/config";
 
 export const revalidate = 60; // Cache for 60 seconds
 
@@ -38,7 +38,10 @@ export async function GET() {
         phone: c.phone || "",
         supportEmail: c.supportEmail || "",
         orderEmail: c.orderEmail || "",
-        paymentMethods: c.paymentMethods ? JSON.parse(c.paymentMethods) : ["COD", "ONLINE"],
+        paymentMethods: resolvePaymentMethods(
+          c.code,
+          c.paymentMethods ? JSON.parse(c.paymentMethods) : ["COD", "ONLINE"]
+        ),
       }));
       return NextResponse.json({ success: true, countries: formatted });
     }

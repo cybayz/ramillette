@@ -12,6 +12,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { LogoutButton } from "@/components/account/LogoutButton";
+import { SavedAddressesManager } from "@/components/account/SavedAddressesManager";
 
 export default async function AccountPage() {
   const session = await getSession();
@@ -178,49 +179,14 @@ export default async function AccountPage() {
 
           {/* Saved Addresses (Right Column) */}
           <div className="lg:col-span-4 space-y-6">
-            <div className="flex items-center justify-between pb-3 border-b border-[#e5e5e5]">
-              <div className="flex items-center gap-2">
-                <MapPin size={18} className="text-[#b6713e]" />
-                <h2 className="text-lg font-bold text-[#1c1c1c]">
-                  Saved Addresses
-                </h2>
-              </div>
-            </div>
-
-            {user.addresses.length === 0 ? (
-              <div className="p-5 bg-[#fbf9f5] rounded-[8px] border border-[#e5e5e5] text-xs text-neutral-500">
-                No addresses saved yet. Addresses are saved automatically during checkout.
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {user.addresses.map((addr) => (
-                  <div
-                    key={addr.id}
-                    className="p-4 bg-[#fbf9f5] border border-[#e5e5e5] rounded-[6px] text-xs space-y-1"
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="font-bold text-[#1c1c1c]">
-                        {addr.name}
-                      </span>
-                      {addr.isDefault && (
-                        <span className="bg-[#faedcd] text-[#b6713e] text-[10px] font-bold px-1.5 py-0.5 rounded border border-[#ecdec1]">
-                          Default
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-neutral-600">{addr.addressLine1}</p>
-                    {addr.addressLine2 && (
-                      <p className="text-neutral-600">{addr.addressLine2}</p>
-                    )}
-                    <p className="text-neutral-600">
-                      {addr.area ? `${addr.area}, ` : ""}
-                      {addr.city}, {addr.country}
-                    </p>
-                    <p className="text-neutral-500 pt-1">{addr.phone}</p>
-                  </div>
-                ))}
-              </div>
-            )}
+            <SavedAddressesManager
+              initialAddresses={user.addresses}
+              defaultName={
+                `${user.firstName || ""} ${user.lastName || ""}`.trim() ||
+                user.email
+              }
+              defaultPhone={user.phone || ""}
+            />
           </div>
         </div>
       </div>

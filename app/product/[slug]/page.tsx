@@ -106,9 +106,18 @@ export default async function ProductDetailPage({ params, isArabic = false }: Pa
   }
 
   // Fetch related products in a single fast parallel/cached query
-  const relatedFinal = await getRelatedProducts(product.id, product.categoryId);
+  const rawRelatedProducts = await getRelatedProducts(product.id, product.categoryId);
 
-  const relatedProducts = relatedFinal.map((p) => ({
+  const formatCountryRecord = (c: any) => ({
+    id: c.id,
+    country: c.country,
+    price: Number(c.price),
+    compareAtPrice: c.compareAtPrice ? Number(c.compareAtPrice) : null,
+    stock: c.stock,
+    active: c.active,
+  });
+
+  const relatedProducts = rawRelatedProducts.map((p) => ({
     id: p.id,
     name: p.name,
     slug: p.slug,
@@ -120,14 +129,14 @@ export default async function ProductDetailPage({ params, isArabic = false }: Pa
     bestseller: p.bestseller,
     newArrival: p.newArrival,
     images: p.images.map((img) => ({ url: img.url, alt: img.alt })),
-    countries: p.countries,
+    countries: p.countries ? p.countries.map(formatCountryRecord) : [],
     variants: p.variants.map((v) => ({
       id: v.id,
       name: v.name,
       price: Number(v.price),
       compareAtPrice: v.compareAtPrice ? Number(v.compareAtPrice) : null,
       stock: v.stock,
-      countries: v.countries,
+      countries: v.countries ? v.countries.map(formatCountryRecord) : [],
     })),
     rating:
       p.reviews.length > 0
@@ -156,7 +165,7 @@ export default async function ProductDetailPage({ params, isArabic = false }: Pa
     concentration: "Extrait de Parfum",
     description: product.description,
     reviewsCount: product.reviews.length > 0 ? product.reviews.length : 10,
-    countries: product.countries,
+    countries: product.countries ? product.countries.map(formatCountryRecord) : [],
   };
 
   const formattedVariants = product.variants.map((v) => ({
@@ -166,7 +175,7 @@ export default async function ProductDetailPage({ params, isArabic = false }: Pa
     price: Number(v.price),
     compareAtPrice: v.compareAtPrice ? Number(v.compareAtPrice) : null,
     stock: v.stock,
-    countries: v.countries,
+    countries: v.countries ? v.countries.map(formatCountryRecord) : [],
   }));
 
   return (

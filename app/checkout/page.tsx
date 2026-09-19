@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { useCartStore } from "@/lib/store/useCartStore";
 import { useCountryStore } from "@/lib/store/useCountryStore";
-import { COUNTRIES, CountryCode } from "@/lib/country/config";
+import { resolvePaymentMethods } from "@/lib/country/config";
 import { Button } from "@/components/ui/Button";
 import { formatPrice } from "@/lib/utils";
 import { CheckoutCoupons } from "@/components/checkout/CheckoutCoupons";
@@ -21,14 +21,28 @@ import {
   Loader2,
   Clock,
   Sparkles,
-  Globe,
+  MapPin,
+  Plus,
 } from "lucide-react";
+
+interface SavedAddress {
+  id: string;
+  name: string;
+  phone: string;
+  addressLine1: string;
+  addressLine2?: string | null;
+  city?: string | null;
+  area?: string | null;
+  country?: string | null;
+  postalCode?: string | null;
+  isDefault?: boolean;
+}
 
 export default function CheckoutPage() {
   const router = useRouter();
   const pathname = usePathname();
   const isAr = Boolean(pathname?.startsWith("/ar"));
-  const { country, config, setCountry } = useCountryStore();
+  const { country, config } = useCountryStore();
 
   const {
     items,
@@ -41,6 +55,8 @@ export default function CheckoutPage() {
 
   const [mounted, setMounted] = useState(false);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+  const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([]);
+  const [selectedAddressId, setSelectedAddressId] = useState<string>("new");
   const [customerName, setCustomerName] = useState("");
   const [customerEmail, setCustomerEmail] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
@@ -52,12 +68,24 @@ export default function CheckoutPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
+  const availablePaymentMethods = resolvePaymentMethods(country, config.paymentMethods);
+
   // Sync city default if country changes
   useEffect(() => {
     if (config.cities.length > 0 && !config.cities.includes(area)) {
       setArea(config.defaultCity);
     }
   }, [country, config]);
+
+  // Sync payment method default if country changes or selected method is not valid
+  useEffect(() => {
+    if (availablePaymentMethods.length > 0) {
+      const exists = availablePaymentMethods.some((m) => m.id === paymentMethod);
+      if (!exists) {
+        setPaymentMethod(availablePaymentMethods[0].id);
+      }
+    }
+  }, [country, availablePaymentMethods, paymentMethod]);
 
   useEffect(() => {
     setMounted(true);
@@ -74,18 +102,32 @@ export default function CheckoutPage() {
         }
 
         setIsCheckingAuth(false);
-        setCustomerName(
-          `${data.user.firstName || ""} ${data.user.lastName || ""}`.trim() || data.user.email
-        );
+        const profileName =
+          `${data.user.firstName || ""} ${data.user.lastName || ""}`.trim() ||
+          data.user.email ||
+          "";
+        setCustomerName(profileName);
         setCustomerEmail(data.user.email || "");
         setCustomerPhone(data.user.phone || "");
 
-        // Prefill default address if available
-        if (data.user.addresses && data.user.addresses.length > 0) {
-          const defAddr = data.user.addresses[0];
+        const addresses: SavedAddress[] = data.user.addresses || [];
+        setSavedAddresses(addresses);
+
+        if (addresses.length > 0) {
+          // Find default address or first address
+          const defAddr = addresses.find((a) => a.isDefault) || addresses[0];
+          setSelectedAddressId(defAddr.id);
+          if (defAddr.name) setCustomerName(defAddr.name);
+          if (defAddr.phone) setCustomerPhone(defAddr.phone);
           setAddressLine1(defAddr.addressLine1 || "");
           setAddressLine2(defAddr.addressLine2 || "");
-          if (defAddr.area) setArea(defAddr.area);
+          if (defAddr.area && config.cities.includes(defAddr.area)) {
+            setArea(defAddr.area);
+          } else if (defAddr.city && config.cities.includes(defAddr.city)) {
+            setArea(defAddr.city);
+          }
+        } else {
+          setSelectedAddressId("new");
         }
       })
       .catch(() => {
@@ -94,7 +136,27 @@ export default function CheckoutPage() {
           : "/account/login?redirect=/checkout";
         window.location.href = target;
       });
-  }, [isAr]);
+  }, [isAr, config.cities]);
+
+  const handleSelectAddress = (addr: SavedAddress) => {
+    setSelectedAddressId(addr.id);
+    if (addr.name) setCustomerName(addr.name);
+    if (addr.phone) setCustomerPhone(addr.phone);
+    setAddressLine1(addr.addressLine1 || "");
+    setAddressLine2(addr.addressLine2 || "");
+    if (addr.area && config.cities.includes(addr.area)) {
+      setArea(addr.area);
+    } else if (addr.city && config.cities.includes(addr.city)) {
+      setArea(addr.city);
+    }
+  };
+
+  const handleSelectNewAddress = () => {
+    setSelectedAddressId("new");
+    setAddressLine1("");
+    setAddressLine2("");
+    setArea(config.defaultCity);
+  };
 
   if (!mounted || isCheckingAuth) {
     return (
@@ -262,101 +324,201 @@ export default function CheckoutPage() {
                 </div>
               </div>
 
-              {/* Step 2: Country & Shipping Address */}
-              <div className="bg-white p-6 rounded-[8px] border border-[#e5e5e5] shadow-xs space-y-4">
+              {/* Step 2: Destination Country & Delivery Address */}
+              <div className="bg-white p-6 rounded-[8px] border border-[#e5e5e5] shadow-xs space-y-5">
                 <div className="flex items-center justify-between pb-3 border-b border-[#f0ece1]">
-                  <h2 className="text-base font-bold text-[#1c1c1c]">
-                    2. {config.name} Delivery Address
-                  </h2>
+                  <div className="flex items-center gap-2">
+                    <MapPin size={18} className="text-[#b6713e]" />
+                    <h2 className="text-base font-bold text-[#1c1c1c]">
+                      {isAr ? `2. عنوان التوصيل في ${config.name}` : `2. ${config.name} Delivery Address`}
+                    </h2>
+                  </div>
                   <div className="flex items-center gap-1 text-xs text-[#b6713e] font-semibold">
                     <Clock size={13} />
                     <span>{config.deliveryNotice}</span>
                   </div>
                 </div>
 
-                {/* Country Switcher inside Checkout */}
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-neutral-700 mb-1.5">
-                    Destination Country / الدولة *
-                  </label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {(["QA", "AE", "BH"] as CountryCode[]).map((c) => {
-                      const item = COUNTRIES[c];
-                      const isSel = country === c;
-                      return (
-                        <button
-                          key={c}
-                          type="button"
-                          onClick={() => setCountry(c)}
-                          className={`flex items-center justify-center gap-2 p-2.5 rounded-[6px] border text-xs font-semibold transition-all ${
-                            isSel
-                              ? "bg-[#faedcd]/40 border-[#b6713e] text-[#1c1c1c]"
-                              : "border-[#e5e5e5] bg-white text-neutral-600 hover:border-neutral-400"
-                          }`}
-                        >
-                          <span className="text-base">{item.flag}</span>
-                          <span>{item.name}</span>
-                        </button>
-                      );
-                    })}
+                {/* Locked Destination Country Banner - Destination country is set to the active selected region */}
+                <div className="p-3.5 bg-[#fbf9f5] border border-[#e5e5e5] rounded-[6px] flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl">{config.flag}</span>
+                    <div>
+                      <span className="block text-[10px] font-bold uppercase tracking-wider text-neutral-400">
+                        {isAr ? "دولة وجهة التوصيل" : "Destination Country"}
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-extrabold text-[#1c1c1c]">{config.name}</span>
+                        <span className="text-xs text-neutral-500 font-medium">({config.currency})</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1.5 px-2.5 py-1 bg-white border border-[#e5e5e5] rounded text-[11px] font-semibold text-neutral-600 shadow-xs">
+                    <Lock size={12} className="text-[#b6713e]" />
+                    <span>{isAr ? "المنطقة المحددة" : "Selected Region"}</span>
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-neutral-700 mb-1.5">
-                    City / Governorate / Zone in {config.name} *
-                  </label>
-                  <select
-                    value={area}
-                    onChange={(e) => setArea(e.target.value)}
-                    className="w-full text-xs p-3 border border-[#e5e5e5] rounded-[5px] focus:outline-none focus:border-[#b6713e] bg-white font-medium cursor-pointer"
-                  >
-                    {config.cities.map((cityOption) => (
-                      <option key={cityOption} value={cityOption}>
-                        {cityOption}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                {/* Saved Addresses Selection (if customer has saved addresses) */}
+                {savedAddresses.length > 0 && (
+                  <div className="space-y-3">
+                    <label className="block text-xs font-bold uppercase tracking-wider text-neutral-700">
+                      {isAr ? "اختر من العناوين المحفوظة" : "Select from Saved Addresses"}
+                    </label>
 
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-neutral-700 mb-1.5">
-                    Street & Villa / Building Number *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={addressLine1}
-                    onChange={(e) => setAddressLine1(e.target.value)}
-                    placeholder="e.g. Villa 14, Street 920, Downtown"
-                    className="w-full text-xs p-3 border border-[#e5e5e5] rounded-[5px] focus:outline-none focus:border-[#b6713e]"
-                  />
-                </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {savedAddresses.map((addr, idx) => {
+                        const isSelected = selectedAddressId === addr.id;
+                        return (
+                          <div
+                            key={addr.id || `addr-${idx}`}
+                            onClick={() => handleSelectAddress(addr)}
+                            className={`p-3.5 rounded-[6px] border text-left cursor-pointer transition-all relative ${
+                              isSelected
+                                ? "bg-[#faedcd]/25 border-[#b6713e] ring-1 ring-[#b6713e] shadow-xs"
+                                : "bg-white border-[#e5e5e5] hover:border-neutral-300"
+                            }`}
+                          >
+                            <div className="flex items-start justify-between gap-2 mb-1">
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="radio"
+                                  name="savedAddress"
+                                  checked={isSelected}
+                                  onChange={() => handleSelectAddress(addr)}
+                                  className="text-[#b6713e] focus:ring-[#b6713e] cursor-pointer"
+                                />
+                                <span className="text-xs font-bold text-[#1c1c1c] truncate">
+                                  {addr.name}
+                                </span>
+                              </div>
+                              {addr.isDefault && (
+                                <span className="bg-[#faedcd] text-[#b6713e] text-[9px] font-bold px-1.5 py-0.5 rounded border border-[#ecdec1] shrink-0">
+                                  {isAr ? "افتراضي" : "Default"}
+                                </span>
+                              )}
+                            </div>
 
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-neutral-700 mb-1.5">
-                    Apartment / Landmark / Notes (Optional)
-                  </label>
-                  <input
-                    type="text"
-                    value={addressLine2}
-                    onChange={(e) => setAddressLine2(e.target.value)}
-                    placeholder="e.g. Near main gate or Tower 2, Apt 1402"
-                    className="w-full text-xs p-3 border border-[#e5e5e5] rounded-[5px] focus:outline-none focus:border-[#b6713e]"
-                  />
-                </div>
+                            <p className="text-[11px] text-neutral-600 line-clamp-2 pl-5 rtl:pl-0 rtl:pr-5">
+                              {addr.addressLine1}
+                              {addr.addressLine2 ? `, ${addr.addressLine2}` : ""}
+                            </p>
+                            <p className="text-[11px] text-neutral-500 pl-5 rtl:pl-0 rtl:pr-5 mt-0.5">
+                              {addr.area ? `${addr.area}, ` : ""}{addr.city || config.defaultCity}
+                              {addr.country ? ` • ${addr.country}` : ""}
+                            </p>
+                            <p className="text-[10px] text-neutral-400 pl-5 rtl:pl-0 rtl:pr-5 mt-1 font-mono">
+                              {addr.phone}
+                            </p>
+                          </div>
+                        );
+                      })}
 
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-neutral-700 mb-1.5">
-                    Delivery Instructions
-                  </label>
-                  <textarea
-                    rows={2}
-                    value={deliveryNotes}
-                    onChange={(e) => setDeliveryNotes(e.target.value)}
-                    placeholder="e.g. Please call upon arrival or leave with concierge..."
-                    className="w-full text-xs p-3 border border-[#e5e5e5] rounded-[5px] focus:outline-none focus:border-[#b6713e]"
-                  />
+                      {/* Option to enter a new address */}
+                      <div
+                        onClick={handleSelectNewAddress}
+                        className={`p-3.5 rounded-[6px] border text-left cursor-pointer transition-all flex flex-col justify-center ${
+                          selectedAddressId === "new"
+                            ? "bg-[#faedcd]/25 border-[#b6713e] ring-1 ring-[#b6713e] shadow-xs"
+                            : "bg-white border-dashed border-[#d5d5d5] hover:border-[#b6713e]"
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="radio"
+                            name="savedAddress"
+                            checked={selectedAddressId === "new"}
+                            onChange={handleSelectNewAddress}
+                            className="text-[#b6713e] focus:ring-[#b6713e] cursor-pointer"
+                          />
+                          <span className="text-xs font-bold text-[#1c1c1c] flex items-center gap-1.5">
+                            <Plus size={14} className="text-[#b6713e]" />
+                            <span>{isAr ? "توصيل إلى عنوان جديد" : "+ Deliver to a New Address"}</span>
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-neutral-500 pl-5 rtl:pl-0 rtl:pr-5 mt-1">
+                          {isAr
+                            ? "أدخل تفاصيل عنوان توصيل جديد بالأسفل"
+                            : "Enter fresh street & building details below"}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Form fields for address details */}
+                <div className="pt-2 space-y-4">
+                  {savedAddresses.length > 0 && (
+                    <div className="flex items-center justify-between pb-1 border-b border-[#f0ece1]">
+                      <span className="text-xs font-bold uppercase tracking-wider text-neutral-700">
+                        {selectedAddressId !== "new"
+                          ? (isAr ? "تفاصيل العنوان المحدد" : "Selected Address Details")
+                          : (isAr ? "تفاصيل العنوان الجديد" : "New Address Details")}
+                      </span>
+                      {selectedAddressId !== "new" && (
+                        <span className="text-[11px] text-[#b6713e] font-semibold">
+                          {isAr ? "✓ تم تعبئة العنوان المحفوظ" : "✓ Pre-filled from saved address"}
+                        </span>
+                      )}
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-neutral-700 mb-1.5">
+                      {isAr ? `المدينة / المنطقة في ${config.name} *` : `City / Zone in ${config.name} *`}
+                    </label>
+                    <select
+                      value={area}
+                      onChange={(e) => setArea(e.target.value)}
+                      className="w-full text-xs p-3 border border-[#e5e5e5] rounded-[5px] focus:outline-none focus:border-[#b6713e] bg-white font-medium cursor-pointer"
+                    >
+                      {config.cities.map((cityOption, idx) => (
+                        <option key={`${cityOption}-${idx}`} value={cityOption}>
+                          {cityOption}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-neutral-700 mb-1.5">
+                      {isAr ? "اسم الشارع ورقم الفيلا / المبنى *" : "Street & Villa / Building Number *"}
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={addressLine1}
+                      onChange={(e) => setAddressLine1(e.target.value)}
+                      placeholder={isAr ? "مثال: فيلا 14، شارع 920، الخليج الغربي" : "e.g. Villa 14, Street 920, West Bay"}
+                      className="w-full text-xs p-3 border border-[#e5e5e5] rounded-[5px] focus:outline-none focus:border-[#b6713e]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-neutral-700 mb-1.5">
+                      {isAr ? "رقم الشقة / معلم قريب (اختياري)" : "Apartment / Landmark / Notes (Optional)"}
+                    </label>
+                    <input
+                      type="text"
+                      value={addressLine2}
+                      onChange={(e) => setAddressLine2(e.target.value)}
+                      placeholder={isAr ? "مثال: برج 2، شقة 1402 أو بجانب البوابة الرئيسية" : "e.g. Near main gate or Tower 2, Apt 1402"}
+                      className="w-full text-xs p-3 border border-[#e5e5e5] rounded-[5px] focus:outline-none focus:border-[#b6713e]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-neutral-700 mb-1.5">
+                      {isAr ? "تعليمات التوصيل (اختياري)" : "Delivery Instructions (Optional)"}
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={deliveryNotes}
+                      onChange={(e) => setDeliveryNotes(e.target.value)}
+                      placeholder={isAr ? "مثال: يرجى الاتصال عند الوصول أو التسليم للأمن..." : "e.g. Please call upon arrival or leave with concierge..."}
+                      className="w-full text-xs p-3 border border-[#e5e5e5] rounded-[5px] focus:outline-none focus:border-[#b6713e]"
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -367,11 +529,12 @@ export default function CheckoutPage() {
                 </h2>
 
                 <div className="space-y-3">
-                  {config.paymentMethods.map((method) => {
-                    const isSelected = paymentMethod === method.id;
+                  {availablePaymentMethods.map((method, idx) => {
+                    const methodId = method.id || `method-${idx}`;
+                    const isSelected = paymentMethod === methodId;
                     return (
                       <label
-                        key={method.id}
+                        key={methodId}
                         className={`flex items-start gap-3 p-4 rounded-[6px] border transition-all cursor-pointer ${
                           isSelected
                             ? "border-[#b6713e] bg-[#faedcd]/20 shadow-xs"
@@ -381,15 +544,15 @@ export default function CheckoutPage() {
                         <input
                           type="radio"
                           name="payment"
-                          value={method.id}
+                          value={methodId}
                           checked={isSelected}
-                          onChange={() => setPaymentMethod(method.id)}
+                          onChange={() => setPaymentMethod(methodId)}
                           className="mt-0.5 text-[#b6713e] focus:ring-[#b6713e]"
                         />
                         <div className="flex-1">
                           <div className="flex items-center justify-between">
                             <span className="text-xs font-bold text-[#1c1c1c] flex items-center gap-1.5">
-                              {method.id === "COD" ? (
+                              {methodId === "COD" ? (
                                 <Banknote size={16} className="text-[#b6713e]" />
                               ) : (
                                 <CreditCard size={16} className="text-[#b6713e]" />
@@ -439,8 +602,8 @@ export default function CheckoutPage() {
 
               {/* Items List */}
               <div className="divide-y divide-[#f0ece1] max-h-72 overflow-y-auto pr-1">
-                {items.map((item) => (
-                  <div key={item.id} className="py-3 flex items-center gap-3">
+                {items.map((item, idx) => (
+                  <div key={`${item.id || item.productId}-${idx}`} className="py-3 flex items-center gap-3">
                     <div className="relative w-14 h-14 bg-[#fbf9f5] rounded-[4px] border border-[#e5e5e5] overflow-hidden shrink-0">
                       {item.image ? (
                         <Image

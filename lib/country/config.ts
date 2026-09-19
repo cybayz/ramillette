@@ -200,6 +200,77 @@ export const COUNTRIES: Record<CountryCode, CountryConfig> = {
 
 export const DEFAULT_COUNTRY: CountryCode = "QA";
 
+export interface PaymentMethodInfo {
+  id: string;
+  name: string;
+  nameAr: string;
+  description: string;
+  descriptionAr: string;
+  badge?: string;
+}
+
+export const MASTER_PAYMENT_METHODS: Record<string, PaymentMethodInfo> = {
+  COD: {
+    id: "COD",
+    name: "Cash on Delivery",
+    nameAr: "الدفع عند الاستلام",
+    description: "Pay with cash or card upon delivery.",
+    descriptionAr: "ادفع نقدًا أو بالبطاقة عند الاستلام.",
+  },
+  ONLINE: {
+    id: "ONLINE",
+    name: "Debit / Credit Card",
+    nameAr: "بطاقة الخصم / الائتمان",
+    description: "Visa, Mastercard & GCC cards via secure payment gateway.",
+    descriptionAr: "فيزا، ماستركارد وبطاقات دول الخليج عبر بوابة دفع آمنة.",
+    badge: "Secure",
+  },
+  TABBY_TAMARA: {
+    id: "TABBY_TAMARA",
+    name: "Tabby & Tamara (Split in 4)",
+    nameAr: "تابي وتمارا (قسمها على 4 دفعات)",
+    description: "Pay 25% today and split the rest over 3 months with 0% interest.",
+    descriptionAr: "ادفع 25% اليوم وقسم الباقي على 3 أشهر بدون فوائد.",
+    badge: "0% Interest",
+  },
+  BENEFIT_PAY: {
+    id: "BENEFIT_PAY",
+    name: "BenefitPay & CrediMax",
+    nameAr: "بنفت باي وكريديمكس",
+    description: "Instant QR & app payment via Bahrain national BenefitPay network.",
+    descriptionAr: "دفع فوري سريع عبر شبكة بنفت باي الوطنية وكريديمكس.",
+    badge: "National Fav",
+  },
+};
+
+export function resolvePaymentMethods(
+  countryCode: string = "QA",
+  methods?: (string | PaymentMethodInfo)[]
+): PaymentMethodInfo[] {
+  const upper = (countryCode || DEFAULT_COUNTRY).toUpperCase() as CountryCode;
+  const staticConfig = COUNTRIES[upper] || COUNTRIES[DEFAULT_COUNTRY];
+
+  if (!methods || methods.length === 0) {
+    return staticConfig.paymentMethods;
+  }
+
+  return methods.map((m) => {
+    if (typeof m === "string") {
+      const found = staticConfig.paymentMethods.find((pm) => pm.id === m);
+      if (found) return found;
+      if (MASTER_PAYMENT_METHODS[m]) return MASTER_PAYMENT_METHODS[m];
+      return {
+        id: m,
+        name: m,
+        nameAr: m,
+        description: `Pay securely using ${m}`,
+        descriptionAr: `الدفع بأمان عبر ${m}`,
+      };
+    }
+    return m;
+  });
+}
+
 export function getCountryConfig(code?: string | null): CountryConfig {
   if (code && code.toUpperCase() in COUNTRIES) {
     return COUNTRIES[code.toUpperCase() as CountryCode];
@@ -210,3 +281,4 @@ export function getCountryConfig(code?: string | null): CountryConfig {
 export function isValidCountry(code?: string | null): code is CountryCode {
   return Boolean(code && code.toUpperCase() in COUNTRIES);
 }
+
