@@ -13,6 +13,8 @@ async function main() {
   await prisma.cart.deleteMany();
   await prisma.wishlist.deleteMany();
   await prisma.review.deleteMany();
+  await prisma.productVariantCountry.deleteMany();
+  await prisma.productCountry.deleteMany();
   await prisma.productImage.deleteMany();
   await prisma.productVariant.deleteMany();
   await prisma.product.deleteMany();
@@ -126,112 +128,176 @@ async function main() {
     "tobacco-vanille-40",
   ]);
 
-  for (const p of rawProducts) {
-    // Determine category
-    let categorySlug = "inspired";
-    if (p.handle.includes("amber-code")) {
-      categorySlug = "own-brand";
-    } else if (
-      p.handle.includes("tuscan") ||
-      p.handle.includes("bin-shaikh") ||
-      p.handle.includes("marj") ||
-      p.handle.includes("oudh")
-    ) {
-      categorySlug = "luxury-perfumes";
-    }
+  console.log(`Processing ${rawProducts.length} products...`);
+  const CHUNK_SIZE = 6;
+  for (let i = 0; i < rawProducts.length; i += CHUNK_SIZE) {
+    const chunk = rawProducts.slice(i, i + CHUNK_SIZE);
+    await Promise.all(
+      chunk.map(async (p: any) => {
+        let categorySlug = "inspired";
+        if (p.handle.includes("amber-code")) {
+          categorySlug = "own-brand";
+        } else if (
+          p.handle.includes("tuscan") ||
+          p.handle.includes("bin-shaikh") ||
+          p.handle.includes("marj") ||
+          p.handle.includes("oudh")
+        ) {
+          categorySlug = "luxury-perfumes";
+        }
 
-    const categoryId = categoryMap[categorySlug];
-    const isBestSeller = bestSellerHandles.has(p.handle);
-    const isNewArrival = newArrivalHandles.has(p.handle);
-    const isFeatured = isBestSeller || isNewArrival;
+        const categoryId = categoryMap[categorySlug];
+        const isBestSeller = bestSellerHandles.has(p.handle);
+        const isNewArrival = newArrivalHandles.has(p.handle);
+        const isFeatured = isBestSeller || isNewArrival;
 
-    // Clean description HTML
-    let cleanDesc = p.body_html
-      ? p.body_html.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim()
-      : `${p.title} is an exquisite, artisanal fragrance crafted with luxury fragrance oils for unmatched sillage and longevity.`;
+        let cleanDesc = p.body_html
+          ? p.body_html.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim()
+          : `${p.title} is an exquisite, artisanal fragrance crafted with luxury fragrance oils for unmatched sillage and longevity.`;
 
-    // Base price
-    const variants = p.variants || [];
-    const minPrice = variants.length > 0
-      ? Math.min(...variants.map((v: any) => parseFloat(v.price) || 50))
-      : 60.0;
-    const comparePrice = variants[0]?.compare_at_price
-      ? parseFloat(variants[0].compare_at_price)
-      : null;
+        const variants = p.variants || [];
+        const minPrice =
+          variants.length > 0
+            ? Math.min(...variants.map((v: any) => parseFloat(v.price) || 50))
+            : 60.0;
+        const comparePrice = variants[0]?.compare_at_price
+          ? parseFloat(variants[0].compare_at_price)
+          : null;
+        const images = p.images || [];
 
-    const createdProduct = await prisma.product.create({
-      data: {
-        name: p.title,
-        slug: p.handle,
-        description: cleanDesc,
-        shortDescription: `${p.title} luxury parfum by Ramillette. Long-lasting Qatar formulation.`,
-        brand: p.vendor || "Ramillette",
-        categoryId,
-        basePrice: minPrice,
-        compareAtPrice: comparePrice && comparePrice > minPrice ? comparePrice : null,
-        active: true,
-        featured: isFeatured,
-        bestseller: isBestSeller,
-        newArrival: isNewArrival,
-        stock: 85,
-        topNotes: "Bergamot, Pink Pepper, Sicilian Lemon",
-        heartNotes: "Damascena Rose, Ambergris, French Lavender",
-        baseNotes: "Royal Oud, Madagascar Vanilla, White Musk",
-        fragranceFamily: "Oriental Woody / Amber Floral",
-      },
-    });
+        const createdProduct = await prisma.product.create({
+          data: {
+            name: p.title,
+            slug: p.handle,
+            description: cleanDesc,
+            shortDescription: `${p.title} luxury parfum by Ramillette. Long-lasting Qatar formulation.`,
+            brand: p.vendor || "Ramillette",
+            categoryId,
+            basePrice: minPrice,
+            compareAtPrice: comparePrice && comparePrice > minPrice ? comparePrice : null,
+            active: true,
+            featured: isFeatured,
+            bestseller: isBestSeller,
+            newArrival: isNewArrival,
+            stock: 85,
+            topNotes: "Bergamot, Pink Pepper, Sicilian Lemon",
+            heartNotes: "Damascena Rose, Ambergris, French Lavender",
+            baseNotes: "Royal Oud, Madagascar Vanilla, White Musk",
+            fragranceFamily: "Oriental Woody / Amber Floral",
+            images: {
+              createMany: {
+                data: images.map((img: any, idx: number) => ({
+                  url: img.src,
+                  alt: `${p.title} - Ramillette Perfumes`,
+                  sortOrder: idx,
+                })),
+              },
+            },
+            countries: {
+              createMany: {
+                data: [
+                  {
+                    country: "QA",
+                    price: minPrice,
+                    compareAtPrice: comparePrice && comparePrice > minPrice ? comparePrice : null,
+                    stock: 85,
+                    active: true,
+                  },
+                  {
+                    country: "AE",
+                    price: Math.round(minPrice * 1.01),
+                    compareAtPrice: comparePrice ? Math.round(comparePrice * 1.01) : null,
+                    stock: 60,
+                    active: true,
+                  },
+                  {
+                    country: "BH",
+                    price: Number((minPrice * 0.103).toFixed(3)),
+                    compareAtPrice: comparePrice ? Number((comparePrice * 0.103).toFixed(3)) : null,
+                    stock: 35,
+                    active: true,
+                  },
+                ],
+              },
+            },
+            reviews: {
+              createMany: {
+                data: [
+                  {
+                    authorName: "Nasser Al-Thani",
+                    rating: 5,
+                    title: "Incredible sillage and projection",
+                    comment: `I ordered ${p.title} and the delivery arrived in Doha within 2 hours. The scent lasts all day on clothes and smells remarkably rich.`,
+                    country: "QA",
+                    approved: true,
+                  },
+                  {
+                    authorName: "Zayed Al-Mansoor",
+                    rating: 5,
+                    title: "Luxury perfumery in Dubai",
+                    comment: `Sprayed ${p.title} before leaving my apartment in Downtown Dubai. Projection remained intense through meetings and dinner.`,
+                    country: "AE",
+                    approved: true,
+                  },
+                  {
+                    authorName: "Noor Al-Zayani",
+                    rating: 5,
+                    title: "Stunning longevity in Bahrain",
+                    comment: `Fast delivery in Riffa! ${p.title} is truly a masterpiece. BenefitPay checkout was instant and effortless.`,
+                    country: "BH",
+                    approved: true,
+                  },
+                ],
+              },
+            },
+          },
+        });
 
-    // Seed images
-    const images = p.images || [];
-    for (let i = 0; i < images.length; i++) {
-      await prisma.productImage.create({
-        data: {
-          productId: createdProduct.id,
-          url: images[i].src,
-          alt: `${p.title} - Ramillette Perfumes Qatar`,
-          sortOrder: i,
-        },
-      });
-    }
-
-    // Seed variants
-    for (const v of variants) {
-      const variantPrice = parseFloat(v.price) || minPrice;
-      const variantCompare = v.compare_at_price ? parseFloat(v.compare_at_price) : null;
-      await prisma.productVariant.create({
-        data: {
-          productId: createdProduct.id,
-          name: v.title || v.option1 || "Standard",
-          sku: `RAM-${p.id}-${v.id}`,
-          price: variantPrice,
-          compareAtPrice: variantCompare && variantCompare > variantPrice ? variantCompare : null,
-          stock: 40,
-          active: true,
-        },
-      });
-    }
-
-    // Seed customer reviews
-    await prisma.review.createMany({
-      data: [
-        {
-          productId: createdProduct.id,
-          authorName: "Nasser Al-Thani",
-          rating: 5,
-          title: "Incredible sillage and projection",
-          comment: `I ordered ${p.title} and the delivery arrived in Doha within 2 hours. The scent lasts all day on clothes and smells remarkably rich.`,
-          approved: true,
-        },
-        {
-          productId: createdProduct.id,
-          authorName: "Fatima M.",
-          rating: 5,
-          title: "Top quality perfume",
-          comment: "Authentic fragrance notes, gorgeous packaging and great customer service. Will definitely order again!",
-          approved: true,
-        },
-      ],
-    });
+        for (const v of variants) {
+          const variantPrice = parseFloat(v.price) || minPrice;
+          const variantCompare = v.compare_at_price ? parseFloat(v.compare_at_price) : null;
+          await prisma.productVariant.create({
+            data: {
+              productId: createdProduct.id,
+              name: v.title || v.option1 || "Standard",
+              sku: `RAM-${p.id}-${v.id}`,
+              price: variantPrice,
+              compareAtPrice: variantCompare && variantCompare > variantPrice ? variantCompare : null,
+              stock: 40,
+              active: true,
+              countries: {
+                createMany: {
+                  data: [
+                    {
+                      country: "QA",
+                      price: variantPrice,
+                      compareAtPrice: variantCompare && variantCompare > variantPrice ? variantCompare : null,
+                      stock: 45,
+                      active: true,
+                    },
+                    {
+                      country: "AE",
+                      price: Math.round(variantPrice * 1.01),
+                      compareAtPrice: variantCompare ? Math.round(variantCompare * 1.01) : null,
+                      stock: 30,
+                      active: true,
+                    },
+                    {
+                      country: "BH",
+                      price: Number((variantPrice * 0.103).toFixed(3)),
+                      compareAtPrice: variantCompare ? Number((variantCompare * 0.103).toFixed(3)) : null,
+                      stock: 20,
+                      active: true,
+                    },
+                  ],
+                },
+              },
+            },
+          });
+        }
+      })
+    );
+    console.log(`Seeded ${Math.min(i + CHUNK_SIZE, rawProducts.length)} / ${rawProducts.length} products`);
   }
 
   console.log("Seeding coupons...");

@@ -9,7 +9,9 @@ import { useCartStore } from "@/lib/store/useCartStore";
 import { useWishlistStore } from "@/lib/store/useWishlistStore";
 import { useLanguageStore } from "@/lib/store/useLanguageStore";
 import { productArabicNames } from "@/lib/i18n";
-import { cn } from "@/lib/utils";
+import { cn, formatPrice } from "@/lib/utils";
+import { useCountryStore } from "@/lib/store/useCountryStore";
+import { resolveProductForCountry, resolveVariantForCountry } from "@/lib/country/productResolver";
 
 export interface CardVariant {
   id: string;
@@ -17,6 +19,7 @@ export interface CardVariant {
   price: number;
   compareAtPrice?: number | null;
   stock?: number;
+  countries?: any[];
 }
 
 export interface CardProduct {
@@ -34,6 +37,7 @@ export interface CardProduct {
   rating?: number;
   reviewsCount?: number;
   stock?: number;
+  countries?: any[];
 }
 
 interface ProductCardProps {
@@ -56,33 +60,60 @@ export function ProductCard({
   const { toggleWishlist, isInWishlist } = useWishlistStore();
   const { language } = useLanguageStore();
 
+  const { country } = useCountryStore();
   const isArabicActive = isArabic ?? Boolean(pathname?.startsWith("/ar"));
   const productHref = isArabicActive ? `/ar/product/${product.slug}` : `/product/${product.slug}`;
 
+  const resolvedProd = React.useMemo(() => {
+    return resolveProductForCountry(product, country);
+  }, [product, country]);
+
+  // Guaranteed list of variants resolved for active country
+  const availableVariants: CardVariant[] = React.useMemo(() => {
+    const rawVariants =
+      product.variants && product.variants.length > 0
+        ? product.variants
+        : [
+            {
+              id: "default",
+              name:
+                selectedSize && selectedSize !== "all" && selectedSize !== "All"
+                  ? selectedSize
+                  : "50ml",
+              price: product.basePrice,
+              compareAtPrice: product.compareAtPrice,
+              stock: product.stock ?? 50,
+              countries: product.countries,
+            },
+          ];
+
+    return rawVariants.map((v) => {
+      const res = resolveVariantForCountry(v, country);
+      return {
+        ...v,
+        price: res.price,
+        compareAtPrice: res.compareAtPrice,
+        stock: res.stock,
+      };
+    });
+  }, [
+    product.variants,
+    product.basePrice,
+    product.compareAtPrice,
+    product.stock,
+    product.countries,
+    selectedSize,
+    country,
+  ]);
+
   // Check if product or its variants are out of stock
   const isOutOfStock = React.useMemo(() => {
-    if (product.stock !== undefined && product.stock <= 0) return true;
-    if (product.variants && product.variants.length > 0) {
-      return product.variants.every((v) => v.stock !== undefined && v.stock <= 0);
+    if (resolvedProd.stock <= 0) return true;
+    if (availableVariants.length > 0) {
+      return availableVariants.every((v) => v.stock !== undefined && v.stock <= 0);
     }
     return false;
-  }, [product.stock, product.variants]);
-
-  // Guaranteed list of variants (synthesize fallback if none provided)
-  const availableVariants: CardVariant[] = React.useMemo(() => {
-    if (product.variants && product.variants.length > 0) {
-      return product.variants;
-    }
-    return [
-      {
-        id: "default",
-        name: selectedSize && selectedSize !== "all" && selectedSize !== "All" ? selectedSize : "50ml",
-        price: product.basePrice,
-        compareAtPrice: product.compareAtPrice,
-        stock: product.stock ?? 50,
-      },
-    ];
-  }, [product.variants, product.basePrice, product.compareAtPrice, product.stock, selectedSize]);
+  }, [resolvedProd.stock, availableVariants]);
 
   // Find variant matching selectedSize, or default to first variant
   const activeVariant = React.useMemo(() => {
@@ -124,9 +155,7 @@ export function ProductCard({
     "https://images.unsplash.com/photo-1592945403244-b3fbafd7f539?q=80&w=600";
   const hoverImage = product.images[1]?.url || primaryImage;
 
-  const currentPrice = selectedVariant
-    ? selectedVariant.price
-    : product.basePrice;
+  const currentPrice = selectedVariant ? selectedVariant.price : resolvedProd.price;
 
   // Size badge text
   const sizeBadge =
@@ -262,7 +291,7 @@ export function ProductCard({
           </Link>
           <div className="mt-1 text-start">
             <span className="text-[14px] sm:text-[15px] font-bold text-neutral-900">
-              QAR {currentPrice.toFixed(2)}
+              {formatPrice(currentPrice, country)}
             </span>
           </div>
 
@@ -336,7 +365,7 @@ export function ProductCard({
 
           <div className="mt-1.5 text-start">
             <span className="text-[15px] sm:text-base font-bold text-[#1c1c1c]">
-              QAR {currentPrice.toFixed(2)}
+              {formatPrice(currentPrice, country)}
             </span>
           </div>
 
@@ -426,11 +455,11 @@ export function ProductCard({
                 </h4>
                 <div className="mt-0.5 flex items-baseline gap-2">
                   <span className="text-base font-bold text-[#4e6648]">
-                    QAR {(modalVariant?.price ?? currentPrice).toFixed(2)}
+                    {formatPrice(modalVariant?.price ?? currentPrice, country)}
                   </span>
                   {modalVariant?.compareAtPrice && modalVariant.compareAtPrice > modalVariant.price && (
                     <span className="text-xs text-neutral-400 line-through">
-                      QAR {modalVariant.compareAtPrice.toFixed(2)}
+                      {formatPrice(modalVariant.compareAtPrice, country)}
                     </span>
                   )}
                 </div>
@@ -475,7 +504,7 @@ export function ProductCard({
                     >
                       <div className="text-xs font-bold">{v.name}</div>
                       <div className="text-[11px] text-neutral-500 mt-0.5 font-medium">
-                        {isVarOutOfStock ? outOfStockText : `QAR ${v.price}`}
+                        {isVarOutOfStock ? outOfStockText : formatPrice(v.price, country)}
                       </div>
                     </button>
                   );
@@ -523,7 +552,7 @@ export function ProductCard({
                 >
                   <ShoppingCart size={15} className="stroke-[2]" />
                   <span>
-                    {addToCartText} • QAR {(modalVariant?.price ?? currentPrice).toFixed(2)}
+                    {addToCartText} • {formatPrice(modalVariant?.price ?? currentPrice, country)}
                   </span>
                 </button>
               )}

@@ -1,0 +1,212 @@
+export type CountryCode = "QA" | "AE" | "BH";
+
+export interface CountryConfig {
+  code: CountryCode;
+  name: string;
+  nameAr: string;
+  flag: string;
+  currency: string;
+  currencyAr: string;
+  currencyDecimals: number;
+  exchangeRate: number; // Conversion multiplier from QAR base
+  phonePrefix: string;
+  freeShippingThreshold: number;
+  standardShippingFee: number;
+  defaultCity: string;
+  cities: string[];
+  boutiqueName: string;
+  boutiqueLocation: string;
+  boutiqueLocationAr: string;
+  deliveryNotice: string;
+  deliveryNoticeAr: string;
+  phone: string;
+  supportEmail: string;
+  orderEmail: string;
+  paymentMethods: {
+    id: string;
+    name: string;
+    nameAr: string;
+    description: string;
+    descriptionAr: string;
+    badge?: string;
+  }[];
+}
+
+export const COUNTRIES: Record<CountryCode, CountryConfig> = {
+  QA: {
+    code: "QA",
+    name: "Qatar",
+    nameAr: "قطر",
+    flag: "🇶🇦",
+    currency: "QAR",
+    currencyAr: "ر.ق",
+    currencyDecimals: 2,
+    exchangeRate: 1.0,
+    phonePrefix: "+974",
+    freeShippingThreshold: 900,
+    standardShippingFee: 30,
+    defaultCity: "Doha",
+    cities: [
+      "Doha",
+      "Al Wakrah",
+      "Al Rayyan",
+      "Lusail",
+      "Umm Salal",
+      "Al Khor",
+      "Al Daayen",
+      "Al Shamal",
+    ],
+    boutiqueName: "Souq Al Wakra Boutique",
+    boutiqueLocation: "Souq Al Wakra, Qatar",
+    boutiqueLocationAr: "سوق الوكرة، قطر",
+    deliveryNotice: "Free 2-Hour Express Delivery across Doha on orders over QAR 900",
+    deliveryNoticeAr: "توصيل سريع مجاني خلال ساعتين في الدوحة للطلبات التي تزيد عن 900 ر.ق",
+    phone: "+974 5555 1234",
+    supportEmail: "support.qa@ramillette.com",
+    orderEmail: "orders@ramillette.qa",
+    paymentMethods: [
+      {
+        id: "COD",
+        name: "Cash on Delivery",
+        nameAr: "الدفع عند الاستلام",
+        description: "Pay with cash or card upon delivery in Qatar.",
+        descriptionAr: "ادفع نقدًا أو بالبطاقة عند الاستلام في قطر.",
+      },
+      {
+        id: "ONLINE",
+        name: "Debit / Credit Card (Qatar)",
+        nameAr: "بطاقة الخصم / الائتمان (قطر)",
+        description: "Pay securely via SkipCash, QNB SimpliPay & Qatar Card Network.",
+        descriptionAr: "ادفع بأمان عبر سكيب كاش وبوابة بنك قطر الوطني.",
+        badge: "Instant",
+      },
+    ],
+  },
+  AE: {
+    code: "AE",
+    name: "United Arab Emirates",
+    nameAr: "الإمارات العربية المتحدة",
+    flag: "🇦🇪",
+    currency: "AED",
+    currencyAr: "د.إ",
+    currencyDecimals: 2,
+    exchangeRate: 1.01,
+    phonePrefix: "+971",
+    freeShippingThreshold: 900,
+    standardShippingFee: 30,
+    defaultCity: "Dubai",
+    cities: [
+      "Dubai",
+      "Abu Dhabi",
+      "Sharjah",
+      "Ajman",
+      "Ras Al Khaimah",
+      "Fujairah",
+      "Umm Al Quwain",
+      "Al Ain",
+    ],
+    boutiqueName: "Downtown Dubai Hub",
+    boutiqueLocation: "Downtown Dubai, UAE",
+    boutiqueLocationAr: "وسط مدينة دبي، الإمارات",
+    deliveryNotice: "Next-Day Express Delivery across Dubai & Abu Dhabi on orders over AED 900",
+    deliveryNoticeAr: "توصيل سريع في اليوم التالي في دبي وأبوظبي للطلبات التي تزيد عن 900 د.إ",
+    phone: "+971 4 333 5678",
+    supportEmail: "support.ae@ramillette.com",
+    orderEmail: "orders@ramillette.ae",
+    paymentMethods: [
+      {
+        id: "COD",
+        name: "Cash on Delivery",
+        nameAr: "الدفع عند الاستلام",
+        description: "Pay cash upon arrival anywhere in the UAE.",
+        descriptionAr: "ادفع نقدًا عند الاستلام في أي مكان بالإمارات.",
+      },
+      {
+        id: "ONLINE",
+        name: "Credit / Debit Card (UAE)",
+        nameAr: "بطاقة الائتمان / الخصم (الإمارات)",
+        description: "Visa, Mastercard, Apple Pay via Stripe UAE & Network International.",
+        descriptionAr: "فيزا، ماستركارد، وأبل باي عبر شبكة الدفع الإماراتية.",
+        badge: "Secure",
+      },
+      {
+        id: "TABBY_TAMARA",
+        name: "Tabby & Tamara (Split in 4)",
+        nameAr: "تابي وتمارا (قسمها على 4 دفعات)",
+        description: "Pay 25% today and split the rest over 3 months with 0% interest.",
+        descriptionAr: "ادفع 25% اليوم وقسم الباقي على 3 أشهر بدون فوائد.",
+        badge: "0% Interest",
+      },
+    ],
+  },
+  BH: {
+    code: "BH",
+    name: "Bahrain",
+    nameAr: "البحرين",
+    flag: "🇧🇭",
+    currency: "BHD",
+    currencyAr: "د.ب",
+    currencyDecimals: 3,
+    exchangeRate: 0.103, // e.g. 350 QAR = 36.050 BHD
+    phonePrefix: "+973",
+    freeShippingThreshold: 90,
+    standardShippingFee: 3,
+    defaultCity: "Manama",
+    cities: [
+      "Manama",
+      "Muharraq",
+      "Riffa",
+      "Hamad Town",
+      "A'ali",
+      "Isa Town",
+      "Sitra",
+      "Budaiya",
+      "Saar",
+    ],
+    boutiqueName: "Bab Al Bahrain Boutique",
+    boutiqueLocation: "Bab Al Bahrain, Manama",
+    boutiqueLocationAr: "باب البحرين، المنامة",
+    deliveryNotice: "Express Same-Day Delivery across Manama & Riffa on orders over BHD 90",
+    deliveryNoticeAr: "توصيل سريع في نفس اليوم في المنامة والرفاع للطلبات التي تزيد عن 90 د.ب",
+    phone: "+973 17 888 999",
+    supportEmail: "support.bh@ramillette.com",
+    orderEmail: "orders@ramillette.bh",
+    paymentMethods: [
+      {
+        id: "COD",
+        name: "Cash on Delivery",
+        nameAr: "الدفع عند الاستلام",
+        description: "Pay upon physical delivery across the Kingdom of Bahrain.",
+        descriptionAr: "الدفع نقدًا عند التسليم في جميع أنحاء مملكة البحرين.",
+      },
+      {
+        id: "BENEFIT_PAY",
+        name: "BenefitPay & CrediMax",
+        nameAr: "بنفت باي وكريديمكس",
+        description: "Instant QR & app payment via Bahrain national BenefitPay network.",
+        descriptionAr: "دفع فوري سريع عبر شبكة بنفت باي الوطنية وكريديمكس.",
+        badge: "National Fav",
+      },
+      {
+        id: "ONLINE",
+        name: "Credit / Debit Card",
+        nameAr: "بطاقة الائتمان / الخصم",
+        description: "Visa, Mastercard & GCC cards via Tap Bahrain.",
+        descriptionAr: "فيزا، ماستركارد وبطاقات دول الخليج عبر تاب البحرين.",
+      },
+    ],
+  },
+};
+
+export const DEFAULT_COUNTRY: CountryCode = "QA";
+
+export function getCountryConfig(code?: string | null): CountryConfig {
+  if (code && code.toUpperCase() in COUNTRIES) {
+    return COUNTRIES[code.toUpperCase() as CountryCode];
+  }
+  return COUNTRIES[DEFAULT_COUNTRY];
+}
+
+export function isValidCountry(code?: string | null): code is CountryCode {
+  return Boolean(code && code.toUpperCase() in COUNTRIES);
+}

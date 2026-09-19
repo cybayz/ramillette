@@ -1,65 +1,47 @@
 import prisma from "@/lib/db/prisma";
 
 export async function getHomeProducts() {
+  const includeConfig = {
+    images: { orderBy: { sortOrder: "asc" as const } },
+    variants: {
+      where: { active: true },
+      orderBy: { price: "asc" as const },
+      include: { countries: true },
+    },
+    reviews: { where: { approved: true } },
+    category: true,
+    countries: true,
+  };
+
   const [allProductsRaw, bestSellersRaw, ownBrandRaw, inspiredRaw, luxuryRaw, newArrivalsRaw] =
     await Promise.all([
       prisma.product.findMany({
         where: { active: true },
-        include: {
-          images: { orderBy: { sortOrder: "asc" } },
-          variants: { where: { active: true }, orderBy: { price: "asc" } },
-          reviews: { where: { approved: true } },
-          category: true,
-        },
+        include: includeConfig,
       }),
       prisma.product.findMany({
         where: { active: true, bestseller: true },
-        include: {
-          images: { orderBy: { sortOrder: "asc" } },
-          variants: { where: { active: true }, orderBy: { price: "asc" } },
-          reviews: { where: { approved: true } },
-          category: true,
-        },
+        include: includeConfig,
         take: 12,
       }),
       prisma.product.findMany({
         where: { active: true, category: { slug: "own-brand" } },
-        include: {
-          images: { orderBy: { sortOrder: "asc" } },
-          variants: { where: { active: true }, orderBy: { price: "asc" } },
-          reviews: { where: { approved: true } },
-          category: true,
-        },
+        include: includeConfig,
         take: 10,
       }),
       prisma.product.findMany({
         where: { active: true, category: { slug: "inspired" } },
-        include: {
-          images: { orderBy: { sortOrder: "asc" } },
-          variants: { where: { active: true }, orderBy: { price: "asc" } },
-          reviews: { where: { approved: true } },
-          category: true,
-        },
+        include: includeConfig,
         take: 12,
       }),
       prisma.product.findMany({
         where: { active: true, category: { slug: "luxury-perfumes" } },
-        include: {
-          images: { orderBy: { sortOrder: "asc" } },
-          variants: { where: { active: true }, orderBy: { price: "asc" } },
-          reviews: { where: { approved: true } },
-          category: true,
-        },
+        include: includeConfig,
         take: 12,
       }),
       prisma.product.findMany({
         where: { active: true, newArrival: true },
-        include: {
-          images: { orderBy: { sortOrder: "asc" } },
-          variants: { where: { active: true }, orderBy: { price: "asc" } },
-          reviews: { where: { approved: true } },
-          category: true,
-        },
+        include: includeConfig,
         take: 10,
       }),
     ]);
@@ -72,15 +54,34 @@ export async function getHomeProducts() {
     categoryName: p.category?.name,
     basePrice: Number(p.basePrice),
     compareAtPrice: p.compareAtPrice ? Number(p.compareAtPrice) : null,
+    stock: p.stock,
     bestseller: p.bestseller,
     newArrival: p.newArrival,
     images: p.images.map((img: any) => ({ url: img.url, alt: img.alt })),
+    countries: p.countries
+      ? p.countries.map((c: any) => ({
+          country: c.country,
+          price: Number(c.price),
+          compareAtPrice: c.compareAtPrice ? Number(c.compareAtPrice) : null,
+          stock: c.stock,
+          active: c.active,
+        }))
+      : [],
     variants: p.variants.map((v: any) => ({
       id: v.id,
       name: v.name,
       price: Number(v.price),
       compareAtPrice: v.compareAtPrice ? Number(v.compareAtPrice) : null,
       stock: v.stock,
+      countries: v.countries
+        ? v.countries.map((vc: any) => ({
+            country: vc.country,
+            price: Number(vc.price),
+            compareAtPrice: vc.compareAtPrice ? Number(vc.compareAtPrice) : null,
+            stock: vc.stock,
+            active: vc.active,
+          }))
+        : [],
     })),
     rating:
       p.reviews?.length > 0

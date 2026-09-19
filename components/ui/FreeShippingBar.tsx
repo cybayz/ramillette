@@ -3,6 +3,7 @@
 import React from "react";
 import { formatPrice } from "@/lib/utils";
 import { CheckCircle2, Truck } from "lucide-react";
+import { useCountryStore } from "@/lib/store/useCountryStore";
 
 interface FreeShippingBarProps {
   currentAmount: number;
@@ -12,11 +13,13 @@ interface FreeShippingBarProps {
 
 export function FreeShippingBar({
   currentAmount,
-  threshold = 900,
+  threshold,
   className,
 }: FreeShippingBarProps) {
-  const percentage = Math.min(100, Math.round((currentAmount / threshold) * 100));
-  const remaining = Math.max(0, threshold - currentAmount);
+  const { country, config } = useCountryStore();
+  const effectiveThreshold = threshold ?? config.freeShippingThreshold;
+  const percentage = Math.min(100, Math.round((currentAmount / effectiveThreshold) * 100));
+  const remaining = Math.max(0, effectiveThreshold - currentAmount);
   const isFree = remaining === 0;
 
   return (
@@ -26,14 +29,14 @@ export function FreeShippingBar({
           <>
             <CheckCircle2 size={16} className="text-[#0d9d00]" />
             <span className="font-semibold text-[#0d9d00]">
-              Congratulations! You've unlocked Free Shipping across Qatar!
+              Congratulations! You've unlocked Free Delivery across {config.name}!
             </span>
           </>
         ) : (
           <>
             <Truck size={16} className="text-[#b6713e]" />
             <span>
-              Add <strong className="text-[#b6713e]">{formatPrice(remaining)}</strong> more to get{" "}
+              Add <strong className="text-[#b6713e]">{formatPrice(remaining, country)}</strong> more to get{" "}
               <strong>FREE SHIPPING</strong>!
             </span>
           </>

@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
 import { getSession } from "@/lib/auth/session";
-import { getPaymentProvider } from "@/lib/payments";
+import { CountryCode, getCountryConfig, isValidCountry } from "@/lib/country/config";
+import { resolveProductForCountry, resolveVariantForCountry } from "@/lib/country/productResolver";
+import { getPaymentProvider } from "@/lib/services/payment";
+import { getSmsProvider } from "@/lib/services/sms";
+import { getEmailProvider } from "@/lib/services/email";
 
 export async function POST(request: Request) {
   try {
@@ -23,13 +27,26 @@ export async function POST(request: Request) {
       addressLine1,
       addressLine2,
       area,
-      city = "Doha",
+      city,
       country = "Qatar",
+      countryCode: rawCountryCode,
       deliveryNotes,
-      paymentMethod = "COD", // COD or ONLINE
+      paymentMethod = "COD",
       couponCode,
       items,
     } = body;
+
+    // Resolve Country Code
+    let targetCountryCode: CountryCode = "QA";
+    if (isValidCountry(rawCountryCode)) {
+      targetCountryCode = rawCountryCode;
+    } else if (country.includes("Emirates") || country.includes("UAE") || country === "AE") {
+      targetCountryCode = "AE";
+    } else if (country.includes("Bahrain") || country === "BH") {
+      targetCountryCode = "BH";
+    }
+
+    const countryConfig = getCountryConfig(targetCountryCode);
 
     // 1. Basic validation
     if (!customerName || !customerEmail || !customerPhone || !addressLine1) {
@@ -46,7 +63,7 @@ export async function POST(request: Request) {
       );
     }
 
-    // 2. SERVER-SIDE PRICING & INVENTORY RECALCULATION (Never trust client prices)
+    // 2. SERVER-SIDE PRICING & INVENTORY RECALCULATION PER COUNTRY
     let calculatedSubtotal = 0;
     const validatedOrderItems: {
       productId: string;
@@ -62,7 +79,12 @@ export async function POST(request: Request) {
     for (const item of items) {
       const product = await prisma.product.findUnique({
         where: { id: item.productId },
-        include: { variants: true },
+        include: {
+          countries: true,
+          variants: {
+            include: { countries: true },
+          },
+        },
       });
 
       if (!product || !product.active) {
@@ -72,7 +94,8 @@ export async function POST(request: Request) {
         );
       }
 
-      let unitPrice = Number(product.basePrice);
+      const resolvedProd = resolveProductForCountry(product, targetCountryCode);
+      let unitPrice = resolvedProd.price;
       let variantName: string | undefined = undefined;
       let sku = product.sku || undefined;
 
@@ -84,19 +107,26 @@ export async function POST(request: Request) {
             { status: 400 }
           );
         }
-        if (variant.stock < item.quantity) {
+
+        const resolvedVar = resolveVariantForCountry(variant, targetCountryCode);
+        if (resolvedVar.stock < item.quantity) {
           return NextResponse.json(
-            { error: `Insufficient stock for ${product.name} (${variant.name}). Only ${variant.stock} left.` },
+            {
+              error: `Insufficient stock in ${countryConfig.name} for ${product.name} (${variant.name}). Only ${resolvedVar.stock} available.`,
+            },
             { status: 400 }
           );
         }
-        unitPrice = Number(variant.price);
+
+        unitPrice = resolvedVar.price;
         variantName = variant.name;
         sku = variant.sku || sku;
       } else {
-        if (product.stock < item.quantity) {
+        if (resolvedProd.stock < item.quantity) {
           return NextResponse.json(
-            { error: `Insufficient stock for ${product.name}. Only ${product.stock} left.` },
+            {
+              error: `Insufficient stock in ${countryConfig.name} for ${product.name}. Only ${resolvedProd.stock} available.`,
+            },
             { status: 400 }
           );
         }
@@ -144,23 +174,27 @@ export async function POST(request: Request) {
       }
     }
 
-    // 4. Shipping Calculation: Free on orders over QAR 900
-    const shippingFee = calculatedSubtotal >= 900 ? 0.0 : 30.0;
+    // 4. Country-Specific Shipping Calculation
+    const shippingFee =
+      calculatedSubtotal >= countryConfig.freeShippingThreshold
+        ? 0.0
+        : countryConfig.standardShippingFee;
+
     const finalTotal = Math.max(0, calculatedSubtotal - discountAmount + shippingFee);
 
-    // 5. Generate Human-readable Unique Order Number (e.g. RAM-2609-8472)
+    // 5. Generate Human-readable Unique Order Number (e.g. RAM-QA-2609-8472)
     const randomSuffix = Math.floor(1000 + Math.random() * 9000);
     const dateStr = new Date().toISOString().slice(2, 7).replace("-", "");
-    const orderNumber = `RAM-${dateStr}-${randomSuffix}`;
+    const orderNumber = `RAM-${targetCountryCode}-${dateStr}-${randomSuffix}`;
 
-    // 6. Database Transaction: Create Order, Deduct Stock, Increment Coupon
+    // 6. Database Transaction: Create Order, Deduct Country Stock, Increment Coupon
     const order = await prisma.$transaction(async (tx) => {
       const createdOrder = await tx.order.create({
         data: {
           userId: session?.userId || null,
           orderNumber,
           status: "CONFIRMED",
-          paymentStatus: paymentMethod === "ONLINE" ? "PAID" : "PENDING",
+          paymentStatus: paymentMethod === "ONLINE" || paymentMethod === "TABBY_TAMARA" || paymentMethod === "BENEFIT_PAY" ? "PAID" : "PENDING",
           fulfillmentStatus: "UNFULFILLED",
           customerName,
           customerEmail,
@@ -171,14 +205,15 @@ export async function POST(request: Request) {
             addressLine1,
             addressLine2: addressLine2 || null,
             area: area || null,
-            city,
-            country,
+            city: city || countryConfig.defaultCity,
+            country: countryConfig.name,
+            countryCode: targetCountryCode,
           },
           billingAddress: {
             name: customerName,
             addressLine1,
-            city,
-            country,
+            city: city || countryConfig.defaultCity,
+            country: countryConfig.name,
           },
           deliveryNotes: deliveryNotes || null,
           subtotal: calculatedSubtotal,
@@ -186,7 +221,8 @@ export async function POST(request: Request) {
           shipping: shippingFee,
           tax: 0.0,
           total: finalTotal,
-          currency: "QAR",
+          currency: countryConfig.currency,
+          country: targetCountryCode,
           paymentMethod,
           items: {
             create: validatedOrderItems.map((oi) => ({
@@ -203,18 +239,52 @@ export async function POST(request: Request) {
         },
       });
 
-      // Deduct stock
+      // Deduct country warehouse stock or base stock
       for (const item of validatedOrderItems) {
         if (item.variantId) {
-          await tx.productVariant.update({
-            where: { id: item.variantId },
+          // Check if explicit country record exists
+          const existingVariantCountry = await tx.productVariantCountry.findUnique({
+            where: {
+              variantId_country: {
+                variantId: item.variantId,
+                country: targetCountryCode,
+              },
+            },
+          });
+
+          if (existingVariantCountry) {
+            await tx.productVariantCountry.update({
+              where: { id: existingVariantCountry.id },
+              data: { stock: { decrement: item.quantity } },
+            });
+          } else {
+            await tx.productVariant.update({
+              where: { id: item.variantId },
+              data: { stock: { decrement: item.quantity } },
+            });
+          }
+        }
+
+        const existingProductCountry = await tx.productCountry.findUnique({
+          where: {
+            productId_country: {
+              productId: item.productId,
+              country: targetCountryCode,
+            },
+          },
+        });
+
+        if (existingProductCountry) {
+          await tx.productCountry.update({
+            where: { id: existingProductCountry.id },
+            data: { stock: { decrement: item.quantity } },
+          });
+        } else {
+          await tx.product.update({
+            where: { id: item.productId },
             data: { stock: { decrement: item.quantity } },
           });
         }
-        await tx.product.update({
-          where: { id: item.productId },
-          data: { stock: { decrement: item.quantity } },
-        });
       }
 
       // Increment coupon if applied
@@ -235,8 +305,8 @@ export async function POST(request: Request) {
             addressLine1,
             addressLine2: addressLine2 || null,
             area: area || null,
-            city,
-            country,
+            city: city || countryConfig.defaultCity,
+            country: countryConfig.name,
             isDefault: false,
           },
         });
@@ -245,22 +315,60 @@ export async function POST(request: Request) {
       return createdOrder;
     });
 
-    // 7. Payment Provider Abstraction
-    const provider = getPaymentProvider(paymentMethod);
-    const paymentResult = await provider.initiatePayment({
+    // 7. Payment Provider Abstraction per Country
+    const paymentProvider = getPaymentProvider(targetCountryCode, paymentMethod);
+    const paymentResult = await paymentProvider.initiatePayment({
       orderId: order.id,
       orderNumber: order.orderNumber,
       amount: finalTotal,
-      currency: "QAR",
+      currency: countryConfig.currency,
+      country: targetCountryCode,
       customerName,
       customerEmail,
       customerPhone,
     });
 
+    // 8. Asynchronous Notifications: SMS and Email per Country
+    try {
+      const smsProvider = getSmsProvider(targetCountryCode);
+      await smsProvider.sendOrderConfirmation({
+        orderNumber: order.orderNumber,
+        total: finalTotal,
+        currency: countryConfig.currency,
+        customerName,
+        customerPhone,
+        country: targetCountryCode,
+      });
+
+      const emailProvider = getEmailProvider(targetCountryCode);
+      await emailProvider.sendOrderConfirmation({
+        orderNumber: order.orderNumber,
+        total: finalTotal,
+        subtotal: calculatedSubtotal,
+        shipping: shippingFee,
+        discount: discountAmount,
+        currency: countryConfig.currency,
+        country: targetCountryCode,
+        customerName,
+        customerEmail,
+        items: validatedOrderItems.map((vi) => ({
+          name: vi.productName,
+          variantName: vi.variantName,
+          quantity: vi.quantity,
+          unitPrice: vi.unitPrice,
+          total: vi.total,
+        })),
+      });
+    } catch (notifErr) {
+      console.warn("Non-blocking notification error:", notifErr);
+    }
+
     return NextResponse.json({
       success: true,
       orderNumber: order.orderNumber,
       orderId: order.id,
+      country: targetCountryCode,
+      currency: countryConfig.currency,
       paymentResult,
     });
   } catch (error) {

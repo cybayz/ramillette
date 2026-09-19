@@ -4,11 +4,14 @@ import React, { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { MapPin, Globe } from "lucide-react";
 import { useLanguageStore } from "@/lib/store/useLanguageStore";
+import { useCountryStore } from "@/lib/store/useCountryStore";
+import { CountrySwitcher } from "@/components/layout/CountrySwitcher";
 
 export function TopBar() {
   const pathname = usePathname();
   const router = useRouter();
   const { language, setLanguage } = useLanguageStore();
+  const { config } = useCountryStore();
   const [mounted, setMounted] = useState(false);
 
   const isArabicPath = pathname?.startsWith("/ar");
@@ -44,19 +47,11 @@ export function TopBar() {
     }
   };
 
-  const content = isAr
-    ? {
-        location: "سوق الوكرة، قطر",
-        shippingNotice:
-          "توصيل سريع مجاني خلال ساعتين في الدوحة للطلبات التي تزيد عن 900 ر.ق",
-        languageToggle: "English",
-      }
-    : {
-        location: "Souq Al Wakra, Qatar",
-        shippingNotice:
-          "Free 2-Hour Express Delivery across Doha on orders over QAR 900",
-        languageToggle: "العربية",
-      };
+  const content = {
+    location: isAr ? config.boutiqueLocationAr : config.boutiqueLocation,
+    shippingNotice: isAr ? config.deliveryNoticeAr : config.deliveryNotice,
+    languageToggle: isAr ? "English" : "العربية",
+  };
 
   return (
     <div className="bg-[#0c0c0c] text-[#fbf9f5] text-xs py-2.5 border-b border-[#222222] transition-colors">
@@ -72,8 +67,12 @@ export function TopBar() {
           <span>{content.shippingNotice}</span>
         </div>
 
-        {/* Language Switcher & Instagram Link */}
-        <div className="flex items-center gap-4">
+        {/* Country Switcher, Language Switcher & Instagram Link */}
+        <div className="flex items-center gap-2.5 sm:gap-3">
+          {/* Country Selector Dropdown */}
+          <CountrySwitcher />
+
+          {/* Language Toggle */}
           <button
             type="button"
             onClick={handleLanguageSwitch}

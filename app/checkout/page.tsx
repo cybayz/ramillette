@@ -5,6 +5,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { useCartStore } from "@/lib/store/useCartStore";
+import { useCountryStore } from "@/lib/store/useCountryStore";
+import { COUNTRIES, CountryCode } from "@/lib/country/config";
 import { Button } from "@/components/ui/Button";
 import { formatPrice } from "@/lib/utils";
 import {
@@ -12,17 +14,20 @@ import {
   Truck,
   CreditCard,
   Banknote,
-  Clock,
-  AlertCircle,
   CheckCircle2,
   Lock,
+  ArrowLeft,
   Loader2,
+  Clock,
+  Sparkles,
+  Globe,
 } from "lucide-react";
 
 export default function CheckoutPage() {
   const router = useRouter();
   const pathname = usePathname();
   const isAr = Boolean(pathname?.startsWith("/ar"));
+  const { country, config, setCountry } = useCountryStore();
 
   const {
     items,
@@ -40,11 +45,18 @@ export default function CheckoutPage() {
   const [customerPhone, setCustomerPhone] = useState("");
   const [addressLine1, setAddressLine1] = useState("");
   const [addressLine2, setAddressLine2] = useState("");
-  const [area, setArea] = useState("Doha");
+  const [area, setArea] = useState(config.defaultCity);
   const [deliveryNotes, setDeliveryNotes] = useState(orderNote || "");
-  const [paymentMethod, setPaymentMethod] = useState<"COD" | "ONLINE">("COD");
+  const [paymentMethod, setPaymentMethod] = useState<string>("COD");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+
+  // Sync city default if country changes
+  useEffect(() => {
+    if (config.cities.length > 0 && !config.cities.includes(area)) {
+      setArea(config.defaultCity);
+    }
+  }, [country, config]);
 
   useEffect(() => {
     setMounted(true);
@@ -114,7 +126,7 @@ export default function CheckoutPage() {
 
   const subtotal = getSubtotal();
   const discount = getDiscountTotal();
-  const shipping = subtotal >= 900 ? 0.0 : 30.0;
+  const shipping = subtotal >= config.freeShippingThreshold ? 0.0 : config.standardShippingFee;
   const finalTotal = Math.max(0, subtotal - discount + shipping);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -130,8 +142,9 @@ export default function CheckoutPage() {
         addressLine1: addressLine1.trim(),
         addressLine2: addressLine2.trim() || undefined,
         area,
-        city: "Doha",
-        country: "Qatar",
+        city: area || config.defaultCity,
+        country: config.name,
+        countryCode: country,
         deliveryNotes: deliveryNotes.trim() || undefined,
         paymentMethod,
         couponCode: coupon?.code,
@@ -158,64 +171,46 @@ export default function CheckoutPage() {
         const successUrl = `${isAr ? "/ar" : ""}/checkout/success?orderNumber=${data.orderNumber}`;
         router.push(successUrl);
       }
-    } catch (err) {
-      setErrorMessage("A network or server error occurred. Please try again.");
+    } catch {
+      setErrorMessage("Network error processing order. Please try again.");
       setIsSubmitting(false);
     }
   };
 
-  const qatarAreas = [
-    "Doha - West Bay",
-    "Doha - The Pearl",
-    "Doha - Lusail",
-    "Doha - Al Sadd",
-    "Al Wakrah / Souq Al Wakra",
-    "Al Rayyan",
-    "Al Daayen",
-    "Umm Salal",
-    "Al Khor",
-    "Al Shamal",
-  ];
-
   return (
-    <div className="bg-[#fbf9f5] min-h-screen py-10">
+    <div className="bg-[#fbf9f5] min-h-screen py-8 md:py-12 border-t border-[#e5e5e5]">
       <div className="ramillette-container">
-        {/* Header */}
-        <div className="flex items-center justify-between pb-6 mb-8 border-b border-[#e5e5e5]">
-          <Link href={isAr ? "/ar" : "/"} className="inline-block">
-            <span className="font-extrabold text-2xl tracking-[0.18em] text-[#1c1c1c] uppercase font-heading">
-              Ramillette
-            </span>
-            <span className="block text-[9px] tracking-[0.25em] text-[#b6713e] uppercase font-semibold">
-              Secure Checkout • Qatar
-            </span>
+        {/* Navigation Breadcrumb */}
+        <div className="mb-6 flex items-center justify-between">
+          <Link
+            href={isAr ? "/ar/cart" : "/cart"}
+            className="inline-flex items-center gap-1.5 text-xs text-neutral-600 hover:text-[#b6713e] font-semibold transition-colors"
+          >
+            <ArrowLeft size={14} className="rtl:rotate-180" />
+            <span>{isAr ? "العودة إلى سلة التسوق" : "Return to Cart"}</span>
           </Link>
-          <div className="flex items-center gap-1.5 text-xs text-[#0d9d00] font-semibold bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-200">
-            <Lock size={13} />
-            <span>256-bit Encrypted Checkout</span>
+          <div className="flex items-center gap-2 text-xs text-neutral-500 font-medium">
+            <Lock size={13} className="text-[#0d9d00]" />
+            <span>{isAr ? "دفع آمن ومشفّر 256-bit" : "256-Bit Encrypted Checkout"}</span>
           </div>
         </div>
 
-        {errorMessage && (
-          <div className="mb-8 p-4 bg-red-50 border border-red-200 rounded-[6px] flex items-center gap-2.5 text-xs text-red-700 font-medium">
-            <AlertCircle size={18} className="shrink-0 text-red-600" />
-            <span>{errorMessage}</span>
-          </div>
-        )}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
+          {/* Left Column: Form Steps */}
+          <div className="lg:col-span-7 space-y-6">
+            {errorMessage && (
+              <div className="p-3.5 bg-red-50 border border-red-200 text-red-700 text-xs rounded-[6px] font-medium">
+                {errorMessage}
+              </div>
+            )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
-          {/* Left Column: Checkout Details Form */}
-          <div className="lg:col-span-7">
-            <form onSubmit={handleSubmit} className="space-y-8">
+            <form onSubmit={handleSubmit} className="space-y-6">
               {/* Step 1: Customer Contact */}
               <div className="bg-white p-6 rounded-[8px] border border-[#e5e5e5] shadow-xs space-y-4">
                 <div className="flex items-center justify-between pb-3 border-b border-[#f0ece1]">
                   <h2 className="text-base font-bold text-[#1c1c1c]">
                     1. Contact Information
                   </h2>
-                  <span className="text-xs text-neutral-500">
-                    For delivery notifications
-                  </span>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -235,14 +230,14 @@ export default function CheckoutPage() {
 
                   <div>
                     <label className="block text-xs font-bold uppercase tracking-wider text-neutral-700 mb-1.5">
-                      Qatar Phone Number *
+                      Phone Number *
                     </label>
                     <input
                       type="tel"
                       required
                       value={customerPhone}
                       onChange={(e) => setCustomerPhone(e.target.value)}
-                      placeholder="+974 6600 7788"
+                      placeholder={`${config.phonePrefix} 5555 1234`}
                       className="w-full text-xs p-3 border border-[#e5e5e5] rounded-[5px] focus:outline-none focus:border-[#b6713e]"
                     />
                   </div>
@@ -257,36 +252,64 @@ export default function CheckoutPage() {
                     required
                     value={customerEmail}
                     onChange={(e) => setCustomerEmail(e.target.value)}
-                    placeholder="tariq@example.com"
+                    placeholder="customer@example.com"
                     className="w-full text-xs p-3 border border-[#e5e5e5] rounded-[5px] focus:outline-none focus:border-[#b6713e]"
                   />
                 </div>
               </div>
 
-              {/* Step 2: Qatar Shipping Address */}
+              {/* Step 2: Country & Shipping Address */}
               <div className="bg-white p-6 rounded-[8px] border border-[#e5e5e5] shadow-xs space-y-4">
                 <div className="flex items-center justify-between pb-3 border-b border-[#f0ece1]">
                   <h2 className="text-base font-bold text-[#1c1c1c]">
-                    2. Qatar Delivery Address
+                    2. {config.name} Delivery Address
                   </h2>
                   <div className="flex items-center gap-1 text-xs text-[#b6713e] font-semibold">
                     <Clock size={13} />
-                    <span>2-Hour Doha Express</span>
+                    <span>{config.deliveryNotice}</span>
+                  </div>
+                </div>
+
+                {/* Country Switcher inside Checkout */}
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-neutral-700 mb-1.5">
+                    Destination Country / الدولة *
+                  </label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {(["QA", "AE", "BH"] as CountryCode[]).map((c) => {
+                      const item = COUNTRIES[c];
+                      const isSel = country === c;
+                      return (
+                        <button
+                          key={c}
+                          type="button"
+                          onClick={() => setCountry(c)}
+                          className={`flex items-center justify-center gap-2 p-2.5 rounded-[6px] border text-xs font-semibold transition-all ${
+                            isSel
+                              ? "bg-[#faedcd]/40 border-[#b6713e] text-[#1c1c1c]"
+                              : "border-[#e5e5e5] bg-white text-neutral-600 hover:border-neutral-400"
+                          }`}
+                        >
+                          <span className="text-base">{item.flag}</span>
+                          <span>{item.name}</span>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 
                 <div>
                   <label className="block text-xs font-bold uppercase tracking-wider text-neutral-700 mb-1.5">
-                    Zone / Municipality in Qatar *
+                    City / Governorate / Zone in {config.name} *
                   </label>
                   <select
                     value={area}
                     onChange={(e) => setArea(e.target.value)}
                     className="w-full text-xs p-3 border border-[#e5e5e5] rounded-[5px] focus:outline-none focus:border-[#b6713e] bg-white font-medium cursor-pointer"
                   >
-                    {qatarAreas.map((a) => (
-                      <option key={a} value={a}>
-                        {a}
+                    {config.cities.map((cityOption) => (
+                      <option key={cityOption} value={cityOption}>
+                        {cityOption}
                       </option>
                     ))}
                   </select>
@@ -301,7 +324,7 @@ export default function CheckoutPage() {
                     required
                     value={addressLine1}
                     onChange={(e) => setAddressLine1(e.target.value)}
-                    placeholder="e.g. Villa 14, Street 920, Zone 90"
+                    placeholder="e.g. Villa 14, Street 920, Downtown"
                     className="w-full text-xs p-3 border border-[#e5e5e5] rounded-[5px] focus:outline-none focus:border-[#b6713e]"
                   />
                 </div>
@@ -314,7 +337,7 @@ export default function CheckoutPage() {
                     type="text"
                     value={addressLine2}
                     onChange={(e) => setAddressLine2(e.target.value)}
-                    placeholder="e.g. Near Souq Al Wakra entrance, or Tower 2 Floor 14"
+                    placeholder="e.g. Near main gate or Tower 2, Apt 1402"
                     className="w-full text-xs p-3 border border-[#e5e5e5] rounded-[5px] focus:outline-none focus:border-[#b6713e]"
                   />
                 </div>
@@ -327,77 +350,61 @@ export default function CheckoutPage() {
                     rows={2}
                     value={deliveryNotes}
                     onChange={(e) => setDeliveryNotes(e.target.value)}
-                    placeholder="e.g. Please call before arrival or leave with security..."
+                    placeholder="e.g. Please call upon arrival or leave with concierge..."
                     className="w-full text-xs p-3 border border-[#e5e5e5] rounded-[5px] focus:outline-none focus:border-[#b6713e]"
                   />
                 </div>
               </div>
 
-              {/* Step 3: Payment Method */}
+              {/* Step 3: Payment Method (Dynamic for QA, AE, BH) */}
               <div className="bg-white p-6 rounded-[8px] border border-[#e5e5e5] shadow-xs space-y-4">
                 <h2 className="text-base font-bold text-[#1c1c1c] pb-3 border-b border-[#f0ece1]">
-                  3. Payment Method
+                  3. Payment Method ({config.name})
                 </h2>
 
                 <div className="space-y-3">
-                  {/* COD */}
-                  <label
-                    className={`flex items-start gap-3 p-4 rounded-[6px] border transition-all cursor-pointer ${
-                      paymentMethod === "COD"
-                        ? "border-[#b6713e] bg-[#faedcd]/20"
-                        : "border-[#e5e5e5] hover:border-neutral-300"
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="payment"
-                      checked={paymentMethod === "COD"}
-                      onChange={() => setPaymentMethod("COD")}
-                      className="mt-0.5 text-[#b6713e] focus:ring-[#b6713e]"
-                    />
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-[#1c1c1c] flex items-center gap-1.5">
-                          <Banknote size={16} className="text-[#b6713e]" />
-                          <span>Cash on Delivery (COD)</span>
-                        </span>
-                        <span className="text-[10px] bg-[#faedcd] text-[#1c1c1c] font-bold px-2 py-0.5 rounded">
-                          Popular in Qatar
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-neutral-500 mt-1">
-                        Pay cash or card to the courier upon physical receipt at your doorstep.
-                      </p>
-                    </div>
-                  </label>
-
-                  {/* Online Card / NAPS */}
-                  <label
-                    className={`flex items-start gap-3 p-4 rounded-[6px] border transition-all cursor-pointer ${
-                      paymentMethod === "ONLINE"
-                        ? "border-[#b6713e] bg-[#faedcd]/20"
-                        : "border-[#e5e5e5] hover:border-neutral-300"
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="payment"
-                      checked={paymentMethod === "ONLINE"}
-                      onChange={() => setPaymentMethod("ONLINE")}
-                      className="mt-0.5 text-[#b6713e] focus:ring-[#b6713e]"
-                    />
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-[#1c1c1c] flex items-center gap-1.5">
-                          <CreditCard size={16} className="text-[#b6713e]" />
-                          <span>Online Card / NAPS Debit / Apple Pay</span>
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-neutral-500 mt-1">
-                        Instant payment via local Qatar banking gateway with secure verification.
-                      </p>
-                    </div>
-                  </label>
+                  {config.paymentMethods.map((method) => {
+                    const isSelected = paymentMethod === method.id;
+                    return (
+                      <label
+                        key={method.id}
+                        className={`flex items-start gap-3 p-4 rounded-[6px] border transition-all cursor-pointer ${
+                          isSelected
+                            ? "border-[#b6713e] bg-[#faedcd]/20 shadow-xs"
+                            : "border-[#e5e5e5] hover:border-neutral-300"
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="payment"
+                          value={method.id}
+                          checked={isSelected}
+                          onChange={() => setPaymentMethod(method.id)}
+                          className="mt-0.5 text-[#b6713e] focus:ring-[#b6713e]"
+                        />
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-bold text-[#1c1c1c] flex items-center gap-1.5">
+                              {method.id === "COD" ? (
+                                <Banknote size={16} className="text-[#b6713e]" />
+                              ) : (
+                                <CreditCard size={16} className="text-[#b6713e]" />
+                              )}
+                              <span>{isAr ? method.nameAr : method.name}</span>
+                            </span>
+                            {method.badge && (
+                              <span className="text-[10px] bg-[#faedcd] text-[#1c1c1c] font-bold px-2 py-0.5 rounded">
+                                {method.badge}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[11px] text-neutral-500 mt-1">
+                            {isAr ? method.descriptionAr : method.description}
+                          </p>
+                        </div>
+                      </label>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -409,7 +416,7 @@ export default function CheckoutPage() {
                 isLoading={isSubmitting}
                 className="w-full h-14 text-base font-bold shadow-lg shadow-[#b6713e]/20"
               >
-                Complete Order • {formatPrice(finalTotal)}
+                Complete Order • {formatPrice(finalTotal, country)}
               </Button>
             </form>
           </div>
@@ -417,9 +424,14 @@ export default function CheckoutPage() {
           {/* Right Column: Order Items & Recalculated Summary */}
           <div className="lg:col-span-5 space-y-6">
             <div className="bg-white p-6 rounded-[8px] border border-[#e5e5e5] shadow-xs space-y-4 sticky top-28">
-              <h3 className="text-base font-bold text-[#1c1c1c] pb-3 border-b border-[#f0ece1]">
-                Order Items ({items.reduce((s, i) => s + i.quantity, 0)})
-              </h3>
+              <div className="flex items-center justify-between pb-3 border-b border-[#f0ece1]">
+                <h3 className="text-base font-bold text-[#1c1c1c]">
+                  Order Items ({items.reduce((s, i) => s + i.quantity, 0)})
+                </h3>
+                <span className="text-xs font-bold text-[#b6713e]">
+                  {config.flag} {config.currency}
+                </span>
+              </div>
 
               {/* Items List */}
               <div className="divide-y divide-[#f0ece1] max-h-72 overflow-y-auto pr-1">
@@ -450,7 +462,7 @@ export default function CheckoutPage() {
                       </p>
                     </div>
                     <div className="text-xs font-bold text-[#1c1c1c]">
-                      {formatPrice(item.price * item.quantity)}
+                      {formatPrice(item.price * item.quantity, country)}
                     </div>
                   </div>
                 ))}
@@ -461,32 +473,32 @@ export default function CheckoutPage() {
                 <div className="flex justify-between text-neutral-600">
                   <span>Subtotal</span>
                   <span className="font-semibold text-[#1c1c1c]">
-                    {formatPrice(subtotal)}
+                    {formatPrice(subtotal, country)}
                   </span>
                 </div>
 
                 {discount > 0 && (
                   <div className="flex justify-between text-emerald-700 font-semibold">
                     <span>Discount ({coupon?.code})</span>
-                    <span>-{formatPrice(discount)}</span>
+                    <span>-{formatPrice(discount, country)}</span>
                   </div>
                 )}
 
                 <div className="flex justify-between text-neutral-600">
-                  <span>Qatar Delivery</span>
+                  <span>{config.name} Delivery</span>
                   <span className="font-semibold text-[#1c1c1c]">
                     {shipping === 0 ? (
                       <span className="text-[#0d9d00] font-bold">FREE</span>
                     ) : (
-                      formatPrice(shipping)
+                      formatPrice(shipping, country)
                     )}
                   </span>
                 </div>
 
                 <div className="flex justify-between text-base font-extrabold text-[#1c1c1c] pt-3 border-t border-[#e5e5e5]">
-                  <span>Total (QAR)</span>
+                  <span>Total ({config.currency})</span>
                   <span className="text-[#b6713e]">
-                    {formatPrice(finalTotal)}
+                    {formatPrice(finalTotal, country)}
                   </span>
                 </div>
               </div>
@@ -495,11 +507,11 @@ export default function CheckoutPage() {
               <div className="pt-4 border-t border-[#f0ece1] space-y-2 text-[11px] text-neutral-500">
                 <div className="flex items-center gap-2">
                   <CheckCircle2 size={13} className="text-[#0d9d00]" />
-                  <span>Immediate dispatch from Souq Al Wakra</span>
+                  <span>Immediate dispatch from {config.boutiqueLocation}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <ShieldCheck size={13} className="text-[#b6713e]" />
-                  <span>100% Authentic fragrance guarantee</span>
+                  <span>100% Authentic luxury fragrance guarantee</span>
                 </div>
               </div>
             </div>

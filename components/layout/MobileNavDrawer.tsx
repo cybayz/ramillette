@@ -23,6 +23,8 @@ import {
   LogOut,
 } from "lucide-react";
 import { useAuthStore } from "@/lib/store/useAuthStore";
+import { useCountryStore } from "@/lib/store/useCountryStore";
+import { CountrySwitcher } from "@/components/layout/CountrySwitcher";
 
 interface MobileNavDrawerProps {
   isOpen: boolean;
@@ -35,11 +37,12 @@ export function MobileNavDrawer({ isOpen, onClose }: MobileNavDrawerProps) {
   const { items: wishlistItems } = useWishlistStore();
   const { language, setLanguage, t } = useLanguageStore();
   const { user, logout } = useAuthStore();
+  const { config } = useCountryStore();
 
   const cartCount = getTotalItems();
   const wishlistCount = wishlistItems.length;
-  const isArabicPath = pathname?.startsWith("/ar");
-  const isAr = isArabicPath;
+  const isAr = Boolean(pathname?.startsWith("/ar"));
+  const prefix = isAr ? "/ar" : "";
   const content = t();
 
   const handleLanguageSwitch = () => {
@@ -60,23 +63,22 @@ export function MobileNavDrawer({ isOpen, onClose }: MobileNavDrawerProps) {
     }
   };
 
-  const prefix = isAr ? "/ar" : "";
-  const collectionsPrefix = isAr ? "/ar/collections" : "/collections";
-
   const navLinks = [
-    { label: content.header.home, href: isAr ? "/ar" : "/", icon: Home },
-    { label: content.header.ownBrand, href: `${collectionsPrefix}/own-brand`, icon: Crown, highlight: true },
-    { label: content.header.inspired, href: `${collectionsPrefix}/inspired`, icon: Sparkles },
-    { label: isAr ? "عطور فاخرة" : "Luxury Perfumes", href: `${collectionsPrefix}/luxury-perfumes`, icon: Crown },
-    { label: isAr ? "الأكثر مبيعاً" : "Best Sellers", href: `${collectionsPrefix}/best-sellers`, icon: Flame },
-    { label: isAr ? "وصل حديثاً" : "New Arrivals", href: `${collectionsPrefix}/new-arrivals`, icon: Sparkles },
-    { label: content.header.contact, href: `${prefix}/pages/contact`, icon: Phone },
-    { label: isAr ? "الأسئلة الشائعة" : "FAQ & Help", href: `${prefix}/pages/faqs`, icon: HelpCircle },
+    { label: content.header.home, href: `${prefix}/`, icon: Home },
+    { label: content.header.ownBrand, href: `${prefix}/collections/own-brand`, icon: Crown, highlight: true },
+    { label: content.header.inspired, href: `${prefix}/collections/inspired`, icon: Sparkles },
+    { label: content.header.bestSellers, href: `${prefix}/collections/best-sellers`, icon: Flame },
+    { label: content.header.luxuryPerfumes, href: `${prefix}/collections/luxury-perfumes`, icon: Crown },
+    { label: content.header.newArrivals, href: `${prefix}/collections/new-arrivals`, icon: Sparkles },
+    { label: isAr ? "جميع العطور" : "All Perfumes", href: `${prefix}/shop`, icon: ShoppingBag },
   ];
 
   const policyLinks = [
+    { label: isAr ? "نبذة عنا" : "About Us", href: `${prefix}/pages/about-us` },
+    { label: isAr ? "اتصل بنا" : "Contact Us", href: `${prefix}/pages/contact` },
+    { label: isAr ? "الأسئلة الشائعة" : "FAQs", href: `${prefix}/pages/faqs` },
     { label: isAr ? "سياسة الإلغاء" : "Cancellation Policy", href: `${prefix}/pages/cancellation-policy` },
-    { label: isAr ? "سياسة الإرجاع" : "Returns Policy", href: `${prefix}/pages/returns-policy` },
+    { label: isAr ? "سياسة الإرجاع" : "Return Policy", href: `${prefix}/pages/return-policy` },
     { label: isAr ? "سياسة الاسترداد" : "Refund Policy", href: `${prefix}/pages/refund-policy` },
     { label: isAr ? "سياسة الاستبدال" : "Exchange Policy", href: `${prefix}/pages/exchange-policy` },
     { label: isAr ? "الشروط والأحكام" : "Terms of Service", href: `${prefix}/pages/term-and-services` },
@@ -102,6 +104,11 @@ export function MobileNavDrawer({ isOpen, onClose }: MobileNavDrawerProps) {
     >
       <div className="flex flex-col h-full justify-between pb-6">
         <div>
+          {/* Country Selection for Mobile */}
+          <div className="mb-3 px-1">
+            <CountrySwitcher variant="drawer" />
+          </div>
+
           {/* Quick Language Toggle & Account / Wishlist / Cart Bar */}
           <div className="flex items-center justify-between px-2 py-2 mb-3 bg-[#fbf9f5] rounded-md border border-[#ecdec1]">
             <span className="text-xs text-neutral-600 font-medium">Language / اللغة</span>

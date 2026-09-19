@@ -22,9 +22,14 @@ const getProduct = cache(async (slug: string) => {
     where: { slug },
     include: {
       images: { orderBy: { sortOrder: "asc" } },
-      variants: { where: { active: true }, orderBy: { price: "asc" } },
+      variants: {
+        where: { active: true },
+        orderBy: { price: "asc" },
+        include: { countries: true },
+      },
       reviews: { where: { approved: true }, orderBy: { createdAt: "desc" } },
       category: true,
+      countries: true,
     },
   });
 });
@@ -39,9 +44,15 @@ const getRelatedProducts = cache(async (productId: string, categoryId?: string |
     },
     include: {
       images: { orderBy: { sortOrder: "asc" }, take: 2 },
-      variants: { where: { active: true }, orderBy: { price: "asc" }, take: 1 },
+      variants: {
+        where: { active: true },
+        orderBy: { price: "asc" },
+        take: 1,
+        include: { countries: true },
+      },
       reviews: { where: { approved: true } },
       category: true,
+      countries: true,
     },
     take: 5,
   });
@@ -105,15 +116,18 @@ export default async function ProductDetailPage({ params, isArabic = false }: Pa
     categoryName: p.category?.name,
     basePrice: Number(p.basePrice),
     compareAtPrice: p.compareAtPrice ? Number(p.compareAtPrice) : null,
+    stock: p.stock,
     bestseller: p.bestseller,
     newArrival: p.newArrival,
     images: p.images.map((img) => ({ url: img.url, alt: img.alt })),
+    countries: p.countries,
     variants: p.variants.map((v) => ({
       id: v.id,
       name: v.name,
       price: Number(v.price),
       compareAtPrice: v.compareAtPrice ? Number(v.compareAtPrice) : null,
       stock: v.stock,
+      countries: v.countries,
     })),
     rating:
       p.reviews.length > 0
@@ -142,6 +156,7 @@ export default async function ProductDetailPage({ params, isArabic = false }: Pa
     concentration: "Extrait de Parfum",
     description: product.description,
     reviewsCount: product.reviews.length > 0 ? product.reviews.length : 10,
+    countries: product.countries,
   };
 
   const formattedVariants = product.variants.map((v) => ({
@@ -151,6 +166,7 @@ export default async function ProductDetailPage({ params, isArabic = false }: Pa
     price: Number(v.price),
     compareAtPrice: v.compareAtPrice ? Number(v.compareAtPrice) : null,
     stock: v.stock,
+    countries: v.countries,
   }));
 
   return (

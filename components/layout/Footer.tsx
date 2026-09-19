@@ -5,10 +5,12 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Check } from "lucide-react";
 import { useLanguageStore } from "@/lib/store/useLanguageStore";
+import { useCountryStore } from "@/lib/store/useCountryStore";
 
 export function Footer() {
   const pathname = usePathname();
   const { language } = useLanguageStore();
+  const { config } = useCountryStore();
   const isAr = Boolean(pathname?.startsWith("/ar"));
 
   const [email, setEmail] = useState("");
@@ -30,10 +32,9 @@ export function Footer() {
         newsletterSub: "ابق على اطلاع بأحدث منتجاتنا وأخبارنا",
         aboutTitle: "About Ramillette",
         aboutDesc:
-          "عطور راميلليت هي دار عطور راقية تجمع بين التراث العطري للشرق الأوسط وصناعة العطور الفرنسية المعاصرة. صُنعت في الإمارات العربية المتحدة، مع بوتيكنا الرئيسي في سوق الوكرة التاريخي، قطر.",
+          "عطور راميلليت هي دار عطور راقية تجمع بين التراث العطري للشرق الأوسط وصناعة العطور الفرنسية المعاصرة. صُنعت في الإمارات العربية المتحدة، مع بوتيكنا الرئيسي في سوق الوكرة التاريخي، قطر ومنافذ توزيع في الإمارات والبحرين.",
         destinationTitle: "Your Fragrance Destination",
-        destinationDesc:
-          "تسوق العطور المميزة، والزيوت المركزة، وأكثر من 50 عطرًا فاخرًا مستوحى عبر الإنترنت — مع التوصيل في جميع أنحاء قطر.",
+        destinationDesc: `تسوق العطور المميزة، والزيوت المركزة، وأكثر من 50 عطرًا فاخرًا مستوحى عبر الإنترنت — مع التوصيل السريع في جميع أنحاء ${config.nameAr}.`,
         getInTouch: "Get in touch",
         aboutCol: "About",
         accountCol: "Account",
@@ -60,10 +61,9 @@ export function Footer() {
         newsletterSub: "Stay up to date with our latest products and news",
         aboutTitle: "About Ramillette",
         aboutDesc:
-          "Ramillette Perfumes is an upscale fragrance house blending Middle Eastern aromatic heritage with contemporary French perfumery. Manufactured in the UAE, with our marquee retail boutique at historic Souq Al Wakra, Qatar.",
+          "Ramillette Perfumes is an upscale fragrance house blending Middle Eastern aromatic heritage with contemporary French perfumery. Handcrafted in the UAE, with boutiques and regional distribution across Qatar, the UAE, and Bahrain.",
         destinationTitle: "Your Fragrance Destination",
-        destinationDesc:
-          "Shop signature parfums, concentrated oils, and our 50+ luxury inspired collection online — with delivery across Qatar.",
+        destinationDesc: `Shop signature parfums, concentrated oils, and our 50+ luxury inspired collection online — with express delivery across ${config.name}.`,
         getInTouch: "Get in touch",
         aboutCol: "About",
         accountCol: "Account",
@@ -198,9 +198,10 @@ export function Footer() {
             <h5 className="text-sm font-semibold text-white mb-4">
               {tFooter.getInTouch}
             </h5>
-            <div className="space-y-2 text-neutral-400">
-              <p>contact@ramillette.com</p>
-              <p dir="ltr" className="text-start">+97466097444</p>
+            <div className="space-y-1.5 text-neutral-400 text-xs">
+              <p>{config.supportEmail}</p>
+              <p dir="ltr" className="text-start">{config.phone}</p>
+              <p className="text-[11px] text-neutral-500">{isAr ? config.boutiqueLocationAr : config.boutiqueLocation}</p>
             </div>
           </div>
 

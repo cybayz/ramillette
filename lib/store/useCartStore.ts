@@ -9,6 +9,8 @@ export interface CartItem {
   variantName?: string | null;
   slug: string;
   price: number;
+  basePriceQar?: number;
+  country?: string;
   image: string;
   quantity: number;
   maxStock?: number;
@@ -40,6 +42,7 @@ interface CartStore {
   setOrderNote: (note: string) => void;
   applyCoupon: (coupon: CouponState) => void;
   removeCoupon: () => void;
+  recalculateForCountry: (countryCode: string) => void;
 
   // Computed
   getSubtotal: () => number;
@@ -80,6 +83,14 @@ export const useCartStore = create<CartStore>()(
         const id = `${newItem.productId}_${newItem.variantId || "default"}`;
         const existingItems = get().items;
         const index = existingItems.findIndex((item) => item.id === id);
+        const currentCountry = (newItem.country || "QA").toUpperCase();
+        const baseQar =
+          newItem.basePriceQar ??
+          (currentCountry === "BH"
+            ? newItem.price / 0.103
+            : currentCountry === "AE"
+            ? newItem.price / 1.01
+            : newItem.price);
 
         if (index > -1) {
           const updated = [...existingItems];
@@ -89,7 +100,15 @@ export const useCartStore = create<CartStore>()(
           set({ items: updated, isOpen: true });
         } else {
           set({
-            items: [...existingItems, { ...newItem, id }],
+            items: [
+              ...existingItems,
+              {
+                ...newItem,
+                id,
+                basePriceQar: baseQar,
+                country: currentCountry,
+              },
+            ],
             isOpen: true,
           });
         }
@@ -124,6 +143,40 @@ export const useCartStore = create<CartStore>()(
 
       applyCoupon: (coupon) => set({ coupon }),
       removeCoupon: () => set({ coupon: null }),
+
+      recalculateForCountry: (targetCountry: string) => {
+        const countryUpper = targetCountry.toUpperCase();
+        const currentItems = get().items;
+        if (currentItems.length === 0) return;
+
+        const updated = currentItems.map((item) => {
+          const baseQar =
+            item.basePriceQar ??
+            (item.country === "BH"
+              ? item.price / 0.103
+              : item.country === "AE"
+              ? item.price / 1.01
+              : item.price);
+
+          let newPrice = baseQar;
+          if (countryUpper === "AE") {
+            newPrice = Math.round(baseQar * 1.01);
+          } else if (countryUpper === "BH") {
+            newPrice = Number((baseQar * 0.103).toFixed(3));
+          } else {
+            newPrice = Number(baseQar.toFixed(2));
+          }
+
+          return {
+            ...item,
+            basePriceQar: baseQar,
+            price: newPrice,
+            country: countryUpper,
+          };
+        });
+
+        set({ items: updated });
+      },
 
       getSubtotal: () => {
         return get().items.reduce(

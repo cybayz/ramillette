@@ -5,6 +5,9 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { useCartStore } from "@/lib/store/useCartStore";
 import { useLanguageStore } from "@/lib/store/useLanguageStore";
+import { useCountryStore } from "@/lib/store/useCountryStore";
+import { resolveProductForCountry, resolveVariantForCountry } from "@/lib/country/productResolver";
+import { formatPrice } from "@/lib/utils";
 import { getProductTitle } from "@/lib/i18n";
 import {
   Star,
@@ -25,6 +28,7 @@ export interface VariantData {
   price: number;
   compareAtPrice?: number | null;
   stock?: number;
+  countries?: any[];
 }
 
 interface ProductPurchaseFormProps {
@@ -44,6 +48,7 @@ interface ProductPurchaseFormProps {
     concentration?: string | null;
     description?: string | null;
     reviewsCount?: number;
+    countries?: any[];
   };
   variants: VariantData[];
 }
@@ -55,26 +60,53 @@ export function ProductPurchaseForm({
   const router = useRouter();
   const { addItem, openCart } = useCartStore();
   const { language } = useLanguageStore();
+  const { country, config } = useCountryStore();
   const isArabic = language === "ar";
+
+  // Resolve product and variants for active country
+  const resolvedProd = React.useMemo(() => {
+    return resolveProductForCountry(product, country);
+  }, [product, country]);
+
+  const resolvedVariants: VariantData[] = React.useMemo(() => {
+    if (!variants || variants.length === 0) return [];
+    return variants.map((v) => {
+      const res = resolveVariantForCountry(v, country);
+      return {
+        ...v,
+        price: res.price,
+        compareAtPrice: res.compareAtPrice,
+        stock: res.stock,
+      };
+    });
+  }, [variants, country]);
 
   // Default to the 50ml variant if available (as shown in reference screenshot), or middle, or first
   const defaultVariant =
-    variants.find((v) => v.name.toLowerCase().includes("50")) ||
-    (variants.length > 1 ? variants[1] : variants[0]) || {
+    resolvedVariants.find((v) => v.name.toLowerCase().includes("50")) ||
+    (resolvedVariants.length > 1 ? resolvedVariants[1] : resolvedVariants[0]) || {
       id: "default",
       name: "50ml",
-      price: product.basePrice,
-      compareAtPrice: product.compareAtPrice,
-      stock: product.stock,
+      price: resolvedProd.price,
+      compareAtPrice: resolvedProd.compareAtPrice,
+      stock: resolvedProd.stock,
     };
 
   const [selectedVariant, setSelectedVariant] = useState<VariantData>(defaultVariant);
   const [activeTab, setActiveTab] = useState<"description" | "notes" | "specifications">("notes");
 
+  // Keep selected variant synchronized when country changes
+  useEffect(() => {
+    if (resolvedVariants.length > 0) {
+      const match = resolvedVariants.find((v) => v.id === selectedVariant.id) || resolvedVariants[0];
+      if (match) setSelectedVariant(match);
+    }
+  }, [country, resolvedVariants]);
+
   // Out of stock calculation
   const isOutOfStock =
     (selectedVariant.stock !== undefined && selectedVariant.stock <= 0) ||
-    (variants.length === 0 && product.stock <= 0);
+    (resolvedVariants.length === 0 && resolvedProd.stock <= 0);
 
   const [isNotifyModalOpen, setIsNotifyModalOpen] = useState(false);
   const [notifyEmail, setNotifyEmail] = useState("");
@@ -187,13 +219,11 @@ export function ProductPurchaseForm({
 
       {/* Main Dynamic Price */}
       <div className="text-2xl sm:text-[26px] font-bold text-[#1c1c1c] my-1">
-        {isArabic
-          ? `${currentPrice.toFixed(2)} ر.ق`
-          : `QAR ${currentPrice.toFixed(2)}`}
+        {formatPrice(currentPrice, country)}
       </div>
 
       {/* Size Variant Options */}
-      {variants.length > 0 && (
+      {resolvedVariants.length > 0 && (
         <div className="mt-2 mb-3">
           <div className="text-[13px] font-semibold text-neutral-700 mb-2">
             {isArabic ? "الحجم:" : "Size:"}{" "}
@@ -203,7 +233,7 @@ export function ProductPurchaseForm({
           </div>
 
           <div className="grid grid-cols-3 gap-2 sm:gap-2.5">
-            {variants.map((variant) => {
+            {resolvedVariants.map((variant) => {
               const isSelected = selectedVariant.id === variant.id;
               const cleanName = variant.name.replace(/'/g, "");
 
@@ -238,9 +268,7 @@ export function ProductPurchaseForm({
                       isSelected ? "text-[#4e6648]" : "text-neutral-500"
                     }`}
                   >
-                    {isArabic
-                      ? `${Number(variant.price).toFixed(2)} ر.ق`
-                      : `QAR ${Number(variant.price).toFixed(2)}`}
+                    {formatPrice(variant.price, country)}
                   </span>
                 </button>
               );
@@ -249,14 +277,14 @@ export function ProductPurchaseForm({
         </div>
       )}
 
-      {/* Deliver To Qatar Notice */}
+      {/* Deliver To Notice */}
       <div className="flex items-center gap-2 py-2.5 border-t border-b border-[#ececec] text-[13px] text-neutral-700 my-2">
         <MapPin size={15} className="text-[#4e6648] shrink-0" />
         <span>
           {isArabic ? "التوصيل إلى" : "Deliver to"}{" "}
-          <b className="text-[#1c1c1c]">{isArabic ? "قطر" : "Qatar"}</b>{" "}
+          <b className="text-[#1c1c1c]">{isArabic ? config.nameAr : config.name}</b>{" "}
           <span aria-hidden="true">·</span>{" "}
-          <b className="text-[#1c1c1c]">{isArabic ? "جميع مناطق قطر" : "All over Qatar"}</b>
+          <b className="text-[#1c1c1c]">{isArabic ? `جميع مناطق ${config.nameAr}` : `All over ${config.name}`}</b>
         </span>
       </div>
 
@@ -303,7 +331,7 @@ export function ProductPurchaseForm({
         </li>
         <li className="flex items-center gap-2.5">
           <Truck size={14} className="text-neutral-500 shrink-0" />
-          <span>{isArabic ? "توصيل سريع في جميع أنحاء قطر" : "Fast delivery across Qatar"}</span>
+          <span>{isArabic ? `توصيل سريع في جميع أنحاء ${config.nameAr}` : `Fast delivery across ${config.name}`}</span>
         </li>
         <li className="flex items-center gap-2.5">
           <Package size={14} className="text-neutral-500 shrink-0" />

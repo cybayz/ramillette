@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
+import { formatPrice } from "@/lib/utils";
 
 export async function POST(request: Request) {
   try {
-    const { code, subtotal } = await request.json();
+    const { code, subtotal, countryCode = "QA" } = await request.json();
 
     if (!code || typeof subtotal !== "number") {
       return NextResponse.json(
@@ -48,9 +49,7 @@ export async function POST(request: Request) {
     if (coupon.minimumOrder && subtotal < Number(coupon.minimumOrder)) {
       return NextResponse.json(
         {
-          error: `Minimum order of QAR ${Number(coupon.minimumOrder).toFixed(
-            2
-          )} required for this coupon`,
+          error: `Minimum order of ${formatPrice(coupon.minimumOrder, countryCode)} required for this coupon`,
         },
         { status: 400 }
       );

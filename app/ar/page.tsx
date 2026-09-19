@@ -7,6 +7,7 @@ import { ReelVideosSlider } from "@/components/home/ReelVideosSlider";
 import { TopLuxurySection } from "@/components/home/TopLuxurySection";
 import { DualPromoBanners } from "@/components/home/DualPromoBanners";
 import { BestSellersCarousel } from "@/components/home/BestSellersCarousel";
+import { CustomerReviewsSection } from "@/components/home/CustomerReviewsSection";
 import { ValueProps } from "@/components/home/ValueProps";
 import { ArabicPageSync } from "@/components/home/ArabicPageSync";
 
@@ -58,7 +59,10 @@ export default async function ArabicHomePage() {
       {/* 8. Best Sellers Carousel */}
       <BestSellersCarousel products={bestSellersCarousel} />
 
-      {/* 9. Service Value Propositions (4 Badges) */}
+      {/* 9. Country-Specific Customer Reviews */}
+      <CustomerReviewsSection />
+
+      {/* 10. Service Value Propositions (4 Badges) */}
       <ValueProps />
     </div>
   );

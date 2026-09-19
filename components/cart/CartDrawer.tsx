@@ -11,10 +11,12 @@ import { QuantityStepper } from "@/lib/../components/ui/QuantityStepper";
 import { Button } from "@/lib/../components/ui/Button";
 import { formatPrice } from "@/lib/utils";
 import { ShoppingBag, Trash2, ArrowRight } from "lucide-react";
+import { useCountryStore } from "@/lib/store/useCountryStore";
 
 export function CartDrawer() {
   const pathname = usePathname();
   const isAr = Boolean(pathname?.startsWith("/ar"));
+  const { country, config } = useCountryStore();
 
   const {
     items,
@@ -135,7 +137,7 @@ export function CartDrawer() {
                     )}
 
                     <div className="text-sm font-bold text-[#1c1c1c] mt-1.5">
-                      {formatPrice(item.price)}
+                      {formatPrice(item.price, country)}
                     </div>
 
                     <div className="flex items-center justify-between mt-2.5">
@@ -191,12 +193,14 @@ export function CartDrawer() {
               <div className="flex items-center justify-between py-2 border-t border-[#e5e5e5]">
                 <span className="text-sm text-neutral-600">Subtotal</span>
                 <span className="text-lg font-bold text-[#1c1c1c]">
-                  {formatPrice(subtotal)}
+                  {formatPrice(subtotal, country)}
                 </span>
               </div>
 
               <p className="text-[11px] text-neutral-500 mb-3">
-                Taxes and shipping calculated at checkout. Express 2-hour Doha delivery available.
+                {isAr
+                  ? `الضرائب ورسوم الشحن تُحسب عند الدفع. ${config.deliveryNoticeAr}`
+                  : `Taxes and shipping calculated at checkout. ${config.deliveryNotice}.`}
               </p>
 
               {/* Terms agreement */}
