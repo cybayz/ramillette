@@ -12,7 +12,7 @@ interface CountrySwitcherProps {
 }
 
 export function CountrySwitcher({ className = "", variant = "topbar" }: CountrySwitcherProps) {
-  const { country, setCountry, config } = useCountryStore();
+  const { country, setCountry, config, availableCountries } = useCountryStore();
   const { language } = useLanguageStore();
   const isAr = language === "ar";
   const [isOpen, setIsOpen] = useState(false);
@@ -29,9 +29,11 @@ export function CountrySwitcher({ className = "", variant = "topbar" }: CountryS
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const countryList: CountryCode[] = ["QA", "AE", "BH"];
+  const countryList = availableCountries && availableCountries.length > 0
+    ? availableCountries
+    : Object.values(COUNTRIES);
 
-  const handleSelect = (code: CountryCode) => {
+  const handleSelect = (code: string) => {
     setCountry(code);
     setIsOpen(false);
   };
@@ -43,15 +45,14 @@ export function CountrySwitcher({ className = "", variant = "topbar" }: CountryS
           {isAr ? "الدولة والعملة" : "Country & Currency"}
         </label>
         <div className="grid grid-cols-3 gap-2">
-          {countryList.map((code) => {
-            const item = COUNTRIES[code];
-            const isSelected = country === code;
+          {countryList.map((item) => {
+            const isSelected = country === item.code;
             return (
               <button
-                key={code}
+                key={item.code}
                 type="button"
-                onClick={() => handleSelect(code)}
-                className={`flex flex-col items-center justify-center p-2.5 rounded-lg border text-xs font-medium transition-all ${
+                onClick={() => handleSelect(item.code)}
+                className={`flex flex-col items-center justify-center p-2.5 rounded-lg border text-xs font-medium transition-all cursor-pointer ${
                   isSelected
                     ? "bg-[#b6713e]/15 border-[#b6713e] text-white shadow-sm"
                     : "bg-neutral-900/60 border-neutral-800 text-neutral-300 hover:border-neutral-700 hover:text-white"
@@ -60,7 +61,7 @@ export function CountrySwitcher({ className = "", variant = "topbar" }: CountryS
                 <span className="text-xl mb-1">{item.flag}</span>
                 <span className="font-semibold text-[11px]">{item.currency}</span>
                 <span className="text-[10px] text-neutral-400 truncate max-w-full">
-                  {isAr ? item.nameAr : item.name}
+                  {isAr ? item.nameAr || item.name : item.name}
                 </span>
               </button>
             );
@@ -79,47 +80,45 @@ export function CountrySwitcher({ className = "", variant = "topbar" }: CountryS
         aria-expanded={isOpen}
         aria-label="Select Country"
       >
-        <span className="text-sm leading-none">{config.flag}</span>
-        <span className="font-semibold tracking-wide">{config.currency}</span>
+        <span className="text-sm">{config?.flag || "🇶🇦"}</span>
+        <span className="font-bold text-xs">{config?.currency || "QAR"}</span>
         <ChevronDown
           size={12}
-          className={`text-neutral-400 transition-transform duration-200 ${
-            isOpen ? "rotate-180" : ""
-          }`}
+          className={`text-neutral-400 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
         />
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-1.5 w-52 bg-[#141414] border border-[#2a2a2a] rounded-xl shadow-2xl overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-150">
-          <div className="px-3 py-2 border-b border-[#242424] bg-[#181818]/60">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-neutral-400">
-              {isAr ? "اختر الدولة والتسوق" : "Select Shopping Region"}
-            </p>
+        <div
+          className={`absolute ${
+            isAr ? "left-0" : "right-0"
+          } mt-2 w-56 bg-[#1c1c1c] border border-neutral-700 rounded-lg shadow-2xl z-50 overflow-hidden py-1.5 backdrop-blur-md animate-in fade-in duration-100`}
+        >
+          <div className="px-3 py-1.5 border-b border-neutral-800 text-[10px] font-bold uppercase tracking-wider text-neutral-400">
+            {isAr ? "اختر الدولة و العملة" : "Shipping Destination"}
           </div>
-          <div className="p-1">
-            {countryList.map((code) => {
-              const item = COUNTRIES[code];
-              const isSelected = country === code;
+
+          <div className="py-1">
+            {countryList.map((item) => {
+              const isSelected = country === item.code;
               return (
                 <button
-                  key={code}
+                  key={item.code}
                   type="button"
-                  onClick={() => handleSelect(code)}
-                  className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs transition-colors cursor-pointer text-left rtl:text-right ${
+                  onClick={() => handleSelect(item.code)}
+                  className={`w-full flex items-center justify-between px-3 py-2 text-xs transition-colors cursor-pointer ${
                     isSelected
                       ? "bg-[#b6713e]/20 text-white font-semibold"
                       : "text-neutral-300 hover:bg-neutral-800 hover:text-white"
                   }`}
                 >
                   <div className="flex items-center gap-2.5">
-                    <span className="text-base">{item.flag}</span>
-                    <div className="flex flex-col">
-                      <span className="text-[12px] font-medium">
-                        {isAr ? item.nameAr : item.name}
-                      </span>
-                      <span className="text-[10px] text-neutral-400 font-mono">
-                        {item.currency} ({isAr ? item.currencyAr : item.currency})
-                      </span>
+                    <span className="text-lg">{item.flag}</span>
+                    <div className="text-left">
+                      <div className="font-medium">{isAr ? item.nameAr || item.name : item.name}</div>
+                      <div className="text-[10px] text-neutral-400 font-mono">
+                        {item.currency} ({isAr ? item.currencyAr || item.currency : item.currency})
+                      </div>
                     </div>
                   </div>
                   {isSelected && <Check size={14} className="text-[#b6713e]" />}

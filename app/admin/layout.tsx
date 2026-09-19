@@ -12,8 +12,10 @@ import {
   Settings,
   Store,
   ShieldAlert,
+  Globe,
 } from "lucide-react";
 import { LogoutButton } from "@/components/account/LogoutButton";
+import { AdminSidebarMobile } from "@/components/admin/AdminSidebarMobile";
 
 export default async function AdminLayout({
   children,
@@ -46,8 +48,10 @@ export default async function AdminLayout({
   const adminNav = [
     { label: "Dashboard", href: "/admin", icon: LayoutDashboard },
     { label: "Products & Stock", href: "/admin/products", icon: Package },
-    { label: "Orders", href: "/admin/orders", icon: ShoppingBag },
+    { label: "Orders & Delivery", href: "/admin/orders", icon: ShoppingBag },
+    { label: "Countries & Markets", href: "/admin/countries", icon: Globe },
     { label: "Coupons & Promos", href: "/admin/coupons", icon: Tag },
+    { label: "Store & Tax Settings", href: "/admin/settings", icon: Settings },
   ];
 
   return (
@@ -106,6 +110,7 @@ export default async function AdminLayout({
         {/* Top Header */}
         <header className="h-16 bg-white border-b border-[#e5e5e5] px-6 flex items-center justify-between">
           <div className="flex items-center gap-3 md:hidden">
+            <AdminSidebarMobile />
             <span className="font-bold text-sm text-[#1c1c1c]">
               Ramillette Admin
             </span>

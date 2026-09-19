@@ -127,7 +127,10 @@ export default function CheckoutPage() {
   const subtotal = getSubtotal();
   const discount = getDiscountTotal();
   const shipping = subtotal >= config.freeShippingThreshold ? 0.0 : config.standardShippingFee;
-  const finalTotal = Math.max(0, subtotal - discount + shipping);
+  const taxableAmount = Math.max(0, subtotal - discount);
+  const taxRate = (config as any).taxRate ?? (country === "AE" ? 5 : country === "BH" ? 10 : 0);
+  const taxAmount = Number(((taxableAmount * taxRate) / 100).toFixed(config.currencyDecimals || 2));
+  const finalTotal = Math.max(0, subtotal - discount + shipping + taxAmount);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -494,6 +497,15 @@ export default function CheckoutPage() {
                     )}
                   </span>
                 </div>
+
+                {taxAmount > 0 && (
+                  <div className="flex justify-between text-neutral-600">
+                    <span>VAT ({taxRate}%)</span>
+                    <span className="font-semibold text-[#1c1c1c]">
+                      {formatPrice(taxAmount, country)}
+                    </span>
+                  </div>
+                )}
 
                 <div className="flex justify-between text-base font-extrabold text-[#1c1c1c] pt-3 border-t border-[#e5e5e5]">
                   <span>Total ({config.currency})</span>

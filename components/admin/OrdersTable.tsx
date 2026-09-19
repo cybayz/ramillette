@@ -1,11 +1,35 @@
 "use client";
 
 import React, { useState } from "react";
-import Link from "next/link";
+import {
+  Search,
+  ChevronDown,
+  Loader2,
+  ExternalLink,
+  Eye,
+  X,
+  MapPin,
+  Phone,
+  Mail,
+  CreditCard,
+  Truck,
+  CheckCircle2,
+  Clock,
+  Percent,
+} from "lucide-react";
 import { formatPrice } from "@/lib/utils";
-import { Search, ChevronDown, Loader2, ExternalLink } from "lucide-react";
 
-interface AdminOrder {
+export interface AdminOrderItem {
+  id: string;
+  productName: string;
+  variantName?: string | null;
+  sku?: string | null;
+  quantity: number;
+  unitPrice: number;
+  total: number;
+}
+
+export interface AdminOrder {
   id: string;
   orderNumber: string;
   customerName: string;
@@ -15,20 +39,41 @@ interface AdminOrder {
   paymentStatus: string;
   paymentMethod: string;
   total: number;
+  subtotal: number;
+  shippingFee: number;
+  discount: number;
+  tax: number;
+  currency: string;
+  country: string;
+  city?: string;
+  addressLine1?: string;
   area?: string | null;
+  deliveryNotes?: string | null;
+  paymentGatewayRef?: string | null;
   itemsCount: number;
+  items: AdminOrderItem[];
   createdAt: string;
+}
+
+interface OrdersTableProps {
+  initialOrders: AdminOrder[];
+  availableCountries?: Array<{ code: string; name: string; flag: string }>;
 }
 
 export function OrdersTable({
   initialOrders,
-}: {
-  initialOrders: AdminOrder[];
-}) {
+  availableCountries = [
+    { code: "QA", name: "Qatar", flag: "🇶🇦" },
+    { code: "AE", name: "UAE", flag: "🇦🇪" },
+    { code: "BH", name: "Bahrain", flag: "🇧🇭" },
+  ],
+}: OrdersTableProps) {
   const [orders, setOrders] = useState(initialOrders);
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
+  const [countryFilter, setCountryFilter] = useState("ALL");
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [selectedOrder, setSelectedOrder] = useState<AdminOrder | null>(null);
 
   const statuses = [
     "PENDING",
@@ -52,6 +97,9 @@ export function OrdersTable({
         setOrders(
           orders.map((o) => (o.id === orderId ? { ...o, status: newStatus } : o))
         );
+        if (selectedOrder && selectedOrder.id === orderId) {
+          setSelectedOrder({ ...selectedOrder, status: newStatus });
+        }
       }
     } catch (err) {
       console.error("Failed to update status:", err);
@@ -60,22 +108,28 @@ export function OrdersTable({
     }
   };
 
+  const getCountryFlag = (code: string) => {
+    const found = availableCountries.find((c) => c.code === code.toUpperCase());
+    return found ? found.flag : "🌍";
+  };
+
   const filtered = orders.filter((o) => {
     const matchesQuery =
       o.orderNumber.toLowerCase().includes(query.toLowerCase()) ||
       o.customerName.toLowerCase().includes(query.toLowerCase()) ||
       o.customerPhone.includes(query);
 
-    const matchesStatus =
-      statusFilter === "ALL" || o.status === statusFilter;
+    const matchesStatus = statusFilter === "ALL" || o.status === statusFilter;
+    const matchesCountry = countryFilter === "ALL" || o.country === countryFilter;
 
-    return matchesQuery && matchesStatus;
+    return matchesQuery && matchesStatus && matchesCountry;
   });
 
   return (
-    <div className="bg-white rounded-[8px] border border-[#e5e5e5] shadow-xs p-6 space-y-6">
-      {/* Controls */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="bg-white rounded-[10px] border border-[#e5e5e5] shadow-xs p-6 space-y-6">
+      {/* Controls Header */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        {/* Search */}
         <div className="relative flex-1 max-w-sm">
           <Search
             size={16}
@@ -90,36 +144,57 @@ export function OrdersTable({
           />
         </div>
 
-        <div className="flex items-center gap-3">
-          <span className="text-xs text-neutral-500 font-medium">Filter Status:</span>
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="bg-white border border-[#e5e5e5] rounded-[5px] px-3 py-2 text-xs font-semibold text-[#1c1c1c] focus:outline-none focus:border-[#b6713e]"
-          >
-            <option value="ALL">All Statuses</option>
-            {statuses.map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
-            ))}
-          </select>
+        {/* Filters */}
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Country Filter */}
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-neutral-500 font-medium">Market:</span>
+            <select
+              value={countryFilter}
+              onChange={(e) => setCountryFilter(e.target.value)}
+              className="bg-white border border-[#e5e5e5] rounded-[5px] px-3 py-2 text-xs font-semibold text-[#1c1c1c] focus:outline-none focus:border-[#b6713e]"
+            >
+              <option value="ALL">All Markets</option>
+              {availableCountries.map((c) => (
+                <option key={c.code} value={c.code}>
+                  {c.flag} {c.name} ({c.code})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Status Filter */}
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-neutral-500 font-medium">Status:</span>
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="bg-white border border-[#e5e5e5] rounded-[5px] px-3 py-2 text-xs font-semibold text-[#1c1c1c] focus:outline-none focus:border-[#b6713e]"
+            >
+              <option value="ALL">All Statuses</option>
+              {statuses.map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
 
-      {/* Table */}
+      {/* Orders Table */}
       <div className="overflow-x-auto">
         <table className="w-full text-left text-xs">
           <thead>
             <tr className="border-b border-[#e5e5e5] bg-[#fbf9f5] text-neutral-600 font-bold uppercase">
-              <th className="py-3 px-3">Order #</th>
-              <th className="py-3 px-3">Date</th>
-              <th className="py-3 px-3">Client</th>
-              <th className="py-3 px-3">Area (Qatar)</th>
+              <th className="py-3 px-3">Order Number</th>
+              <th className="py-3 px-3">Market</th>
+              <th className="py-3 px-3">Customer</th>
+              <th className="py-3 px-3">City / Area</th>
               <th className="py-3 px-3">Payment</th>
-              <th className="py-3 px-3">Total</th>
-              <th className="py-3 px-3">Status</th>
-              <th className="py-3 px-3 text-right">Receipt</th>
+              <th className="py-3 px-3">Total Amount</th>
+              <th className="py-3 px-3">Fulfillment Status</th>
+              <th className="py-3 px-3 text-right">Details</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[#f0ece1]">
@@ -127,85 +202,115 @@ export function OrdersTable({
               const isUpdating = updatingId === order.id;
 
               return (
-                <tr key={order.id} className="hover:bg-[#fbf9f5]/50">
-                  <td className="py-3 px-3 font-extrabold text-[#1c1c1c]">
-                    #{order.orderNumber}
+                <tr key={order.id} className="hover:bg-[#fbf9f5]/60 transition-colors">
+                  {/* Order Number */}
+                  <td className="py-3.5 px-3">
+                    <span className="font-mono font-bold text-[#1c1c1c] block">
+                      {order.orderNumber}
+                    </span>
+                    <span className="text-[10px] text-neutral-400">
+                      {new Date(order.createdAt).toLocaleDateString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </span>
                   </td>
-                  <td className="py-3 px-3 text-neutral-500">
-                    {new Date(order.createdAt).toLocaleDateString("en-QA", {
-                      month: "short",
-                      day: "numeric",
-                    })}
+
+                  {/* Market / Country */}
+                  <td className="py-3.5 px-3">
+                    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-neutral-100 border border-neutral-200 font-bold text-[11px]">
+                      <span>{getCountryFlag(order.country)}</span>
+                      <span>{order.country}</span>
+                    </span>
                   </td>
-                  <td className="py-3 px-3">
+
+                  {/* Customer */}
+                  <td className="py-3.5 px-3">
                     <span className="font-bold text-[#1c1c1c] block">
                       {order.customerName}
                     </span>
-                    <span className="text-[11px] text-neutral-400">
+                    <span className="text-[11px] text-neutral-500">
                       {order.customerPhone}
                     </span>
                   </td>
-                  <td className="py-3 px-3 text-neutral-600 font-medium">
-                    {order.area || "Doha"}
+
+                  {/* City */}
+                  <td className="py-3.5 px-3 text-neutral-600 font-medium">
+                    {order.city || order.area || "Standard Delivery"}
                   </td>
-                  <td className="py-3 px-3">
-                    <span className="font-semibold block text-[#1c1c1c]">
+
+                  {/* Payment */}
+                  <td className="py-3.5 px-3">
+                    <span className="block font-semibold text-[11px]">
                       {order.paymentMethod}
                     </span>
                     <span
-                      className={`text-[10px] font-bold ${
+                      className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
                         order.paymentStatus === "PAID"
-                          ? "text-emerald-700"
-                          : "text-amber-700"
+                          ? "bg-emerald-100 text-emerald-800"
+                          : "bg-amber-100 text-amber-800"
                       }`}
                     >
                       {order.paymentStatus}
                     </span>
                   </td>
-                  <td className="py-3 px-3 font-extrabold text-[#1c1c1c]">
-                    {formatPrice(order.total)}
+
+                  {/* Amount with currency */}
+                  <td className="py-3.5 px-3">
+                    <span className="font-extrabold text-[#1c1c1c] block text-sm">
+                      {formatPrice(order.total, order.country)}
+                    </span>
+                    {order.tax > 0 && (
+                      <span className="text-[10px] text-neutral-400">
+                        incl. VAT {formatPrice(order.tax, order.country)}
+                      </span>
+                    )}
                   </td>
-                  <td className="py-3 px-3">
+
+                  {/* Status Dropdown */}
+                  <td className="py-3.5 px-3">
                     <div className="relative inline-block">
-                      {isUpdating ? (
-                        <div className="flex items-center gap-1 text-[11px] text-neutral-500">
-                          <Loader2 size={12} className="animate-spin" />
-                          <span>Saving...</span>
-                        </div>
-                      ) : (
-                        <select
-                          value={order.status}
-                          onChange={(e) =>
-                            handleStatusChange(order.id, e.target.value)
-                          }
-                          className={`font-bold text-[11px] uppercase rounded px-2 py-1 border cursor-pointer ${
-                            order.status === "DELIVERED"
-                              ? "bg-emerald-50 text-emerald-800 border-emerald-300"
-                              : order.status === "SHIPPED"
-                              ? "bg-blue-50 text-blue-800 border-blue-300"
-                              : order.status === "CONFIRMED"
-                              ? "bg-purple-50 text-purple-800 border-purple-300"
-                              : "bg-amber-50 text-amber-800 border-amber-300"
-                          }`}
-                        >
-                          {statuses.map((s) => (
-                            <option key={s} value={s}>
-                              {s}
-                            </option>
-                          ))}
-                        </select>
-                      )}
+                      <select
+                        disabled={isUpdating}
+                        value={order.status}
+                        onChange={(e) => handleStatusChange(order.id, e.target.value)}
+                        className={`text-xs font-bold px-2.5 py-1 rounded-[4px] border appearance-none pr-6 cursor-pointer focus:outline-none ${
+                          order.status === "DELIVERED"
+                            ? "bg-emerald-50 text-emerald-800 border-emerald-300"
+                            : order.status === "SHIPPED"
+                            ? "bg-blue-50 text-blue-800 border-blue-300"
+                            : order.status === "PROCESSING"
+                            ? "bg-purple-50 text-purple-800 border-purple-300"
+                            : order.status === "CANCELLED"
+                            ? "bg-red-50 text-red-800 border-red-300"
+                            : "bg-[#faedcd]/60 text-[#b6713e] border-[#ecdec1]"
+                        }`}
+                      >
+                        {statuses.map((s) => (
+                          <option key={s} value={s}>
+                            {s}
+                          </option>
+                        ))}
+                      </select>
+                      <ChevronDown
+                        size={12}
+                        className="absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none text-neutral-500"
+                      />
                     </div>
                   </td>
-                  <td className="py-3 px-3 text-right">
-                    <Link
-                      href={`/checkout/success?orderNumber=${order.orderNumber}`}
-                      target="_blank"
-                      className="text-xs text-[#b6713e] hover:underline font-semibold inline-flex items-center gap-1"
+
+                  {/* View Details */}
+                  <td className="py-3.5 px-3 text-right">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedOrder(order)}
+                      className="p-1.5 text-[#b6713e] hover:bg-[#faedcd]/50 rounded transition-colors"
+                      title="Inspect Order Details"
                     >
-                      <span>View</span>
-                      <ExternalLink size={12} />
-                    </Link>
+                      <Eye size={16} />
+                    </button>
                   </td>
                 </tr>
               );
@@ -213,6 +318,189 @@ export function OrdersTable({
           </tbody>
         </table>
       </div>
+
+      {/* Order Detail Modal */}
+      {selectedOrder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="bg-white rounded-[10px] shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col border border-[#e5e5e5] overflow-hidden">
+            {/* Modal Header */}
+            <div className="px-6 py-4 border-b border-[#e5e5e5] flex items-center justify-between bg-[#fbf9f5]">
+              <div className="flex items-center gap-2.5">
+                <span className="text-2xl">{getCountryFlag(selectedOrder.country)}</span>
+                <div>
+                  <h2 className="text-base font-bold text-[#1c1c1c] font-mono">
+                    {selectedOrder.orderNumber}
+                  </h2>
+                  <p className="text-xs text-neutral-500">
+                    Market: {selectedOrder.country} • Placed on{" "}
+                    {new Date(selectedOrder.createdAt).toLocaleString()}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setSelectedOrder(null)}
+                className="text-neutral-400 hover:text-neutral-700 p-1.5 rounded-md hover:bg-neutral-100"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 overflow-y-auto space-y-6 flex-1 text-xs">
+              {/* Customer & Address */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-3.5 bg-neutral-50 border border-neutral-200 rounded-[8px]">
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 block mb-1">
+                    Customer Information
+                  </span>
+                  <p className="font-bold text-[#1c1c1c]">{selectedOrder.customerName}</p>
+                  <p className="text-neutral-600 flex items-center gap-1.5 mt-0.5">
+                    <Phone size={12} /> {selectedOrder.customerPhone}
+                  </p>
+                  <p className="text-neutral-600 flex items-center gap-1.5 mt-0.5">
+                    <Mail size={12} /> {selectedOrder.customerEmail}
+                  </p>
+                </div>
+
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 block mb-1">
+                    Shipping Destination
+                  </span>
+                  <p className="text-neutral-700 flex items-start gap-1.5">
+                    <MapPin size={12} className="shrink-0 mt-0.5 text-[#b6713e]" />
+                    <span>
+                      {selectedOrder.addressLine1 || "Address not provided"}
+                      {selectedOrder.area ? `, ${selectedOrder.area}` : ""}
+                      {selectedOrder.city ? `, ${selectedOrder.city}` : ""}
+                    </span>
+                  </p>
+                  {selectedOrder.deliveryNotes && (
+                    <p className="mt-2 text-[11px] text-amber-800 bg-amber-50 p-1.5 rounded border border-amber-200">
+                      Note: {selectedOrder.deliveryNotes}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Items List */}
+              <div>
+                <span className="text-xs font-bold uppercase tracking-wider text-neutral-500 block mb-2">
+                  Order Items ({selectedOrder.items?.length || 0})
+                </span>
+                <div className="border border-neutral-200 rounded-[8px] overflow-hidden">
+                  <table className="w-full text-left">
+                    <thead className="bg-[#fbf9f5] border-b border-neutral-200 text-neutral-600">
+                      <tr>
+                        <th className="py-2 px-3 font-semibold">Perfume</th>
+                        <th className="py-2 px-3 font-semibold text-center">Qty</th>
+                        <th className="py-2 px-3 font-semibold text-right">Unit Price</th>
+                        <th className="py-2 px-3 font-semibold text-right">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-neutral-200">
+                      {selectedOrder.items?.map((it) => (
+                        <tr key={it.id}>
+                          <td className="py-2 px-3">
+                            <span className="font-bold text-[#1c1c1c] block">
+                              {it.productName}
+                            </span>
+                            {it.variantName && (
+                              <span className="text-[10px] text-neutral-400 block">
+                                Size: {it.variantName}
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-2 px-3 text-center font-bold">
+                            {it.quantity}
+                          </td>
+                          <td className="py-2 px-3 text-right font-mono">
+                            {formatPrice(it.unitPrice, selectedOrder.country)}
+                          </td>
+                          <td className="py-2 px-3 text-right font-mono font-bold text-[#b6713e]">
+                            {formatPrice(it.total, selectedOrder.country)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Financial Breakdown */}
+              <div className="bg-neutral-50 p-4 rounded-[8px] border border-neutral-200 space-y-2">
+                <div className="flex justify-between text-neutral-600">
+                  <span>Subtotal</span>
+                  <span className="font-mono">{formatPrice(selectedOrder.subtotal, selectedOrder.country)}</span>
+                </div>
+
+                {selectedOrder.discount > 0 && (
+                  <div className="flex justify-between text-emerald-700">
+                    <span>Discount</span>
+                    <span className="font-mono">-{formatPrice(selectedOrder.discount, selectedOrder.country)}</span>
+                  </div>
+                )}
+
+                <div className="flex justify-between text-neutral-600">
+                  <span>Delivery Fee</span>
+                  <span className="font-mono">
+                    {selectedOrder.shippingFee > 0
+                      ? formatPrice(selectedOrder.shippingFee, selectedOrder.country)
+                      : "Free Delivery"}
+                  </span>
+                </div>
+
+                {selectedOrder.tax > 0 && (
+                  <div className="flex justify-between text-neutral-600">
+                    <span>VAT / Taxes</span>
+                    <span className="font-mono">{formatPrice(selectedOrder.tax, selectedOrder.country)}</span>
+                  </div>
+                )}
+
+                <div className="flex justify-between font-bold text-sm text-[#1c1c1c] pt-2 border-t border-neutral-200">
+                  <span>Total Amount</span>
+                  <span className="font-mono text-[#b6713e]">
+                    {formatPrice(selectedOrder.total, selectedOrder.country)}
+                  </span>
+                </div>
+              </div>
+
+              {/* Payment Info */}
+              <div className="p-3 bg-neutral-50 border border-neutral-200 rounded flex items-center justify-between">
+                <div>
+                  <span className="text-[10px] font-bold uppercase text-neutral-400 block">Payment Method</span>
+                  <span className="font-semibold text-[#1c1c1c]">{selectedOrder.paymentMethod}</span>
+                  {selectedOrder.paymentGatewayRef && (
+                    <span className="text-[10px] text-neutral-500 font-mono block">
+                      Ref: {selectedOrder.paymentGatewayRef}
+                    </span>
+                  )}
+                </div>
+
+                <div className="text-right">
+                  <span className="text-[10px] font-bold uppercase text-neutral-400 block">Status</span>
+                  <span className="font-bold text-emerald-700">{selectedOrder.paymentStatus}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-6 py-3.5 border-t border-[#e5e5e5] bg-[#fbf9f5] flex items-center justify-between">
+              <span className="text-xs text-neutral-500">
+                Order ID: <code className="font-mono text-[11px]">{selectedOrder.id}</code>
+              </span>
+              <button
+                type="button"
+                onClick={() => setSelectedOrder(null)}
+                className="btn-primary h-8 px-4 text-xs font-semibold"
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

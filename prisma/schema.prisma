@@ -326,3 +326,36 @@ model NewsletterSubscriber {
   email     String   @unique
   createdAt DateTime @default(now())
 }
+
+model Country {
+  code                  String   @id // e.g. "QA", "AE", "BH", "SA"
+  name                  String   // e.g. "Qatar"
+  nameAr                String?  // e.g. "قطر"
+  flag                  String   // e.g. "🇶🇦"
+  currency              String   // e.g. "QAR"
+  currencyAr            String?  // e.g. "ر.ق"
+  currencySymbol        String?  // e.g. "QAR"
+  currencyDecimals      Int      @default(2) // 2 or 3
+  exchangeRate          Decimal  @default(1.0) @db.Decimal(10, 4)
+  phonePrefix           String   // e.g. "+974"
+  standardShippingFee   Decimal  @default(30) @db.Decimal(10, 3)
+  freeShippingThreshold Decimal  @default(900) @db.Decimal(10, 3)
+  taxRate               Decimal  @default(0) @db.Decimal(5, 2) // VAT % e.g. 5.00 for UAE, 10.00 for BH, 0 for QA
+  taxName               String   @default("VAT")
+  taxIncludedInPrice    Boolean  @default(false)
+  defaultCity           String   @default("Doha")
+  cities                String   @db.Text // JSON string of cities
+  boutiqueName          String?
+  boutiqueLocation      String?
+  boutiqueLocationAr    String?
+  deliveryNotice        String?
+  deliveryNoticeAr      String?
+  phone                 String?
+  supportEmail          String?
+  orderEmail            String?
+  paymentMethods        String?  @db.Text // JSON string of payment methods
+  active                Boolean  @default(true)
+  sortOrder             Int      @default(0)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+}

@@ -174,13 +174,25 @@ export async function POST(request: Request) {
       }
     }
 
-    // 4. Country-Specific Shipping Calculation
-    const shippingFee =
-      calculatedSubtotal >= countryConfig.freeShippingThreshold
-        ? 0.0
-        : countryConfig.standardShippingFee;
+    // 4. Country-Specific Shipping & VAT Calculation (using DB settings if present)
+    const dbCountry = await prisma.country.findUnique({
+      where: { code: targetCountryCode },
+    });
 
-    const finalTotal = Math.max(0, calculatedSubtotal - discountAmount + shippingFee);
+    const standardShippingFee = dbCountry
+      ? Number(dbCountry.standardShippingFee)
+      : countryConfig.standardShippingFee;
+    const freeShippingThreshold = dbCountry
+      ? Number(dbCountry.freeShippingThreshold)
+      : countryConfig.freeShippingThreshold;
+    const taxRate = dbCountry
+      ? Number(dbCountry.taxRate)
+      : (targetCountryCode === "AE" ? 5.0 : targetCountryCode === "BH" ? 10.0 : 0.0);
+
+    const shippingFee = calculatedSubtotal >= freeShippingThreshold ? 0.0 : standardShippingFee;
+    const taxableAmount = Math.max(0, calculatedSubtotal - discountAmount);
+    const taxAmount = Number(((taxableAmount * taxRate) / 100).toFixed(countryConfig.currencyDecimals || 2));
+    const finalTotal = Math.max(0, calculatedSubtotal - discountAmount + shippingFee + taxAmount);
 
     // 5. Generate Human-readable Unique Order Number (e.g. RAM-QA-2609-8472)
     const randomSuffix = Math.floor(1000 + Math.random() * 9000);
@@ -219,7 +231,7 @@ export async function POST(request: Request) {
           subtotal: calculatedSubtotal,
           discount: discountAmount,
           shipping: shippingFee,
-          tax: 0.0,
+          tax: taxAmount,
           total: finalTotal,
           currency: countryConfig.currency,
           country: targetCountryCode,

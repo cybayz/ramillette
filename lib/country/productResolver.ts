@@ -26,7 +26,7 @@ export function resolveProductForCountry(
       active: boolean;
     }> | null;
   },
-  countryCode: CountryCode = "QA"
+  countryCode: string = "QA"
 ): CountryPriceStock {
   const config = getCountryConfig(countryCode);
   const baseNum = Number(product.basePrice) || 0;
@@ -86,7 +86,7 @@ export function resolveVariantForCountry(
       active: boolean;
     }> | null;
   },
-  countryCode: CountryCode = "QA"
+  countryCode: string = "QA"
 ): CountryPriceStock {
   const config = getCountryConfig(countryCode);
   const baseNum = Number(variant.price) || 0;

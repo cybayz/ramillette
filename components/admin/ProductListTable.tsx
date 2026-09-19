@@ -4,7 +4,8 @@ import React, { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { formatPrice } from "@/lib/utils";
-import { Search, Edit3, Check, Loader2, Package } from "lucide-react";
+import { Search, Edit3, Check, Loader2, Package, Globe } from "lucide-react";
+import { RegionalProductEditorModal } from "@/components/admin/RegionalProductEditorModal";
 
 interface AdminProduct {
   id: string;
@@ -30,6 +31,7 @@ export function ProductListTable({
   const [editStock, setEditStock] = useState<number>(0);
   const [editPrice, setEditPrice] = useState<number>(0);
   const [isSaving, setIsSaving] = useState(false);
+  const [regionalModalProductId, setRegionalModalProductId] = useState<string | null>(null);
 
   const filtered = products.filter(
     (p) =>
@@ -195,28 +197,40 @@ export function ProductListTable({
 
                   {/* Actions */}
                   <td className="py-3 px-3 text-right">
-                    {isEditing ? (
+                    <div className="flex items-center justify-end gap-2">
                       <button
-                        onClick={() => saveEdit(product.id)}
-                        disabled={isSaving}
-                        className="btn-primary h-8 px-3 text-xs font-semibold flex items-center gap-1.5 ml-auto"
+                        type="button"
+                        onClick={() => setRegionalModalProductId(product.id)}
+                        className="btn-secondary h-8 px-2.5 text-xs font-semibold flex items-center gap-1.5 text-[#b6713e] bg-[#faedcd]/40 border border-[#ecdec1] hover:bg-[#faedcd]/80 transition-colors shadow-2xs"
+                        title="Manage Regional Pricing & Warehouse Stock"
                       >
-                        {isSaving ? (
-                          <Loader2 size={12} className="animate-spin" />
-                        ) : (
-                          <Check size={12} />
-                        )}
-                        <span>Save</span>
+                        <Globe size={13} />
+                        <span className="hidden sm:inline">Regional Pricing</span>
                       </button>
-                    ) : (
-                      <button
-                        onClick={() => startEdit(product)}
-                        className="btn-secondary h-8 px-3 text-xs font-semibold flex items-center gap-1.5 ml-auto text-neutral-600 hover:text-[#1c1c1c]"
-                      >
-                        <Edit3 size={12} />
-                        <span>Edit</span>
-                      </button>
-                    )}
+
+                      {isEditing ? (
+                        <button
+                          onClick={() => saveEdit(product.id)}
+                          disabled={isSaving}
+                          className="btn-primary h-8 px-3 text-xs font-semibold flex items-center gap-1.5"
+                        >
+                          {isSaving ? (
+                            <Loader2 size={12} className="animate-spin" />
+                          ) : (
+                            <Check size={12} />
+                          )}
+                          <span>Save</span>
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => startEdit(product)}
+                          className="btn-secondary h-8 px-3 text-xs font-semibold flex items-center gap-1.5 text-neutral-600 hover:text-[#1c1c1c]"
+                        >
+                          <Edit3 size={12} />
+                          <span>Edit</span>
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               );
@@ -224,6 +238,18 @@ export function ProductListTable({
           </tbody>
         </table>
       </div>
+
+      {/* Regional Pricing Modal */}
+      {regionalModalProductId && (
+        <RegionalProductEditorModal
+          productId={regionalModalProductId}
+          isOpen={Boolean(regionalModalProductId)}
+          onClose={() => setRegionalModalProductId(null)}
+          onSaved={() => {
+            // Re-fetch products or keep state clean
+          }}
+        />
+      )}
     </div>
   );
 }

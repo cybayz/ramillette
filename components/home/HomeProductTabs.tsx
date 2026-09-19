@@ -125,15 +125,18 @@ export function HomeProductTabs({
         </div>
 
         {/* Carousel Container with Products */}
-        <div className="relative group/carousel -mx-4 px-4 sm:mx-0 sm:px-0">
+        <div className="relative group/carousel -mx-4 sm:mx-0">
           {/* Scrollable Row with Mobile Peeking Card */}
           <div
             ref={scrollContainerRef}
-            className="grid grid-flow-col auto-cols-[calc(43.5%-6px)] sm:auto-cols-[calc(33.333%-12px)] md:auto-cols-[calc(25%-12px)] lg:auto-cols-[calc(20%-13px)] gap-3 md:gap-4 overflow-x-auto no-scrollbar scroll-smooth py-1 snap-x snap-mandatory"
+            className="flex items-stretch gap-3 md:gap-4 overflow-x-auto no-scrollbar scroll-smooth py-2 px-4 sm:px-0 snap-x snap-mandatory"
             style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
           >
             {activeProducts.map((product) => (
-              <div key={product.id} className="min-w-0 snap-start">
+              <div
+                key={product.id}
+                className="flex-[0_0_44%] w-[44%] min-w-[44%] max-w-[44%] sm:flex-[0_0_31%] sm:w-[31%] sm:min-w-[31%] sm:max-w-[31%] md:flex-[0_0_23%] md:w-[23%] md:min-w-[23%] md:max-w-[23%] lg:flex-[0_0_19%] lg:w-[19%] lg:min-w-[19%] lg:max-w-[19%] snap-start shrink-0 flex flex-col"
+              >
                 <ProductCard product={product} />
               </div>
             ))}
@@ -144,9 +147,9 @@ export function HomeProductTabs({
             type="button"
             onClick={() => scroll("left")}
             aria-label="Previous products"
-            className="flex absolute left-1 sm:left-2 md:left-4 top-[32%] -translate-y-1/2 z-20 w-8 h-8 sm:w-10 sm:h-10 md:w-11 md:h-11 rounded-full bg-white/95 border border-neutral-200/80 shadow-[0_3px_10px_rgba(0,0,0,0.15)] items-center justify-center text-neutral-800 hover:text-black hover:bg-white hover:scale-105 active:scale-95 transition-all cursor-pointer"
+            className="flex absolute left-1.5 sm:left-2 md:-left-3 top-[38%] -translate-y-1/2 z-20 w-[34px] h-[34px] sm:w-10 sm:h-10 md:w-11 md:h-11 rounded-full bg-white/95 border border-neutral-200/80 shadow-[0_2px_8px_rgba(0,0,0,0.18)] items-center justify-center text-neutral-800 hover:text-black hover:bg-white hover:scale-105 active:scale-95 transition-all cursor-pointer"
           >
-            {isAr ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
+            {isAr ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
           </button>
 
           {/* Right Navigation Arrow */}
@@ -154,9 +157,9 @@ export function HomeProductTabs({
             type="button"
             onClick={() => scroll("right")}
             aria-label="Next products"
-            className="flex absolute right-1 sm:right-2 md:right-4 top-[32%] -translate-y-1/2 z-20 w-8 h-8 sm:w-10 sm:h-10 md:w-11 md:h-11 rounded-full bg-white/95 border border-neutral-200/80 shadow-[0_3px_10px_rgba(0,0,0,0.15)] items-center justify-center text-neutral-800 hover:text-black hover:bg-white hover:scale-105 active:scale-95 transition-all cursor-pointer"
+            className="flex absolute right-1.5 sm:right-2 md:-right-3 top-[38%] -translate-y-1/2 z-20 w-[34px] h-[34px] sm:w-10 sm:h-10 md:w-11 md:h-11 rounded-full bg-white/95 border border-neutral-200/80 shadow-[0_2px_8px_rgba(0,0,0,0.18)] items-center justify-center text-neutral-800 hover:text-black hover:bg-white hover:scale-105 active:scale-95 transition-all cursor-pointer"
           >
-            {isAr ? <ChevronLeft size={18} /> : <ChevronRight size={18} />}
+            {isAr ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
           </button>
         </div>
 
