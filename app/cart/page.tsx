@@ -9,6 +9,7 @@ import { QuantityStepper } from "@/components/ui/QuantityStepper";
 import { FreeShippingBar } from "@/components/ui/FreeShippingBar";
 import { Button } from "@/components/ui/Button";
 import { formatPrice } from "@/lib/utils";
+import { CheckoutCoupons } from "@/components/checkout/CheckoutCoupons";
 import {
   ShoppingBag,
   Trash2,
@@ -39,9 +40,6 @@ export default function CartPage() {
     getDiscountTotal,
   } = useCartStore();
 
-  const [couponInput, setCouponInput] = useState("");
-  const [couponError, setCouponError] = useState("");
-  const [isValidatingCoupon, setIsValidatingCoupon] = useState(false);
   const [isRedirecting, setIsRedirecting] = useState(false);
 
   const handleProceedToCheckout = async (e: React.MouseEvent) => {
@@ -69,40 +67,7 @@ export default function CartPage() {
   const shipping = subtotal >= 900 || subtotal === 0 ? 0 : 30.0;
   const finalTotal = Math.max(0, subtotal - discount + shipping);
 
-  const handleApplyCoupon = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setCouponError("");
-    if (!couponInput.trim()) return;
 
-    setIsValidatingCoupon(true);
-    try {
-      const res = await fetch("/api/coupons/validate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          code: couponInput.trim(),
-          subtotal,
-        }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        setCouponError(data.error || "Invalid coupon code");
-      } else {
-        applyCoupon({
-          code: data.code,
-          type: data.type,
-          value: data.value,
-          discountAmount: data.discountAmount,
-        });
-        setCouponInput("");
-      }
-    } catch (err) {
-      setCouponError("Failed to apply coupon. Please try again.");
-    } finally {
-      setIsValidatingCoupon(false);
-    }
-  };
 
   if (items.length === 0) {
     return (
@@ -262,54 +227,9 @@ export default function CartPage() {
                 Order Summary
               </h2>
 
-              {/* Coupon Code Section */}
-              <div className="pb-4 border-b border-[#e5e5e5]">
-                <label className="block text-xs font-bold uppercase tracking-wider text-neutral-600 mb-2">
-                  Discount Code / Coupon
-                </label>
-
-                {coupon ? (
-                  <div className="flex items-center justify-between p-2.5 bg-emerald-50 border border-emerald-300 rounded-[5px]">
-                    <div className="flex items-center gap-2">
-                      <Tag size={15} className="text-emerald-700" />
-                      <span className="text-xs font-bold text-emerald-800">
-                        {coupon.code} (-{formatPrice(discount)})
-                      </span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={removeCoupon}
-                      className="p-1 text-neutral-400 hover:text-red-500"
-                    >
-                      <X size={15} />
-                    </button>
-                  </div>
-                ) : (
-                  <form onSubmit={handleApplyCoupon} className="flex gap-2">
-                    <input
-                      type="text"
-                      value={couponInput}
-                      onChange={(e) => setCouponInput(e.target.value)}
-                      placeholder="e.g. WELCOME10"
-                      className="flex-1 bg-white text-xs px-3 py-2 border border-[#e5e5e5] rounded-[5px] uppercase font-semibold tracking-wider focus:outline-none focus:border-[#b6713e]"
-                    />
-                    <Button
-                      type="submit"
-                      variant="secondary"
-                      size="sm"
-                      isLoading={isValidatingCoupon}
-                      className="px-4 text-xs font-bold"
-                    >
-                      Apply
-                    </Button>
-                  </form>
-                )}
-
-                {couponError && (
-                  <p className="text-[11px] text-red-600 mt-1.5 font-medium">
-                    {couponError}
-                  </p>
-                )}
+              {/* Coupons & Available Offers */}
+              <div className="pb-2">
+                <CheckoutCoupons />
               </div>
 
               {/* Cost Breakdown */}

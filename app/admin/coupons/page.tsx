@@ -17,6 +17,8 @@ export default async function AdminCouponsPage() {
     minimumOrder: c.minimumOrder ? Number(c.minimumOrder) : null,
     usageLimit: c.usageLimit,
     usedCount: c.usedCount,
+    isPublic: c.isPublic,
+    description: c.description || "",
     active: c.active,
   }));
 

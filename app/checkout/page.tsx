@@ -9,6 +9,7 @@ import { useCountryStore } from "@/lib/store/useCountryStore";
 import { COUNTRIES, CountryCode } from "@/lib/country/config";
 import { Button } from "@/components/ui/Button";
 import { formatPrice } from "@/lib/utils";
+import { CheckoutCoupons } from "@/components/checkout/CheckoutCoupons";
 import {
   ShieldCheck,
   Truck,
@@ -469,6 +470,11 @@ export default function CheckoutPage() {
                     </div>
                   </div>
                 ))}
+              </div>
+
+              {/* Promo Offers & Secret Code Entry */}
+              <div className="pt-3 border-t border-[#f0ece1]">
+                <CheckoutCoupons />
               </div>
 
               {/* Pricing Breakdown */}

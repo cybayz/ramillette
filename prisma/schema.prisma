@@ -298,6 +298,8 @@ model Coupon {
   usedCount       Int          @default(0)
   startsAt        DateTime?
   expiresAt       DateTime?
+  description     String?
+  isPublic        Boolean      @default(true) // false = Secret/hidden coupon (manual code entry only)
   active          Boolean      @default(true)
   createdAt       DateTime     @default(now())
 }
