@@ -47,9 +47,17 @@ export function TopBar() {
     }
   };
 
+  const locationVal = isAr
+    ? config.boutiqueLocationAr || config.boutiqueLocation
+    : config.boutiqueLocation || config.boutiqueLocationAr || "Souq Al Wakra, Qatar";
+
+  const shippingNoticeVal = isAr
+    ? config.deliveryNoticeAr || config.deliveryNotice
+    : config.deliveryNotice || config.deliveryNoticeAr || "Free 2-Hour Express Delivery on orders over threshold";
+
   const content = {
-    location: isAr ? config.boutiqueLocationAr : config.boutiqueLocation,
-    shippingNotice: isAr ? config.deliveryNoticeAr : config.deliveryNotice,
+    location: locationVal,
+    shippingNotice: shippingNoticeVal,
     languageToggle: isAr ? "English" : "العربية",
   };
 

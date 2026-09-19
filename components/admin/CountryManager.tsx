@@ -79,7 +79,11 @@ export function CountryManager({ initialCountries }: CountryManagerProps) {
   const [citiesInput, setCitiesInput] = useState("");
   const [boutiqueName, setBoutiqueName] = useState("");
   const [boutiqueLocation, setBoutiqueLocation] = useState("");
+  const [boutiqueLocationAr, setBoutiqueLocationAr] = useState("");
   const [deliveryNotice, setDeliveryNotice] = useState("");
+  const [deliveryNoticeAr, setDeliveryNoticeAr] = useState("");
+  const [phone, setPhone] = useState("");
+  const [supportEmail, setSupportEmail] = useState("");
   const [active, setActive] = useState(true);
   const [sortOrder, setSortOrder] = useState(10);
   const [paymentCod, setPaymentCod] = useState(true);
@@ -107,7 +111,11 @@ export function CountryManager({ initialCountries }: CountryManagerProps) {
     setCitiesInput("Riyadh, Jeddah, Dammam, Mecca, Medina, Khobar");
     setBoutiqueName("Riyadh Flagship Boutique");
     setBoutiqueLocation("Kingdom Centre, Riyadh");
+    setBoutiqueLocationAr("مركز المملكة، الرياض");
     setDeliveryNotice("Next-Day Express Delivery across Riyadh & Jeddah on orders over SAR 900");
+    setDeliveryNoticeAr("توصيل سريع مجاني في اليوم التالي في الرياض وجدة للطلبات فوق 900 ر.س");
+    setPhone("+966 5555 1234");
+    setSupportEmail("saudi@ramillette.com");
     setActive(true);
     setSortOrder(countries.length + 1);
     setPaymentCod(true);
@@ -139,7 +147,11 @@ export function CountryManager({ initialCountries }: CountryManagerProps) {
     setCitiesInput((c.cities || []).join(", "));
     setBoutiqueName(c.boutiqueName || "");
     setBoutiqueLocation(c.boutiqueLocation || "");
+    setBoutiqueLocationAr(c.boutiqueLocationAr || "");
     setDeliveryNotice(c.deliveryNotice || "");
+    setDeliveryNoticeAr(c.deliveryNoticeAr || "");
+    setPhone(c.phone || "");
+    setSupportEmail(c.supportEmail || "");
     setActive(c.active);
     setSortOrder(c.sortOrder);
     setPaymentCod(c.paymentMethods.includes("COD"));
@@ -235,7 +247,11 @@ export function CountryManager({ initialCountries }: CountryManagerProps) {
         cities: citiesArray,
         boutiqueName: boutiqueName.trim(),
         boutiqueLocation: boutiqueLocation.trim(),
+        boutiqueLocationAr: boutiqueLocationAr.trim(),
         deliveryNotice: deliveryNotice.trim(),
+        deliveryNoticeAr: deliveryNoticeAr.trim(),
+        phone: phone.trim(),
+        supportEmail: supportEmail.trim(),
         paymentMethods,
         active,
         sortOrder: Number(sortOrder),
@@ -729,17 +745,106 @@ export function CountryManager({ initialCountries }: CountryManagerProps) {
                   </span>
                 </div>
 
-                <div>
-                  <label className="block text-[11px] font-semibold text-neutral-700 mb-1">
-                    Announcement Banner Text
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Next-Day Express Delivery across Riyadh on orders over SAR 900"
-                    value={deliveryNotice}
-                    onChange={(e) => setDeliveryNotice(e.target.value)}
-                    className="w-full text-xs px-3 py-2 border border-neutral-300 rounded focus:outline-none focus:border-[#b6713e]"
-                  />
+                {/* Regional Boutique & Headquarters */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-semibold text-neutral-700 mb-1">
+                      Boutique / Flagship Name
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Kingdom Centre Boutique"
+                      value={boutiqueName}
+                      onChange={(e) => setBoutiqueName(e.target.value)}
+                      className="w-full text-xs px-3 py-2 border border-neutral-300 rounded focus:outline-none focus:border-[#b6713e]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-semibold text-neutral-700 mb-1">
+                      Boutique Address (English)
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Kingdom Centre, Riyadh"
+                      value={boutiqueLocation}
+                      onChange={(e) => setBoutiqueLocation(e.target.value)}
+                      className="w-full text-xs px-3 py-2 border border-neutral-300 rounded focus:outline-none focus:border-[#b6713e]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-semibold text-neutral-700 mb-1">
+                      Boutique Address (Arabic)
+                    </label>
+                    <input
+                      type="text"
+                      dir="rtl"
+                      placeholder="مركز المملكة، الرياض"
+                      value={boutiqueLocationAr}
+                      onChange={(e) => setBoutiqueLocationAr(e.target.value)}
+                      className="w-full text-xs px-3 py-2 border border-neutral-300 rounded focus:outline-none focus:border-[#b6713e]"
+                    />
+                  </div>
+                </div>
+
+                {/* Announcement Banner English & Arabic */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-semibold text-neutral-700 mb-1">
+                      Announcement Banner Text (English)
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Next-Day Express Delivery across Riyadh on orders over SAR 900"
+                      value={deliveryNotice}
+                      onChange={(e) => setDeliveryNotice(e.target.value)}
+                      className="w-full text-xs px-3 py-2 border border-neutral-300 rounded focus:outline-none focus:border-[#b6713e]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-semibold text-neutral-700 mb-1">
+                      Announcement Banner Text (Arabic)
+                    </label>
+                    <input
+                      type="text"
+                      dir="rtl"
+                      placeholder="توصيل سريع مجاني في اليوم التالي في الرياض للطلبات فوق 900 ر.س"
+                      value={deliveryNoticeAr}
+                      onChange={(e) => setDeliveryNoticeAr(e.target.value)}
+                      className="w-full text-xs px-3 py-2 border border-neutral-300 rounded focus:outline-none focus:border-[#b6713e]"
+                    />
+                  </div>
+                </div>
+
+                {/* Regional Support Phone & Email */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-semibold text-neutral-700 mb-1">
+                      Support Phone Number
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="+966 5555 1234"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      className="w-full text-xs px-3 py-2 border border-neutral-300 rounded font-mono focus:outline-none focus:border-[#b6713e]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-semibold text-neutral-700 mb-1">
+                      Support Email Address
+                    </label>
+                    <input
+                      type="email"
+                      placeholder="saudi@ramillette.com"
+                      value={supportEmail}
+                      onChange={(e) => setSupportEmail(e.target.value)}
+                      className="w-full text-xs px-3 py-2 border border-neutral-300 rounded focus:outline-none focus:border-[#b6713e]"
+                    />
+                  </div>
                 </div>
               </div>
 

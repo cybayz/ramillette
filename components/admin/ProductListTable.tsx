@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { formatPrice } from "@/lib/utils";
-import { Search, Edit3, Check, Loader2, Package, Globe } from "lucide-react";
+import { Search, Edit3, Trash2, Package, Globe, Plus, Loader2 } from "lucide-react";
 import { RegionalProductEditorModal } from "@/components/admin/RegionalProductEditorModal";
 
 interface AdminProduct {
@@ -27,11 +27,9 @@ export function ProductListTable({
 }) {
   const [products, setProducts] = useState(initialProducts);
   const [query, setQuery] = useState("");
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editStock, setEditStock] = useState<number>(0);
-  const [editPrice, setEditPrice] = useState<number>(0);
-  const [isSaving, setIsSaving] = useState(false);
   const [regionalModalProductId, setRegionalModalProductId] = useState<string | null>(null);
+  const [deleteProductTarget, setDeleteProductTarget] = useState<AdminProduct | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const filtered = products.filter(
     (p) =>
@@ -41,41 +39,32 @@ export function ProductListTable({
       (p.sku && p.sku.toLowerCase().includes(query.toLowerCase()))
   );
 
-  const startEdit = (p: AdminProduct) => {
-    setEditingId(p.id);
-    setEditStock(p.stock);
-    setEditPrice(p.basePrice);
-  };
+  const handleDelete = async () => {
+    if (!deleteProductTarget) return;
+    setDeleting(true);
 
-  const saveEdit = async (productId: string) => {
-    setIsSaving(true);
     try {
-      const res = await fetch(`/api/admin/products/${productId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ stock: editStock, basePrice: editPrice }),
+      const res = await fetch(`/api/admin/products/${deleteProductTarget.id}`, {
+        method: "DELETE",
       });
 
       if (res.ok) {
-        setProducts(
-          products.map((p) =>
-            p.id === productId
-              ? { ...p, stock: editStock, basePrice: editPrice }
-              : p
-          )
-        );
-        setEditingId(null);
+        setProducts(products.filter((p) => p.id !== deleteProductTarget.id));
+        setDeleteProductTarget(null);
+      } else {
+        alert("Failed to delete product.");
       }
     } catch (err) {
-      console.error("Failed to update product:", err);
+      console.error("Failed to delete product:", err);
+      alert("An error occurred while deleting the fragrance.");
     } finally {
-      setIsSaving(false);
+      setDeleting(false);
     }
   };
 
   return (
     <div className="bg-white rounded-[8px] border border-[#e5e5e5] shadow-xs p-6 space-y-6">
-      {/* Search Header */}
+      {/* Search Header & Add Shortcut */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="relative flex-1 max-w-sm">
           <Search
@@ -86,13 +75,23 @@ export function ProductListTable({
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Filter by perfume name or category..."
+            placeholder="Filter by perfume name, category, or SKU..."
             className="w-full text-xs pl-9 pr-3 py-2.5 border border-[#e5e5e5] rounded-[5px] focus:outline-none focus:border-[#b6713e]"
           />
         </div>
 
-        <div className="text-xs text-neutral-500">
-          Showing <strong>{filtered.length}</strong> of {products.length} fragrances
+        <div className="flex items-center gap-3">
+          <span className="text-xs text-neutral-500">
+            Showing <strong>{filtered.length}</strong> of {products.length} fragrances
+          </span>
+
+          <Link
+            href="/admin/products/new"
+            className="btn-primary h-8 px-3 text-xs font-bold flex items-center gap-1.5 shadow-2xs"
+          >
+            <Plus size={13} />
+            <span>Add Fragrance</span>
+          </Link>
         </div>
       </div>
 
@@ -100,7 +99,7 @@ export function ProductListTable({
       <div className="overflow-x-auto">
         <table className="w-full text-left text-xs">
           <thead>
-            <tr className="border-b border-[#e5e5e5] bg-[#fbf9f5] text-neutral-600 font-bold uppercase">
+            <tr className="border-b border-[#e5e5e5] bg-[#fbf9f5] text-neutral-600 font-bold uppercase text-[11px]">
               <th className="py-3 px-3">Product</th>
               <th className="py-3 px-3">Category</th>
               <th className="py-3 px-3">Base Price</th>
@@ -111,10 +110,8 @@ export function ProductListTable({
           </thead>
           <tbody className="divide-y divide-[#f0ece1]">
             {filtered.map((product) => {
-              const isEditing = editingId === product.id;
-
               return (
-                <tr key={product.id} className="hover:bg-[#fbf9f5]/50">
+                <tr key={product.id} className="hover:bg-[#fbf9f5]/50 transition-colors">
                   {/* Product Title & Image */}
                   <td className="py-3 px-3">
                     <div className="flex items-center gap-3">
@@ -131,14 +128,13 @@ export function ProductListTable({
                       </div>
                       <div>
                         <Link
-                          href={`/product/${product.slug}`}
-                          target="_blank"
-                          className="font-bold text-[#1c1c1c] hover:text-[#b6713e]"
+                          href={`/admin/products/${product.id}/edit`}
+                          className="font-bold text-[#1c1c1c] hover:text-[#b6713e] transition-colors"
                         >
                           {product.name}
                         </Link>
                         {product.sku && (
-                          <span className="block text-[11px] text-neutral-400">
+                          <span className="block text-[11px] text-neutral-400 font-mono">
                             {product.sku}
                           </span>
                         )}
@@ -153,41 +149,22 @@ export function ProductListTable({
 
                   {/* Price */}
                   <td className="py-3 px-3">
-                    {isEditing ? (
-                      <input
-                        type="number"
-                        step="0.5"
-                        value={editPrice}
-                        onChange={(e) => setEditPrice(parseFloat(e.target.value))}
-                        className="w-20 p-1.5 border border-[#b6713e] rounded font-bold text-xs"
-                      />
-                    ) : (
-                      <span className="font-extrabold text-[#1c1c1c]">
-                        {formatPrice(product.basePrice)}
-                      </span>
-                    )}
+                    <span className="font-extrabold text-[#1c1c1c]">
+                      {formatPrice(product.basePrice)}
+                    </span>
                   </td>
 
                   {/* Stock */}
                   <td className="py-3 px-3">
-                    {isEditing ? (
-                      <input
-                        type="number"
-                        value={editStock}
-                        onChange={(e) => setEditStock(parseInt(e.target.value, 10))}
-                        className="w-20 p-1.5 border border-[#b6713e] rounded font-bold text-xs"
-                      />
-                    ) : (
-                      <span
-                        className={`font-bold px-2 py-0.5 rounded text-[11px] ${
-                          product.stock <= 20
-                            ? "bg-amber-100 text-amber-800"
-                            : "bg-emerald-100 text-emerald-800"
-                        }`}
-                      >
-                        {product.stock} units
-                      </span>
-                    )}
+                    <span
+                      className={`font-bold px-2 py-0.5 rounded text-[11px] ${
+                        product.stock <= 20
+                          ? "bg-amber-100 text-amber-800"
+                          : "bg-emerald-100 text-emerald-800"
+                      }`}
+                    >
+                      {product.stock} units
+                    </span>
                   </td>
 
                   {/* Variants */}
@@ -208,28 +185,23 @@ export function ProductListTable({
                         <span className="hidden sm:inline">Regional Pricing</span>
                       </button>
 
-                      {isEditing ? (
-                        <button
-                          onClick={() => saveEdit(product.id)}
-                          disabled={isSaving}
-                          className="btn-primary h-8 px-3 text-xs font-semibold flex items-center gap-1.5"
-                        >
-                          {isSaving ? (
-                            <Loader2 size={12} className="animate-spin" />
-                          ) : (
-                            <Check size={12} />
-                          )}
-                          <span>Save</span>
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => startEdit(product)}
-                          className="btn-secondary h-8 px-3 text-xs font-semibold flex items-center gap-1.5 text-neutral-600 hover:text-[#1c1c1c]"
-                        >
-                          <Edit3 size={12} />
-                          <span>Edit</span>
-                        </button>
-                      )}
+                      <Link
+                        href={`/admin/products/${product.id}/edit`}
+                        className="btn-secondary h-8 px-3 text-xs font-semibold flex items-center gap-1.5 text-neutral-700 hover:text-[#1c1c1c] hover:border-neutral-400 transition-colors"
+                        title="Edit all fragrance fields, olfactory notes, variants and images"
+                      >
+                        <Edit3 size={12} />
+                        <span>Edit</span>
+                      </Link>
+
+                      <button
+                        type="button"
+                        onClick={() => setDeleteProductTarget(product)}
+                        className="p-1.5 rounded text-neutral-400 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
+                        title="Delete fragrance"
+                      >
+                        <Trash2 size={14} />
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -246,9 +218,60 @@ export function ProductListTable({
           isOpen={Boolean(regionalModalProductId)}
           onClose={() => setRegionalModalProductId(null)}
           onSaved={() => {
-            // Re-fetch products or keep state clean
+            // Modal saved cleanly
           }}
         />
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteProductTarget && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4 backdrop-blur-xs">
+          <div className="bg-white rounded-xl max-w-md w-full p-6 shadow-2xl border border-neutral-200 space-y-4">
+            <div className="flex items-center gap-3 text-red-600">
+              <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center shrink-0">
+                <Trash2 size={20} />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-[#1c1c1c]">
+                  Delete Fragrance
+                </h3>
+                <p className="text-xs text-neutral-500">
+                  Are you sure you want to delete <strong>{deleteProductTarget.name}</strong>?
+                </p>
+              </div>
+            </div>
+
+            <p className="text-xs text-neutral-600 bg-neutral-50 p-3 rounded border border-neutral-200">
+              This will permanently remove the fragrance, variants, gallery images, and regional pricing records.
+            </p>
+
+            <div className="flex items-center justify-end gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => setDeleteProductTarget(null)}
+                disabled={deleting}
+                className="btn-secondary h-9 px-4 text-xs font-semibold"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDelete}
+                disabled={deleting}
+                className="btn-primary h-9 px-4 text-xs font-bold bg-red-600 hover:bg-red-700 border-red-700 text-white flex items-center gap-1.5 cursor-pointer"
+              >
+                {deleting ? (
+                  <>
+                    <Loader2 size={13} className="animate-spin" />
+                    <span>Deleting...</span>
+                  </>
+                ) : (
+                  <span>Yes, Delete</span>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

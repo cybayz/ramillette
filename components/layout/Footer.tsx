@@ -201,7 +201,9 @@ export function Footer() {
             <div className="space-y-1.5 text-neutral-400 text-xs">
               <p>{config.supportEmail}</p>
               <p dir="ltr" className="text-start">{config.phone}</p>
-              <p className="text-[11px] text-neutral-500">{isAr ? config.boutiqueLocationAr : config.boutiqueLocation}</p>
+              <p className="text-[11px] text-neutral-500">
+                {(isAr ? config.boutiqueLocationAr || config.boutiqueLocation : config.boutiqueLocation || config.boutiqueLocationAr) || "Souq Al Wakra, Qatar"}
+              </p>
             </div>
           </div>
 
