@@ -8,6 +8,8 @@ import { CartDrawer } from "@/components/cart/CartDrawer";
 import { FloatingWhatsApp } from "@/components/layout/FloatingWhatsApp";
 import { ScrollToTopOnNavigation } from "@/components/layout/ScrollToTopOnNavigation";
 import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
+import { RouteProgressBar } from "@/components/layout/RouteProgressBar";
+import { PageTransition } from "@/components/layout/PageTransition";
 
 const outfit = Outfit({
   variable: "--font-heading",
@@ -69,9 +71,17 @@ export default function RootLayout({
   return (
     <html
       lang="en"
+      dir="ltr"
+      suppressHydrationWarning
       className={`${outfit.variable} ${urbanist.variable} ${cairo.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-white text-[#1c1c1c] overflow-x-hidden">
+      <body
+        suppressHydrationWarning
+        className="min-h-full flex flex-col bg-white text-[#1c1c1c] overflow-x-hidden"
+      >
+        {/* Luxury Top Navigation Progress Bar */}
+        <RouteProgressBar />
+
         {/* Instant Scroll to Top on Page Changes */}
         <ScrollToTopOnNavigation />
 
@@ -81,8 +91,10 @@ export default function RootLayout({
         {/* Sticky Luxury Header */}
         <Header />
 
-        {/* Page Content with safe padding for mobile bottom bar */}
-        <main className="flex-1 pb-16 md:pb-0 min-w-0 max-w-full">{children}</main>
+        {/* Page Content with safe padding for mobile bottom bar and smooth page entry */}
+        <main className="flex-1 pb-16 md:pb-0 min-w-0 max-w-full">
+          <PageTransition>{children}</PageTransition>
+        </main>
 
         {/* Global Slideout Cart Drawer */}
         <CartDrawer />

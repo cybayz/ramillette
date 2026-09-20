@@ -42,8 +42,10 @@ export const useLanguageStore = create<LanguageState>()(
       ),
       onRehydrateStorage: () => (state) => {
         if (typeof document !== "undefined" && state) {
-          document.documentElement.lang = state.language;
-          document.documentElement.dir = state.language === "ar" ? "rtl" : "ltr";
+          requestAnimationFrame(() => {
+            document.documentElement.lang = state.language;
+            document.documentElement.dir = state.language === "ar" ? "rtl" : "ltr";
+          });
         }
       },
     }

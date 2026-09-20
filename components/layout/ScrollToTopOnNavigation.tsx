@@ -7,12 +7,17 @@ export function ScrollToTopOnNavigation() {
   const pathname = usePathname();
 
   useEffect(() => {
-    // Instantly scroll window to top on route change
+    // If navigating to a specific hash anchor (e.g. #orders), let it scroll to target smoothly
+    if (window.location.hash) {
+      const targetId = window.location.hash.slice(1);
+      const el = document.getElementById(targetId);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth" });
+        return;
+      }
+    }
+    // Otherwise reset window to top cleanly
     window.scrollTo({ top: 0, left: 0, behavior: "instant" });
-    const timer = setTimeout(() => {
-      window.scrollTo({ top: 0, left: 0, behavior: "instant" });
-    }, 10);
-    return () => clearTimeout(timer);
   }, [pathname]);
 
   return null;
