@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { useCartStore } from "@/lib/store/useCartStore";
@@ -113,6 +114,32 @@ export function ProductPurchaseForm({
   const [notifyPhone, setNotifyPhone] = useState("");
   const [notifySubmitted, setNotifySubmitted] = useState(false);
   const [notifyLoading, setNotifyLoading] = useState(false);
+
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Lock body scroll and listen for Escape key when notify modal is open
+  useEffect(() => {
+    if (!mounted) return;
+    if (isNotifyModalOpen) {
+      const prevOverflow = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+
+      const handleKeyDown = (e: KeyboardEvent) => {
+        if (e.key === "Escape") {
+          setIsNotifyModalOpen(false);
+        }
+      };
+      window.addEventListener("keydown", handleKeyDown);
+
+      return () => {
+        document.body.style.overflow = prevOverflow;
+        window.removeEventListener("keydown", handleKeyDown);
+      };
+    }
+  }, [mounted, isNotifyModalOpen]);
 
   // Sync URL query if variant changes
   useEffect(() => {
@@ -515,148 +542,151 @@ export function ProductPurchaseForm({
       </div>
 
       {/* Out of Stock Notify Modal */}
-      {isNotifyModalOpen && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150"
-          onClick={() => {
-            setIsNotifyModalOpen(false);
-            setNotifySubmitted(false);
-          }}
-        >
+      {mounted &&
+        isNotifyModalOpen &&
+        createPortal(
           <div
-            className="bg-white rounded-2xl w-full max-w-sm p-5 shadow-2xl border border-neutral-200 relative text-start animate-in zoom-in-95 duration-150"
-            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150"
+            onClick={() => {
+              setIsNotifyModalOpen(false);
+              setNotifySubmitted(false);
+            }}
           >
-            <button
-              type="button"
-              onClick={() => {
-                setIsNotifyModalOpen(false);
-                setNotifySubmitted(false);
-              }}
-              className="absolute top-3.5 right-3.5 rtl:right-auto rtl:left-3.5 w-8 h-8 rounded-full bg-neutral-100 hover:bg-neutral-200 text-neutral-600 flex items-center justify-center transition-colors cursor-pointer"
-              aria-label="Close"
+            <div
+              className="bg-white rounded-2xl w-full max-w-sm p-5 shadow-2xl border border-neutral-200 relative text-start animate-in zoom-in-95 duration-150"
+              onClick={(e) => e.stopPropagation()}
             >
-              <X size={18} />
-            </button>
-
-            <div className="flex items-center gap-3 pr-8 rtl:pr-0 rtl:pl-8">
-              <div className="relative w-14 h-14 rounded-xl overflow-hidden bg-[#f7f5f0] shrink-0 border border-neutral-200/80">
-                <Image
-                  src={product.images[0]?.url || ""}
-                  alt={displayName}
-                  fill
-                  unoptimized
-                  className="object-cover"
-                />
-              </div>
-              <div className="flex-1 min-w-0">
-                <h4 className="text-sm font-bold text-neutral-900 truncate">
-                  {displayName}
-                </h4>
-                <div className="text-xs text-neutral-500 font-medium">
-                  {selectedVariant.name.replace(/'/g, "")}
-                </div>
-                <span className="inline-block mt-0.5 text-[11px] font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-sm">
-                  {isArabic ? "نفدت الكمية" : "Out of Stock"}
-                </span>
-              </div>
-            </div>
-
-            {notifySubmitted ? (
-              <div className="mt-5 py-4 text-center">
-                <div className="w-12 h-12 mx-auto rounded-full bg-[#f2f6f1] text-[#4e6648] flex items-center justify-center mb-3">
-                  <Check size={24} className="stroke-[2.5]" />
-                </div>
-                <h5 className="text-sm font-bold text-neutral-900">
-                  {isArabic ? "تم تسجيل طلبك بنجاح!" : "You're on the waitlist!"}
-                </h5>
-                <p className="text-xs text-neutral-600 mt-1 leading-relaxed">
-                  {isArabic
-                    ? "سنرسل إليك إشعاراً فور توفر هذا العطر مجدداً في متجرنا."
-                    : "We'll send you an update as soon as this item is back in stock."}
-                </p>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsNotifyModalOpen(false);
-                    setNotifySubmitted(false);
-                  }}
-                  className="mt-4 px-5 py-2 bg-[#4e6648] hover:bg-[#3d5239] text-white text-xs font-semibold rounded-lg transition-colors cursor-pointer"
-                >
-                  {isArabic ? "حسناً" : "Got it"}
-                </button>
-              </div>
-            ) : (
-              <form
-                onSubmit={async (e) => {
-                  e.preventDefault();
-                  if (!notifyEmail && !notifyPhone) return;
-                  setNotifyLoading(true);
-                  try {
-                    await fetch("/api/notify-stock", {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({
-                        productId: product.id,
-                        productName: product.name,
-                        variantName: selectedVariant.name,
-                        email: notifyEmail,
-                        phone: notifyPhone,
-                      }),
-                    });
-                  } catch {
-                    // ignore
-                  } finally {
-                    setNotifyLoading(false);
-                    setNotifySubmitted(true);
-                  }
+              <button
+                type="button"
+                onClick={() => {
+                  setIsNotifyModalOpen(false);
+                  setNotifySubmitted(false);
                 }}
-                className="mt-4 pt-3 border-t border-neutral-100"
+                className="absolute top-3.5 right-3.5 rtl:right-auto rtl:left-3.5 w-8 h-8 rounded-full bg-neutral-100 hover:bg-neutral-200 text-neutral-600 flex items-center justify-center transition-colors cursor-pointer"
+                aria-label="Close"
               >
-                <div className="flex items-center gap-1.5 mb-1.5 text-neutral-900">
-                  <Bell size={16} className="text-[#4e6648]" />
-                  <span className="text-xs font-bold">
-                    {isArabic ? "أعلمني عند توفر المنتج" : "Notify me when available"}
+                <X size={18} />
+              </button>
+
+              <div className="flex items-center gap-3 pr-8 rtl:pr-0 rtl:pl-8">
+                <div className="relative w-14 h-14 rounded-xl overflow-hidden bg-[#f7f5f0] shrink-0 border border-neutral-200/80">
+                  <Image
+                    src={product.images[0]?.url || ""}
+                    alt={displayName}
+                    fill
+                    unoptimized
+                    className="object-cover"
+                  />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h4 className="text-sm font-bold text-neutral-900 truncate">
+                    {displayName}
+                  </h4>
+                  <div className="text-xs text-neutral-500 font-medium">
+                    {selectedVariant.name.replace(/'/g, "")}
+                  </div>
+                  <span className="inline-block mt-0.5 text-[11px] font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-sm">
+                    {isArabic ? "نفدت الكمية" : "Out of Stock"}
                   </span>
                 </div>
-                <p className="text-[11.5px] text-neutral-500 mb-3 leading-relaxed">
-                  {isArabic
-                    ? "أدخل بريدك الإلكتروني أو رقم هاتفك وسنبلغك فور توفر هذا المنتج مجدداً."
-                    : "Leave your email or phone and we will notify you the moment this fragrance arrives."}
-                </p>
+              </div>
 
-                <div className="space-y-2">
-                  <input
-                    type="email"
-                    value={notifyEmail}
-                    onChange={(e) => setNotifyEmail(e.target.value)}
-                    placeholder={isArabic ? "البريد الإلكتروني (name@example.com)" : "Email address (name@example.com)"}
-                    className="w-full px-3 py-2 text-xs border border-neutral-200 rounded-lg focus:outline-none focus:border-[#4e6648] focus:ring-1 focus:ring-[#4e6648] bg-neutral-50/50"
-                  />
-                  <input
-                    type="tel"
-                    value={notifyPhone}
-                    onChange={(e) => setNotifyPhone(e.target.value)}
-                    placeholder={isArabic ? "رقم الهاتف / واتساب (اختياري)" : "Phone / WhatsApp (optional)"}
-                    className="w-full px-3 py-2 text-xs border border-neutral-200 rounded-lg focus:outline-none focus:border-[#4e6648] focus:ring-1 focus:ring-[#4e6648] bg-neutral-50/50"
-                  />
+              {notifySubmitted ? (
+                <div className="mt-5 py-4 text-center">
+                  <div className="w-12 h-12 mx-auto rounded-full bg-[#f2f6f1] text-[#4e6648] flex items-center justify-center mb-3">
+                    <Check size={24} className="stroke-[2.5]" />
+                  </div>
+                  <h5 className="text-sm font-bold text-neutral-900">
+                    {isArabic ? "تم تسجيل طلبك بنجاح!" : "You're on the waitlist!"}
+                  </h5>
+                  <p className="text-xs text-neutral-600 mt-1 leading-relaxed">
+                    {isArabic
+                      ? "سنرسل إليك إشعاراً فور توفر هذا العطر مجدداً في متجرنا."
+                      : "We'll send you an update as soon as this item is back in stock."}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsNotifyModalOpen(false);
+                      setNotifySubmitted(false);
+                    }}
+                    className="mt-4 px-5 py-2 bg-[#4e6648] hover:bg-[#3d5239] text-white text-xs font-semibold rounded-lg transition-colors cursor-pointer"
+                  >
+                    {isArabic ? "حسناً" : "Got it"}
+                  </button>
                 </div>
-
-                <button
-                  type="submit"
-                  disabled={notifyLoading || (!notifyEmail && !notifyPhone)}
-                  className="w-full mt-3.5 py-2.5 bg-[#4e6648] hover:bg-[#3d5239] disabled:opacity-50 text-white font-semibold text-xs rounded-lg flex items-center justify-center gap-2 transition-colors cursor-pointer shadow-sm active:scale-[0.99]"
+              ) : (
+                <form
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    if (!notifyEmail && !notifyPhone) return;
+                    setNotifyLoading(true);
+                    try {
+                      await fetch("/api/notify-stock", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          productId: product.id,
+                          productName: product.name,
+                          variantName: selectedVariant.name,
+                          email: notifyEmail,
+                          phone: notifyPhone,
+                        }),
+                      });
+                    } catch {
+                      // ignore
+                    } finally {
+                      setNotifyLoading(false);
+                      setNotifySubmitted(true);
+                    }
+                  }}
+                  className="mt-4 pt-3 border-t border-neutral-100"
                 >
-                  <Bell size={14} />
-                  <span>{notifyLoading ? (isArabic ? "جاري الإرسال..." : "Sending...") : (isArabic ? "أعلمني عند التوفر" : "Notify Me")}</span>
-                </button>
-              </form>
-            )}
-          </div>
-        </div>
-      )}
+                  <div className="flex items-center gap-1.5 mb-1.5 text-neutral-900">
+                    <Bell size={16} className="text-[#4e6648]" />
+                    <span className="text-xs font-bold">
+                      {isArabic ? "أعلمني عند توفر المنتج" : "Notify me when available"}
+                    </span>
+                  </div>
+                  <p className="text-[11.5px] text-neutral-500 mb-3 leading-relaxed">
+                    {isArabic
+                      ? "أدخل بريدك الإلكتروني أو رقم هاتفك وسنبلغك فور توفر هذا المنتج مجدداً."
+                      : "Leave your email or phone and we will notify you the moment this fragrance arrives."}
+                  </p>
+
+                  <div className="space-y-2">
+                    <input
+                      type="email"
+                      value={notifyEmail}
+                      onChange={(e) => setNotifyEmail(e.target.value)}
+                      placeholder={isArabic ? "البريد الإلكتروني (name@example.com)" : "Email address (name@example.com)"}
+                      className="w-full px-3 py-2 text-xs border border-neutral-200 rounded-lg focus:outline-none focus:border-[#4e6648] focus:ring-1 focus:ring-[#4e6648] bg-neutral-50/50"
+                    />
+                    <input
+                      type="tel"
+                      value={notifyPhone}
+                      onChange={(e) => setNotifyPhone(e.target.value)}
+                      placeholder={isArabic ? "رقم الهاتف / واتساب (اختياري)" : "Phone / WhatsApp (optional)"}
+                      className="w-full px-3 py-2 text-xs border border-neutral-200 rounded-lg focus:outline-none focus:border-[#4e6648] focus:ring-1 focus:ring-[#4e6648] bg-neutral-50/50"
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={notifyLoading || (!notifyEmail && !notifyPhone)}
+                    className="w-full mt-3.5 py-2.5 bg-[#4e6648] hover:bg-[#3d5239] disabled:opacity-50 text-white font-semibold text-xs rounded-lg flex items-center justify-center gap-2 transition-colors cursor-pointer shadow-sm active:scale-[0.99]"
+                  >
+                    <Bell size={14} />
+                    <span>{notifyLoading ? (isArabic ? "جاري الإرسال..." : "Sending...") : (isArabic ? "أعلمني عند التوفر" : "Notify Me")}</span>
+                  </button>
+                </form>
+              )}
+            </div>
+          </div>,
+          document.body
+        )}
     </div>
   );
 }

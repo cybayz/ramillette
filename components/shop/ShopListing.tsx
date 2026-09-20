@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useMemo, useEffect } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ProductCard, CardProduct } from "@/components/product/ProductCard";
@@ -56,6 +57,22 @@ export function ShopListing({
   const [selectedSize, setSelectedSize] = useState<string>(urlSize);
   const [sortOption, setSortOption] = useState<string>(urlSort);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState<boolean>(false);
+  const [mounted, setMounted] = useState<boolean>(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (mobileFiltersOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "unset";
+    }
+    return () => {
+      document.body.style.overflow = "unset";
+    };
+  }, [mobileFiltersOpen]);
 
   // Accordion open/close states
   const [categoryOpen, setCategoryOpen] = useState<boolean>(true);
@@ -789,8 +806,10 @@ export function ShopListing({
       </div>
 
       {/* Mobile Slideout Filter Drawer */}
-      {mobileFiltersOpen && (
-        <div className="fixed inset-0 z-50 overflow-hidden lg:hidden">
+      {mounted &&
+        mobileFiltersOpen &&
+        createPortal(
+          <div className="fixed inset-0 z-50 overflow-hidden lg:hidden">
           <div
             className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity"
             onClick={() => setMobileFiltersOpen(false)}
@@ -973,8 +992,9 @@ export function ShopListing({
               )}
             </div>
           </div>
-        </div>
-      )}
+          </div>,
+          document.body
+        )}
     </div>
   );
 }
