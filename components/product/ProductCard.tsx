@@ -119,10 +119,12 @@ export function ProductCard({
   const activeVariant = React.useMemo(() => {
     if (availableVariants.length === 0) return null;
     if (selectedSize && selectedSize !== "all" && selectedSize !== "All") {
+      const cleanSize = selectedSize.replace(/\s+/g, "").toLowerCase();
       const match = availableVariants.find(
         (v) =>
           v.name.toLowerCase() === selectedSize.toLowerCase() ||
-          v.name.toLowerCase().includes(selectedSize.toLowerCase())
+          v.name.toLowerCase().includes(selectedSize.toLowerCase()) ||
+          v.name.replace(/\s+/g, "").toLowerCase().includes(cleanSize)
       );
       if (match) return match;
     }

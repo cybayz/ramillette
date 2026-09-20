@@ -128,3 +128,52 @@ export function resolveVariantForCountry(
     isAvailable: defaultStock > 0,
   };
 }
+
+/**
+ * Calculates the exact price displayed on the ProductCard for a product,
+ * taking into account:
+ * 1. Selected size filter (e.g. "50ml", "30ml", "100ml", "80ml")
+ * 2. Variant matching
+ * 3. Country-specific currency and pricing overrides (QA, AE, BH, etc.)
+ */
+export function getDisplayedProductPrice(
+  product: {
+    basePrice: number | string | { toString(): string };
+    compareAtPrice?: number | string | { toString(): string } | null;
+    stock?: number | null;
+    countries?: any[] | null;
+    variants?: Array<{
+      id: string;
+      name: string;
+      price: number | string | { toString(): string };
+      compareAtPrice?: number | string | { toString(): string } | null;
+      stock?: number | null;
+      countries?: any[] | null;
+    }> | null;
+  },
+  selectedSize?: string,
+  countryCode: string = "QA"
+): number {
+  const isSizeSpecified =
+    selectedSize && selectedSize !== "all" && selectedSize !== "All";
+
+  if (product.variants && product.variants.length > 0) {
+    if (isSizeSpecified) {
+      const cleanSize = selectedSize.replace(/\s+/g, "").toLowerCase();
+      const match = product.variants.find(
+        (v) =>
+          v.name.toLowerCase() === selectedSize.toLowerCase() ||
+          v.name.toLowerCase().includes(selectedSize.toLowerCase()) ||
+          v.name.replace(/\s+/g, "").toLowerCase().includes(cleanSize)
+      );
+      if (match) {
+        return resolveVariantForCountry(match, countryCode).price;
+      }
+    }
+    // If no size is specified or no matching variant, default to first variant
+    return resolveVariantForCountry(product.variants[0], countryCode).price;
+  }
+
+  return resolveProductForCountry(product, countryCode).price;
+}
+

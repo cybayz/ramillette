@@ -12,6 +12,8 @@ import {
   RotateCcw,
 } from "lucide-react";
 import { useLanguageStore } from "@/lib/store/useLanguageStore";
+import { useCountryStore } from "@/lib/store/useCountryStore";
+import { getDisplayedProductPrice } from "@/lib/country/productResolver";
 
 export interface CategoryInfo {
   name: string;
@@ -43,13 +45,16 @@ export function ShopListing({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { language } = useLanguageStore();
+  const { country } = useCountryStore();
 
   const isAr = isArabic !== undefined ? isArabic : Boolean(pathname?.startsWith("/ar"));
 
   // URL query search params
   const urlSize = searchParams?.get("size") || initialSize || "All";
+  const urlSort =
+    searchParams?.get("sort") || searchParams?.get("sort_by") || "name-asc";
   const [selectedSize, setSelectedSize] = useState<string>(urlSize);
-  const [sortOption, setSortOption] = useState<string>("name-asc");
+  const [sortOption, setSortOption] = useState<string>(urlSort);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState<boolean>(false);
 
   // Accordion open/close states
@@ -76,12 +81,16 @@ export function ShopListing({
     max: sliderMax,
   });
 
-  // Keep search params in sync with selectedSize
+  // Keep search params in sync with selectedSize and sortOption
   useEffect(() => {
     const s = searchParams?.get("size");
     if (s && SIZE_OPTIONS.map((x) => x.toLowerCase()).includes(s.toLowerCase())) {
       const matched = SIZE_OPTIONS.find((x) => x.toLowerCase() === s.toLowerCase());
       if (matched) setSelectedSize(matched);
+    }
+    const sort = searchParams?.get("sort") || searchParams?.get("sort_by");
+    if (sort) {
+      setSortOption(sort);
     }
   }, [searchParams]);
 
@@ -250,8 +259,11 @@ export function ShopListing({
         // Size Filter
         if (selectedSize !== "All" && selectedSize !== "all") {
           const lowerSize = selectedSize.toLowerCase();
-          const hasVariant = p.variants?.some((v) =>
-            v.name.toLowerCase().includes(lowerSize)
+          const cleanSize = selectedSize.replace(/\s+/g, "").toLowerCase();
+          const hasVariant = p.variants?.some(
+            (v) =>
+              v.name.toLowerCase().includes(lowerSize) ||
+              v.name.replace(/\s+/g, "").toLowerCase().includes(cleanSize)
           );
           // If variants exist, require match
           if (p.variants && p.variants.length > 0 && !hasVariant) {
@@ -259,9 +271,10 @@ export function ShopListing({
           }
         }
 
-        // Price Filter
-        if (p.basePrice < appliedPriceRange.min) return false;
-        if (p.basePrice > appliedPriceRange.max) return false;
+        // Price Filter based on effective displayed price
+        const effectivePrice = getDisplayedProductPrice(p, selectedSize, country);
+        if (effectivePrice < appliedPriceRange.min) return false;
+        if (effectivePrice > appliedPriceRange.max) return false;
 
         // Stock Filter
         if (selectedStock === "in-stock") {
@@ -281,15 +294,25 @@ export function ShopListing({
         return true;
       })
       .sort((a, b) => {
-        if (sortOption === "price-low") return a.basePrice - b.basePrice;
-        if (sortOption === "price-high") return b.basePrice - a.basePrice;
+        if (sortOption === "price-low") {
+          const priceA = getDisplayedProductPrice(a, selectedSize, country);
+          const priceB = getDisplayedProductPrice(b, selectedSize, country);
+          if (priceA !== priceB) return priceA - priceB;
+          return a.name.localeCompare(b.name);
+        }
+        if (sortOption === "price-high") {
+          const priceA = getDisplayedProductPrice(a, selectedSize, country);
+          const priceB = getDisplayedProductPrice(b, selectedSize, country);
+          if (priceA !== priceB) return priceB - priceA;
+          return a.name.localeCompare(b.name);
+        }
         if (sortOption === "name-asc") return a.name.localeCompare(b.name);
         if (sortOption === "name-desc") return b.name.localeCompare(a.name);
         if (sortOption === "bestseller")
           return (b.bestseller ? 1 : 0) - (a.bestseller ? 1 : 0);
         return 0; // Default: relevant / featured
       });
-  }, [products, selectedSize, appliedPriceRange, selectedStock, sortOption]);
+  }, [products, selectedSize, appliedPriceRange, selectedStock, sortOption, country]);
 
   // Collection Title
   const displayTitle = useMemo(() => {
@@ -351,7 +374,20 @@ export function ShopListing({
             <div className="relative">
               <select
                 value={sortOption}
-                onChange={(e) => setSortOption(e.target.value)}
+                onChange={(e) => {
+                  const newSort = e.target.value;
+                  setSortOption(newSort);
+                  if (typeof window !== "undefined") {
+                    const url = new URL(window.location.href);
+                    if (newSort === "name-asc") {
+                      url.searchParams.delete("sort");
+                      url.searchParams.delete("sort_by");
+                    } else {
+                      url.searchParams.set("sort", newSort);
+                    }
+                    window.history.pushState({}, "", url.toString());
+                  }
+                }}
                 className="appearance-none bg-white border border-[#d1d5db] hover:border-neutral-400 rounded-[5px] pl-3 pr-8 py-1.5 text-xs font-semibold text-neutral-900 focus:outline-none focus:border-[#374b33] cursor-pointer shadow-2xs"
               >
                 <option value="name-asc">

@@ -32,9 +32,14 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
       where: { active: true },
       include: {
         images: { orderBy: { sortOrder: "asc" } },
-        variants: { where: { active: true }, orderBy: { price: "asc" } },
+        variants: {
+          where: { active: true },
+          orderBy: { price: "asc" },
+          include: { countries: true },
+        },
         reviews: { where: { approved: true } },
         category: true,
+        countries: true,
       },
       orderBy: { createdAt: "desc" },
     }),
@@ -63,12 +68,26 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
     bestseller: p.bestseller,
     newArrival: p.newArrival,
     images: p.images.map((img) => ({ url: img.url, alt: img.alt })),
+    countries: p.countries.map((c) => ({
+      country: c.country,
+      price: Number(c.price),
+      compareAtPrice: c.compareAtPrice ? Number(c.compareAtPrice) : null,
+      stock: c.stock,
+      active: c.active,
+    })),
     variants: p.variants.map((v) => ({
       id: v.id,
       name: v.name,
       price: Number(v.price),
       compareAtPrice: v.compareAtPrice ? Number(v.compareAtPrice) : null,
       stock: v.stock,
+      countries: v.countries?.map((vc) => ({
+        country: vc.country,
+        price: Number(vc.price),
+        compareAtPrice: vc.compareAtPrice ? Number(vc.compareAtPrice) : null,
+        stock: vc.stock,
+        active: vc.active,
+      })) || [],
     })),
     rating:
       p.reviews.length > 0
