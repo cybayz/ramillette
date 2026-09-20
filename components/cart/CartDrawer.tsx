@@ -10,7 +10,7 @@ import { FreeShippingBar } from "@/lib/../components/ui/FreeShippingBar";
 import { QuantityStepper } from "@/lib/../components/ui/QuantityStepper";
 import { Button } from "@/lib/../components/ui/Button";
 import { formatPrice } from "@/lib/utils";
-import { ShoppingBag, Trash2, ArrowRight } from "lucide-react";
+import { ShoppingBag, Trash2, ArrowRight, Plus } from "lucide-react";
 import { useCountryStore } from "@/lib/store/useCountryStore";
 
 export function CartDrawer() {
@@ -99,6 +99,21 @@ export function CartDrawer() {
           </div>
         ) : (
           <>
+            {/* Header subline with quick Add More Items action */}
+            <div className="flex items-center justify-between pb-2 mb-1 border-b border-[#f0ebe1] text-xs shrink-0">
+              <span className="text-neutral-500 font-medium">
+                {totalCount} {totalCount === 1 ? (isAr ? "عطر في السلة" : "item in bag") : (isAr ? "عطور في السلة" : "items in bag")}
+              </span>
+              <button
+                type="button"
+                onClick={closeCart}
+                className="text-xs font-bold text-[#b6713e] hover:underline inline-flex items-center gap-1 cursor-pointer"
+              >
+                <Plus size={13} />
+                <span>{isAr ? "إضافة المزيد" : "Add More"}</span>
+              </button>
+            </div>
+
             {/* Cart Items List */}
             <div className="flex-1 divide-y divide-[#e5e5e5] overflow-y-auto pr-1">
               {items.map((item) => (
@@ -231,15 +246,25 @@ export function CartDrawer() {
                   disabled={!agreedToTerms}
                   onClick={handleProceedToCheckout}
                   isLoading={isRedirecting}
-                  className="w-full h-12 text-sm font-semibold flex items-center justify-center gap-2 cursor-pointer"
+                  className="w-full h-12 text-sm font-semibold flex items-center justify-center gap-2 cursor-pointer shadow-sm"
                 >
                   <span>{isAr ? "المتابعة إلى الدفع" : "Proceed to Checkout"}</span>
                   <ArrowRight size={16} />
                 </Button>
 
+                {/* Add More Items Button (Closes cart so user can add more items) */}
+                <button
+                  type="button"
+                  onClick={closeCart}
+                  className="w-full h-11 text-xs font-bold rounded-[5px] border-2 border-[#b6713e] text-[#b6713e] bg-white hover:bg-[#faedcd]/40 active:scale-[0.99] transition-all flex items-center justify-center gap-2 cursor-pointer shadow-2xs"
+                >
+                  <Plus size={16} />
+                  <span>{isAr ? "إضافة المزيد من المنتجات" : "Add More Items"}</span>
+                </button>
+
                 <Link href="/cart" onClick={closeCart} className="block w-full">
-                  <Button variant="secondary" className="w-full h-10 text-xs">
-                    View Full Bag
+                  <Button variant="secondary" className="w-full h-10 text-xs font-semibold">
+                    {isAr ? "عرض السلة بالتفصيل" : "View Full Bag"}
                   </Button>
                 </Link>
               </div>
