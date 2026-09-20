@@ -102,12 +102,14 @@ export default function CheckoutPage() {
         }
 
         setIsCheckingAuth(false);
+        const rawEmail = data.user.email || "";
+        const isSyntheticEmail = rawEmail.includes("@ramillette.user");
         const profileName =
           `${data.user.firstName || ""} ${data.user.lastName || ""}`.trim() ||
-          data.user.email ||
-          "";
+          (!isSyntheticEmail ? rawEmail : "");
+
         setCustomerName(profileName);
-        setCustomerEmail(data.user.email || "");
+        setCustomerEmail(!isSyntheticEmail ? rawEmail : "");
         setCustomerPhone(data.user.phone || "");
 
         const addresses: SavedAddress[] = data.user.addresses || [];

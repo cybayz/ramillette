@@ -54,14 +54,14 @@ export default async function AccountPage() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 sm:p-8 bg-[#fbf9f5] border border-[#ecdec1] rounded-[8px] mb-10">
           <div className="flex items-center gap-4">
             <div className="w-14 h-14 rounded-full bg-[#faedcd] border border-[#ecdec1] flex items-center justify-center text-[#b6713e] font-extrabold text-xl">
-              {user.firstName ? user.firstName[0] : "R"}
+              {user.firstName ? user.firstName[0] : user.phone ? "📱" : "R"}
             </div>
             <div>
               <h1 className="text-xl sm:text-2xl font-bold text-[#1c1c1c]">
-                Welcome back, {user.firstName || user.email}!
+                Welcome back, {user.firstName || user.phone || (!user.email.includes("@ramillette.user") ? user.email : "Customer")}!
               </h1>
               <p className="text-xs text-neutral-500 mt-0.5">
-                {user.email} • {user.phone || "No phone registered"}
+                {!user.email.includes("@ramillette.user") ? user.email : "Mobile Account"} • {user.phone || "No phone registered"}
               </p>
             </div>
           </div>
@@ -239,7 +239,7 @@ export default async function AccountPage() {
               initialAddresses={user.addresses}
               defaultName={
                 `${user.firstName || ""} ${user.lastName || ""}`.trim() ||
-                user.email
+                (!user.email.includes("@ramillette.user") ? user.email : user.phone || "")
               }
               defaultPhone={user.phone || ""}
             />

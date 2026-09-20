@@ -365,3 +365,13 @@ model Country {
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 }
+
+model OtpVerification {
+  id        String   @id @default(cuid())
+  phone     String   @unique
+  code      String
+  expiresAt DateTime
+  attempts  Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

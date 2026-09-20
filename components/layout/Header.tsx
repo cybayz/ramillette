@@ -263,9 +263,13 @@ export function Header() {
                         <div className="bg-white rounded-xl shadow-2xl border border-[#e8e2d8] py-2 overflow-hidden ring-1 ring-black/5">
                           <div className="px-3.5 py-2.5 border-b border-[#f0ebe1] bg-[#fbf9f5]">
                             <p className="text-xs font-bold text-[#1c1c1c] truncate">
-                              {user.firstName ? `${user.firstName} ${user.lastName || ""}`.trim() : user.email}
+                              {user.firstName
+                                ? `${user.firstName} ${user.lastName || ""}`.trim()
+                                : user.phone || user.email}
                             </p>
-                            <p className="text-[10px] text-neutral-500 truncate mt-0.5">{user.email}</p>
+                            <p className="text-[10px] text-neutral-500 truncate mt-0.5">
+                              {user.email?.includes("@ramillette.user") ? user.phone : user.email}
+                            </p>
                           </div>
                           <div className="py-1">
                             <Link

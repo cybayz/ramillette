@@ -200,7 +200,8 @@ export async function POST(request: Request) {
     const orderNumber = `RAM-${targetCountryCode}-${dateStr}-${randomSuffix}`;
 
     // 6. Database Transaction: Create Order, Deduct Country Stock, Increment Coupon
-    const order = await prisma.$transaction(async (tx) => {
+    const order = await prisma.$transaction(
+      async (tx) => {
       const createdOrder = await tx.order.create({
         data: {
           userId: session?.userId || null,
@@ -250,6 +251,79 @@ export async function POST(request: Request) {
           },
         },
       });
+
+      // Synchronize User Profile and Address from Order Details
+      if (session?.userId) {
+        const nameParts = customerName.trim().split(/\s+/);
+        const firstName = nameParts[0] || "";
+        const lastName = nameParts.slice(1).join(" ") || "";
+
+        const currentUser = await tx.user.findUnique({
+          where: { id: session.userId },
+        });
+
+        if (currentUser) {
+          const profileUpdate: {
+            firstName?: string;
+            lastName?: string;
+            phone?: string;
+            email?: string;
+          } = {};
+
+          if (firstName && (!currentUser.firstName || currentUser.firstName.length === 0)) {
+            profileUpdate.firstName = firstName;
+          }
+          if (lastName && (!currentUser.lastName || currentUser.lastName.length === 0)) {
+            profileUpdate.lastName = lastName;
+          }
+          if (customerPhone && currentUser.phone !== customerPhone) {
+            profileUpdate.phone = customerPhone;
+          }
+
+          // If current email is a synthetic placeholder (@ramillette.user), upgrade to valid customerEmail
+          if (
+            customerEmail &&
+            !customerEmail.endsWith("@ramillette.user") &&
+            currentUser.email.endsWith("@ramillette.user")
+          ) {
+            const normalizedNewEmail = customerEmail.trim().toLowerCase();
+            const existingWithEmail = await tx.user.findUnique({
+              where: { email: normalizedNewEmail },
+            });
+            if (!existingWithEmail || existingWithEmail.id === session.userId) {
+              profileUpdate.email = normalizedNewEmail;
+            }
+          }
+
+          if (Object.keys(profileUpdate).length > 0) {
+            await tx.user.update({
+              where: { id: session.userId },
+              data: profileUpdate,
+            });
+          }
+
+          // Auto-save shipping address if user has no saved addresses yet
+          const existingAddressesCount = await tx.address.count({
+            where: { userId: session.userId },
+          });
+
+          if (existingAddressesCount === 0) {
+            await tx.address.create({
+              data: {
+                userId: session.userId,
+                name: customerName,
+                phone: customerPhone,
+                addressLine1,
+                addressLine2: addressLine2 || null,
+                area: area || null,
+                city: city || countryConfig.defaultCity,
+                country: targetCountryCode,
+                isDefault: true,
+              },
+            });
+          }
+        }
+      }
 
       // Deduct country warehouse stock or base stock
       for (const item of validatedOrderItems) {
@@ -307,25 +381,13 @@ export async function POST(request: Request) {
         });
       }
 
-      // Save address to user if logged in
-      if (session?.userId) {
-        await tx.address.create({
-          data: {
-            userId: session.userId,
-            name: customerName,
-            phone: customerPhone,
-            addressLine1,
-            addressLine2: addressLine2 || null,
-            area: area || null,
-            city: city || countryConfig.defaultCity,
-            country: countryConfig.name,
-            isDefault: false,
-          },
-        });
+        return createdOrder;
+      },
+      {
+        maxWait: 15000,
+        timeout: 30000,
       }
-
-      return createdOrder;
-    });
+    );
 
     // 7. Payment Provider Abstraction per Country
     const paymentProvider = getPaymentProvider(targetCountryCode, paymentMethod);
