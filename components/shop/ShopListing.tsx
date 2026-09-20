@@ -353,7 +353,7 @@ export function ShopListing({
 
       {/* 2. Sub-bar: Breadcrumbs on Left + Preserved Sort dropdown on Right */}
       <div className="border-b border-neutral-100 bg-white">
-        <div className="ramillette-container px-4 sm:px-6 lg:px-8 py-3.5 flex items-center justify-between gap-4">
+        <div className="ramillette-container px-4 sm:px-6 lg:px-8 py-3 flex flex-wrap items-center justify-between gap-3">
           {/* Breadcrumb badge (Grey pill badge) */}
           <nav
             aria-label="Breadcrumb"
@@ -419,7 +419,7 @@ export function ShopListing({
       </div>
 
       {/* Main Content Layout: Left Filter Sidebar + Right Product Column */}
-      <div className="ramillette-container px-4 sm:px-6 lg:px-8 pt-6 sm:pt-8">
+      <div className="ramillette-container px-4 sm:px-6 lg:px-8 pt-6 sm:pt-8 min-w-0 max-w-full overflow-hidden">
         {/* Mobile Filter Toggle Button */}
         <div className="lg:hidden mb-6 flex items-center justify-between">
           <button
@@ -718,9 +718,9 @@ export function ShopListing({
           </aside>
 
           {/* 4. Right Main Column: Horizontal Size Segmented Bar + Product Grid */}
-          <main className="lg:col-span-9">
+          <main className="lg:col-span-9 min-w-0 max-w-full">
             {/* Horizontal Size Segmented Control Bar */}
-            <div className="w-full bg-[#f0f0ee] p-1 rounded-lg flex items-center gap-1 overflow-x-auto select-none">
+            <div className="w-full bg-[#f0f0ee] p-1 rounded-lg flex items-center gap-1 overflow-x-auto select-none no-scrollbar">
               {SIZE_OPTIONS.map((size) => {
                 const isActive =
                   selectedSize.toLowerCase() === size.toLowerCase();
@@ -729,7 +729,7 @@ export function ShopListing({
                     key={size}
                     type="button"
                     onClick={() => handleSizeChange(size)}
-                    className={`flex-1 min-w-[70px] py-1.5 px-3 sm:px-5 rounded-md text-xs sm:text-sm font-semibold transition-all cursor-pointer text-center whitespace-nowrap ${isActive
+                    className={`flex-1 min-w-[58px] sm:min-w-[70px] py-1.5 px-2 sm:px-5 rounded-md text-xs sm:text-sm font-semibold transition-all cursor-pointer text-center whitespace-nowrap ${isActive
                         ? "bg-white text-neutral-900 font-bold shadow-xs"
                         : "text-neutral-600 hover:text-neutral-900 hover:bg-neutral-200/50"
                       }`}
@@ -772,7 +772,7 @@ export function ShopListing({
                 </button>
               </div>
             ) : (
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-5">
                 {filteredProducts.map((product) => (
                   <ProductCard
                     key={product.id}

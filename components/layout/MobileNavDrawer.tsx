@@ -21,6 +21,7 @@ import {
   MapPin,
   Globe,
   LogOut,
+  Package,
 } from "lucide-react";
 import { useAuthStore } from "@/lib/store/useAuthStore";
 import { useCountryStore } from "@/lib/store/useCountryStore";
@@ -65,6 +66,7 @@ export function MobileNavDrawer({ isOpen, onClose }: MobileNavDrawerProps) {
 
   const navLinks = [
     { label: content.header.home, href: `${prefix}/`, icon: Home },
+    { label: isAr ? "طلباتي" : "My Orders", href: user ? `${prefix}/account#orders` : `${prefix}/account/login?redirect=${prefix}/account`, icon: Package },
     { label: content.header.ownBrand, href: `${prefix}/collections/own-brand`, icon: Crown, highlight: true },
     { label: content.header.inspired, href: `${prefix}/collections/inspired`, icon: Sparkles },
     { label: content.header.bestSellers, href: `${prefix}/collections/best-sellers`, icon: Flame },
@@ -89,7 +91,7 @@ export function MobileNavDrawer({ isOpen, onClose }: MobileNavDrawerProps) {
       isOpen={isOpen}
       onClose={onClose}
       position={language === "ar" ? "right" : "left"}
-      maxWidth="max-w-xs"
+      maxWidth="max-w-[340px] sm:max-w-sm"
       title={
         <div className="flex items-center gap-2">
           <Image
@@ -105,66 +107,87 @@ export function MobileNavDrawer({ isOpen, onClose }: MobileNavDrawerProps) {
       <div className="flex flex-col h-full justify-between pb-6">
         <div>
           {/* Country Selection for Mobile */}
-          <div className="mb-3 px-1">
+          <div className="mb-4">
             <CountrySwitcher variant="drawer" />
           </div>
 
-          {/* Quick Language Toggle & Account / Wishlist / Cart Bar */}
-          <div className="flex items-center justify-between px-2 py-2 mb-3 bg-[#fbf9f5] rounded-md border border-[#ecdec1]">
-            <span className="text-xs text-neutral-600 font-medium">Language / اللغة</span>
+          {/* Quick Language Toggle */}
+          <div className="flex items-center justify-between px-3 py-2.5 mb-4 bg-[#fbf9f5] rounded-lg border border-[#ecdec1]">
+            <div className="flex items-center gap-2">
+              <Globe size={15} className="text-[#465947]" />
+              <span className="text-xs text-neutral-700 font-medium">Language / اللغة</span>
+            </div>
             <button
               type="button"
               onClick={handleLanguageSwitch}
-              className="flex items-center gap-1.5 text-xs font-semibold text-[#b6713e] hover:text-[#8c4c1d]"
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-white border border-[#ecdec1] text-xs font-bold text-[#465947] hover:bg-[#465947] hover:text-white transition-colors cursor-pointer shadow-2xs"
             >
-              <Globe size={14} />
               <span>{content.topBar.languageToggle}</span>
             </button>
           </div>
 
-          <div className="grid grid-cols-3 gap-2 py-3 mb-4 border-b border-[#e5e5e5] text-center">
+          {/* Quick Action Grid: 4 items (Account, Orders, Wishlist, Cart) */}
+          <div className="grid grid-cols-4 gap-1.5 py-3 mb-4 border-b border-[#e5e5e5] text-center">
+            {/* 1. Account */}
             <Link
               href={user ? (isAr ? "/ar/account" : "/account") : (isAr ? "/ar/account/login" : "/account/login")}
               onClick={onClose}
-              className="flex flex-col items-center py-2 px-1 rounded-md hover:bg-[#fbf9f5] text-[#1c1c1c] text-xs font-medium"
+              className="flex flex-col items-center py-2 px-1 rounded-lg hover:bg-[#fbf9f5] text-[#1c1c1c] text-[11px] font-medium transition-colors"
             >
               <User size={18} className="text-[#b6713e] mb-1" />
-              <span>
+              <span className="truncate max-w-full">
                 {user
-                  ? (user.firstName ? (isAr ? user.firstName : `Hi, ${user.firstName}`) : (isAr ? "حسابي" : "My Account"))
-                  : (isAr ? "تسجيل / دخول" : "Sign In")}
+                  ? (user.firstName ? (isAr ? user.firstName : user.firstName) : (isAr ? "حسابي" : "Account"))
+                  : (isAr ? "دخول" : "Sign In")}
               </span>
             </Link>
 
+            {/* 2. My Orders */}
+            <Link
+              href={user ? (isAr ? "/ar/account#orders" : "/account#orders") : (isAr ? "/ar/account/login?redirect=/ar/account" : "/account/login?redirect=/account")}
+              onClick={onClose}
+              className="flex flex-col items-center py-2 px-1 rounded-lg hover:bg-[#fbf9f5] text-[#1c1c1c] text-[11px] font-medium transition-colors"
+            >
+              <Package size={18} className="text-[#b6713e] mb-1" />
+              <span className="truncate max-w-full">{isAr ? "طلباتي" : "Orders"}</span>
+            </Link>
+
+            {/* 3. Wishlist */}
             <Link
               href={isAr ? "/ar/wishlist" : "/wishlist"}
               scroll={true}
               onClick={onClose}
-              className="relative flex flex-col items-center py-2 px-1 rounded-md hover:bg-[#fbf9f5] text-[#1c1c1c] text-xs font-medium"
+              className="relative flex flex-col items-center py-2 px-1 rounded-lg hover:bg-[#fbf9f5] text-[#1c1c1c] text-[11px] font-medium transition-colors"
             >
-              <Heart size={18} className="text-[#b6713e] mb-1" />
-              <span>{isAr ? "المفضلة" : "Wishlist"}</span>
-              {wishlistCount > 0 && (
-                <span className="absolute top-1 right-3 bg-[#b6713e] text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
-                  {wishlistCount}
-                </span>
-              )}
+              <div className="relative">
+                <Heart size={18} className="text-[#b6713e] mb-1" />
+                {wishlistCount > 0 && (
+                  <span className="absolute -top-1 -right-2 bg-[#b6713e] text-white text-[9px] font-bold h-3.5 min-w-[14px] px-0.5 rounded-full flex items-center justify-center ring-2 ring-white">
+                    {wishlistCount}
+                  </span>
+                )}
+              </div>
+              <span className="truncate max-w-full">{isAr ? "المفضلة" : "Wishlist"}</span>
             </Link>
 
+            {/* 4. Cart */}
             <button
+              type="button"
               onClick={() => {
                 onClose();
                 openCart();
               }}
-              className="relative flex flex-col items-center py-2 px-1 rounded-md hover:bg-[#fbf9f5] text-[#1c1c1c] text-xs font-medium cursor-pointer"
+              className="relative flex flex-col items-center py-2 px-1 rounded-lg hover:bg-[#fbf9f5] text-[#1c1c1c] text-[11px] font-medium cursor-pointer transition-colors"
             >
-              <ShoppingBag size={18} className="text-[#b6713e] mb-1" />
-              <span>Cart</span>
-              {cartCount > 0 && (
-                <span className="absolute top-1 right-3 bg-[#1c1c1c] text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
-                  {cartCount}
-                </span>
-              )}
+              <div className="relative">
+                <ShoppingBag size={18} className="text-[#b6713e] mb-1" />
+                {cartCount > 0 && (
+                  <span className="absolute -top-1 -right-2 bg-[#1c1c1c] text-white text-[9px] font-bold h-3.5 min-w-[14px] px-0.5 rounded-full flex items-center justify-center ring-2 ring-white">
+                    {cartCount}
+                  </span>
+                )}
+              </div>
+              <span className="truncate max-w-full">{isAr ? "السلة" : "Cart"}</span>
             </button>
           </div>
 

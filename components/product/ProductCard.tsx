@@ -307,18 +307,18 @@ export function ProductCard({
                   e.stopPropagation();
                   setIsNotifyModalOpen(true);
                 }}
-                className="w-full py-2 px-2 border border-amber-500/40 hover:border-amber-600 bg-amber-50/80 hover:bg-amber-100 text-amber-900 rounded-[6px] text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-2xs"
+                className="w-full py-1.5 sm:py-2 px-1.5 sm:px-2 border border-amber-500/40 hover:border-amber-600 bg-amber-50/80 hover:bg-amber-100 text-amber-900 rounded-[6px] text-[11px] sm:text-xs font-semibold flex items-center justify-center gap-1 sm:gap-1.5 transition-all cursor-pointer shadow-2xs"
               >
-                <Bell size={14} className="stroke-[2] text-amber-700 shrink-0" />
+                <Bell size={13} className="stroke-[2] text-amber-700 shrink-0" />
                 <span className="truncate">{notifyMeText}</span>
               </button>
             ) : (
               <button
                 type="button"
                 onClick={handleAddToCartClick}
-                className="w-full py-2 px-2 border border-neutral-200 hover:border-[#233324] hover:bg-[#233324] hover:text-white rounded-[6px] text-xs font-semibold text-neutral-900 bg-white flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-2xs"
+                className="w-full py-1.5 sm:py-2 px-1.5 sm:px-2 border border-neutral-200 hover:border-[#233324] hover:bg-[#233324] hover:text-white rounded-[6px] text-[11px] sm:text-xs font-semibold text-neutral-900 bg-white flex items-center justify-center gap-1 sm:gap-1.5 transition-all cursor-pointer shadow-2xs"
               >
-                <ShoppingCart size={14} className="stroke-[2] shrink-0" />
+                <ShoppingCart size={13} className="stroke-[2] shrink-0" />
                 <span className="truncate">{addToCartText}</span>
               </button>
             )}
@@ -326,7 +326,7 @@ export function ProductCard({
             {/* Button 2: Choose & Buy (Navigates to Product Detail Page) */}
             <Link
               href={productHref}
-              className="w-full py-1.5 px-2 bg-[#4e6648] hover:bg-[#3d5239] text-white rounded-[6px] text-xs font-semibold flex items-center justify-center transition-colors cursor-pointer shadow-2xs text-center truncate"
+              className="w-full py-1.5 px-1.5 sm:px-2 bg-[#4e6648] hover:bg-[#3d5239] text-white rounded-[6px] text-[11px] sm:text-xs font-semibold flex items-center justify-center transition-colors cursor-pointer shadow-2xs text-center truncate"
             >
               <span className="truncate">{chooseAndBuyText}</span>
             </Link>

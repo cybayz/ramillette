@@ -41,10 +41,10 @@ export function CountrySwitcher({ className = "", variant = "topbar" }: CountryS
   if (variant === "drawer") {
     return (
       <div className={`space-y-2 ${className}`}>
-        <label className="text-[11px] font-semibold uppercase tracking-wider text-neutral-400">
+        <label className="text-[11px] font-bold uppercase tracking-wider text-neutral-400 block">
           {isAr ? "الدولة والعملة" : "Country & Currency"}
         </label>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 gap-2">
           {countryList.map((item) => {
             const isSelected = country === item.code;
             return (
@@ -52,17 +52,24 @@ export function CountrySwitcher({ className = "", variant = "topbar" }: CountryS
                 key={item.code}
                 type="button"
                 onClick={() => handleSelect(item.code)}
-                className={`flex flex-col items-center justify-center p-2.5 rounded-lg border text-xs font-medium transition-all cursor-pointer ${
+                className={`flex items-center gap-2.5 p-2.5 rounded-lg border text-xs transition-all cursor-pointer text-left rtl:text-right ${
                   isSelected
-                    ? "bg-[#b6713e]/15 border-[#b6713e] text-white shadow-sm"
-                    : "bg-neutral-900/60 border-neutral-800 text-neutral-300 hover:border-neutral-700 hover:text-white"
+                    ? "bg-[#465947] border-[#465947] text-white shadow-xs font-semibold"
+                    : "bg-[#fbf9f5] border-[#ecdec1] text-neutral-800 hover:border-[#b6713e]/60 hover:bg-white"
                 }`}
               >
-                <span className="text-xl mb-1">{item.flag}</span>
-                <span className="font-semibold text-[11px]">{item.currency}</span>
-                <span className="text-[10px] text-neutral-400 truncate max-w-full">
-                  {isAr ? item.nameAr || item.name : item.name}
-                </span>
+                <span className="text-xl shrink-0">{item.flag}</span>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between gap-1">
+                    <span className={`font-bold text-[11px] ${isSelected ? "text-white" : "text-neutral-900"}`}>
+                      {item.currency}
+                    </span>
+                    {isSelected && <Check size={12} className="text-white shrink-0" />}
+                  </div>
+                  <div className={`text-[10px] truncate ${isSelected ? "text-white/80" : "text-neutral-500"}`}>
+                    {isAr ? item.nameAr || item.name : item.name}
+                  </div>
+                </div>
               </button>
             );
           })}

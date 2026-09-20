@@ -16,6 +16,7 @@ import {
   User,
   Menu,
   LogOut,
+  Package,
 } from "lucide-react";
 import { translations } from "@/lib/i18n";
 import { useAuthStore } from "@/lib/store/useAuthStore";
@@ -279,6 +280,14 @@ export function Header() {
                             >
                               <User size={14} className="text-[#b6713e]" />
                               <span>{content.account}</span>
+                            </Link>
+                            <Link
+                              href={isAr ? "/ar/account#orders" : "/account#orders"}
+                              onClick={() => setIsAccountDropdownOpen(false)}
+                              className="flex items-center gap-2.5 px-3.5 py-2 text-xs font-medium text-neutral-700 hover:bg-[#fbf9f5] hover:text-[#b6713e] transition-colors"
+                            >
+                              <Package size={14} className="text-[#b6713e]" />
+                              <span>{isAr ? "طلباتي" : "My Orders"}</span>
                             </Link>
                             {user.role === "ADMIN" && (
                               <Link

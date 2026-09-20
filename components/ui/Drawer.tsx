@@ -44,8 +44,8 @@ export function Drawer({
       {/* Slideout Panel */}
       <div
         className={`fixed inset-y-0 ${
-          position === "right" ? "right-0" : "left-0"
-        } flex pl-10 max-w-full`}
+          position === "right" ? "right-0 pl-6 sm:pl-10" : "left-0 pr-6 sm:pr-10"
+        } flex max-w-full`}
       >
         <div
           className={`w-screen ${maxWidth} bg-white shadow-2xl flex flex-col transform transition-transform ease-in-out duration-300 ${
@@ -55,11 +55,11 @@ export function Drawer({
           }`}
         >
           {/* Header */}
-          <div className="flex items-center justify-between px-6 py-4 border-b border-[#e5e5e5]">
+          <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-[#e5e5e5]">
             <div className="text-lg font-semibold text-[#1c1c1c]">{title}</div>
             <button
               onClick={onClose}
-              className="p-1.5 text-neutral-500 hover:text-[#1c1c1c] hover:bg-neutral-100 rounded-full transition-colors"
+              className="p-1.5 text-neutral-500 hover:text-[#1c1c1c] hover:bg-neutral-100 rounded-full transition-colors cursor-pointer"
               aria-label="Close drawer"
             >
               <X size={20} />
@@ -67,7 +67,7 @@ export function Drawer({
           </div>
 
           {/* Content */}
-          <div className="flex-1 overflow-y-auto px-6 py-4">{children}</div>
+          <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4">{children}</div>
         </div>
       </div>
     </div>

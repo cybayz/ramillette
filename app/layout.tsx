@@ -71,7 +71,7 @@ export default function RootLayout({
       lang="en"
       className={`${outfit.variable} ${urbanist.variable} ${cairo.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-white text-[#1c1c1c]">
+      <body className="min-h-full flex flex-col bg-white text-[#1c1c1c] overflow-x-hidden">
         {/* Instant Scroll to Top on Page Changes */}
         <ScrollToTopOnNavigation />
 
@@ -82,7 +82,7 @@ export default function RootLayout({
         <Header />
 
         {/* Page Content with safe padding for mobile bottom bar */}
-        <main className="flex-1 pb-16 md:pb-0">{children}</main>
+        <main className="flex-1 pb-16 md:pb-0 min-w-0 max-w-full">{children}</main>
 
         {/* Global Slideout Cart Drawer */}
         <CartDrawer />

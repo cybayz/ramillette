@@ -71,7 +71,7 @@ export default async function AccountPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           {/* Order History (Left Column) */}
-          <div className="lg:col-span-8 space-y-6">
+          <div id="orders" className="lg:col-span-8 space-y-6 scroll-mt-24">
             <div className="flex items-center justify-between pb-3 border-b border-[#e5e5e5]">
               <div className="flex items-center gap-2">
                 <Package size={18} className="text-[#b6713e]" />
