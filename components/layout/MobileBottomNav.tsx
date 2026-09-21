@@ -82,27 +82,27 @@ export function MobileBottomNav() {
           className="flex flex-col items-center justify-center flex-1 min-w-0 h-full py-1 relative group active:scale-95 transition-transform"
         >
           {isHome && (
-            <span className="absolute top-0 w-6 h-[2.5px] bg-[#465947] rounded-b-full shadow-[0_1px_3px_rgba(70,89,71,0.3)] transition-all" />
+            <span className="absolute top-0 w-8 h-[2.5px] bg-[#465947] rounded-b-full shadow-[0_1px_4px_rgba(70,89,71,0.35)] transition-all" />
           )}
           <div
-            className={`px-2.5 py-0.5 rounded-full flex items-center justify-center transition-all duration-200 ${
+            className={`w-12 h-7 rounded-full flex items-center justify-center transition-all duration-200 ${
               isHome
-                ? "bg-[#465947]/12 text-[#465947]"
-                : "text-neutral-400 group-hover:text-neutral-600"
+                ? "bg-[#465947] text-white shadow-[0_2px_8px_rgba(70,89,71,0.3)]"
+                : "text-neutral-400 group-hover:text-neutral-600 group-hover:bg-neutral-100/70"
             }`}
           >
             <Home
-              size={20}
+              size={18}
               className={`transition-all duration-200 ${
                 isHome
-                  ? "fill-[#465947] text-[#465947] stroke-[#465947] stroke-[2]"
-                  : "stroke-[1.8] fill-none"
+                  ? "fill-white text-white stroke-white stroke-[1.5]"
+                  : "stroke-[1.8] fill-none text-current"
               }`}
             />
           </div>
           <span
             className={`text-[10px] mt-0.5 tracking-tight truncate max-w-full transition-colors duration-200 ${
-              isHome ? "font-bold text-[#465947]" : "font-medium text-neutral-500"
+              isHome ? "font-bold text-[#465947]" : "font-medium text-neutral-400"
             }`}
           >
             {labels.home}
@@ -115,34 +115,38 @@ export function MobileBottomNav() {
           className="flex flex-col items-center justify-center flex-1 min-w-0 h-full py-1 relative group active:scale-95 transition-transform"
         >
           {isWishlist && (
-            <span className="absolute top-0 w-6 h-[2.5px] bg-[#465947] rounded-b-full shadow-[0_1px_3px_rgba(70,89,71,0.3)] transition-all" />
+            <span className="absolute top-0 w-8 h-[2.5px] bg-[#465947] rounded-b-full shadow-[0_1px_4px_rgba(70,89,71,0.35)] transition-all" />
           )}
           <div
-            className={`px-2.5 py-0.5 rounded-full flex items-center justify-center transition-all duration-200 ${
+            className={`w-12 h-7 rounded-full flex items-center justify-center transition-all duration-200 relative ${
               isWishlist
-                ? "bg-[#465947]/12 text-[#465947]"
-                : "text-neutral-400 group-hover:text-neutral-600"
+                ? "bg-[#465947] text-white shadow-[0_2px_8px_rgba(70,89,71,0.3)]"
+                : "text-neutral-400 group-hover:text-neutral-600 group-hover:bg-neutral-100/70"
             }`}
           >
-            <div className="relative inline-flex items-center justify-center">
-              <Heart
-                size={20}
-                className={`transition-all duration-200 ${
+            <Heart
+              size={18}
+              className={`transition-all duration-200 ${
+                isWishlist
+                  ? "fill-white text-white stroke-white stroke-[1.5]"
+                  : "stroke-[1.8] fill-none text-current"
+              }`}
+            />
+            {wishlistCount > 0 && (
+              <span
+                className={`absolute -top-1 -right-1 text-[9px] font-bold h-3.5 min-w-[15px] px-1 rounded-full flex items-center justify-center shadow-xs transition-all ${
                   isWishlist
-                    ? "fill-[#465947] text-[#465947] stroke-[#465947] stroke-[2]"
-                    : "stroke-[1.8] fill-none"
+                    ? "bg-[#b6713e] text-white ring-2 ring-[#465947]"
+                    : "bg-[#b6713e] text-white ring-2 ring-white"
                 }`}
-              />
-              {wishlistCount > 0 && (
-                <span className="absolute -top-1.5 -right-2 bg-[#b6713e] text-white text-[9px] font-bold h-3.5 min-w-[15px] px-1 rounded-full flex items-center justify-center ring-2 ring-white shadow-xs">
-                  {wishlistCount}
-                </span>
-              )}
-            </div>
+              >
+                {wishlistCount}
+              </span>
+            )}
           </div>
           <span
             className={`text-[10px] mt-0.5 tracking-tight truncate max-w-full transition-colors duration-200 ${
-              isWishlist ? "font-bold text-[#465947]" : "font-medium text-neutral-500"
+              isWishlist ? "font-bold text-[#465947]" : "font-medium text-neutral-400"
             }`}
           >
             {labels.wishlist}
@@ -157,22 +161,22 @@ export function MobileBottomNav() {
           <div
             className={`w-[44px] h-[44px] rounded-full border-[3px] border-white flex items-center justify-center transition-all duration-200 ${
               isShop
-                ? "bg-[#465947] text-white shadow-[0_4px_14px_rgba(70,89,71,0.45)] ring-2 ring-[#465947]/30"
-                : "bg-neutral-100 text-neutral-500 shadow-[0_2px_8px_rgba(0,0,0,0.06)] group-hover:bg-neutral-200 group-hover:text-neutral-800"
+                ? "bg-[#465947] text-white shadow-[0_4px_14px_rgba(70,89,71,0.45)] ring-2 ring-[#465947]/40 scale-105"
+                : "bg-neutral-100 text-neutral-400 shadow-[0_2px_8px_rgba(0,0,0,0.06)] group-hover:bg-neutral-200 group-hover:text-neutral-700"
             }`}
           >
             <ShoppingBag
               size={20}
               className={`transition-all duration-200 ${
                 isShop
-                  ? "stroke-[2.2] stroke-white fill-none text-white"
-                  : "stroke-[1.8] stroke-neutral-500 fill-none text-neutral-500"
+                  ? "stroke-[2.2] stroke-white fill-white/20 text-white"
+                  : "stroke-[1.8] stroke-neutral-400 fill-none text-neutral-400"
               }`}
             />
           </div>
           <span
             className={`text-[10px] mt-0.5 tracking-tight truncate max-w-full transition-colors duration-200 ${
-              isShop ? "font-bold text-[#465947]" : "font-medium text-neutral-500"
+              isShop ? "font-bold text-[#465947]" : "font-medium text-neutral-400"
             }`}
           >
             {labels.shop}
@@ -186,34 +190,38 @@ export function MobileBottomNav() {
           className="flex flex-col items-center justify-center flex-1 min-w-0 h-full py-1 relative group active:scale-95 transition-transform cursor-pointer"
         >
           {isCart && (
-            <span className="absolute top-0 w-6 h-[2.5px] bg-[#465947] rounded-b-full shadow-[0_1px_3px_rgba(70,89,71,0.3)] transition-all" />
+            <span className="absolute top-0 w-8 h-[2.5px] bg-[#465947] rounded-b-full shadow-[0_1px_4px_rgba(70,89,71,0.35)] transition-all" />
           )}
           <div
-            className={`px-2.5 py-0.5 rounded-full flex items-center justify-center transition-all duration-200 ${
+            className={`w-12 h-7 rounded-full flex items-center justify-center transition-all duration-200 relative ${
               isCart
-                ? "bg-[#465947]/12 text-[#465947]"
-                : "text-neutral-400 group-hover:text-neutral-600"
+                ? "bg-[#465947] text-white shadow-[0_2px_8px_rgba(70,89,71,0.3)]"
+                : "text-neutral-400 group-hover:text-neutral-600 group-hover:bg-neutral-100/70"
             }`}
           >
-            <div className="relative inline-flex items-center justify-center">
-              <ShoppingCart
-                size={20}
-                className={`transition-all duration-200 ${
+            <ShoppingCart
+              size={18}
+              className={`transition-all duration-200 ${
+                isCart
+                  ? "stroke-[2.2] stroke-white text-white fill-none"
+                  : "stroke-[1.8] stroke-neutral-400 fill-none text-neutral-400"
+              }`}
+            />
+            {cartCount > 0 && (
+              <span
+                className={`absolute -top-1 -right-1 text-[9px] font-bold h-3.5 min-w-[15px] px-1 rounded-full flex items-center justify-center shadow-xs transition-all ${
                   isCart
-                    ? "stroke-[2.2] stroke-[#465947] text-[#465947]"
-                    : "stroke-[1.8] stroke-neutral-400 fill-none text-neutral-400"
+                    ? "bg-[#b6713e] text-white ring-2 ring-[#465947]"
+                    : "bg-[#1c1c1c] text-white ring-2 ring-white"
                 }`}
-              />
-              {cartCount > 0 && (
-                <span className="absolute -top-1.5 -right-2 bg-[#1c1c1c] text-white text-[9px] font-bold h-3.5 min-w-[15px] px-1 rounded-full flex items-center justify-center ring-2 ring-white shadow-xs">
-                  {cartCount}
-                </span>
-              )}
-            </div>
+              >
+                {cartCount}
+              </span>
+            )}
           </div>
           <span
             className={`text-[10px] mt-0.5 tracking-tight truncate max-w-full transition-colors duration-200 ${
-              isCart ? "font-bold text-[#465947]" : "font-medium text-neutral-500"
+              isCart ? "font-bold text-[#465947]" : "font-medium text-neutral-400"
             }`}
           >
             {labels.cart}
@@ -226,27 +234,27 @@ export function MobileBottomNav() {
           className="flex flex-col items-center justify-center flex-1 min-w-0 h-full py-1 relative group active:scale-95 transition-transform"
         >
           {isAccount && (
-            <span className="absolute top-0 w-6 h-[2.5px] bg-[#465947] rounded-b-full shadow-[0_1px_3px_rgba(70,89,71,0.3)] transition-all" />
+            <span className="absolute top-0 w-8 h-[2.5px] bg-[#465947] rounded-b-full shadow-[0_1px_4px_rgba(70,89,71,0.35)] transition-all" />
           )}
           <div
-            className={`px-2.5 py-0.5 rounded-full flex items-center justify-center transition-all duration-200 ${
+            className={`w-12 h-7 rounded-full flex items-center justify-center transition-all duration-200 ${
               isAccount
-                ? "bg-[#465947]/12 text-[#465947]"
-                : "text-neutral-400 group-hover:text-neutral-600"
+                ? "bg-[#465947] text-white shadow-[0_2px_8px_rgba(70,89,71,0.3)]"
+                : "text-neutral-400 group-hover:text-neutral-600 group-hover:bg-neutral-100/70"
             }`}
           >
             <User
-              size={20}
+              size={18}
               className={`transition-all duration-200 ${
                 isAccount
-                  ? "fill-[#465947] text-[#465947] stroke-[#465947] stroke-[2]"
-                  : "stroke-[1.8] fill-none"
+                  ? "fill-white text-white stroke-white stroke-[1.5]"
+                  : "stroke-[1.8] fill-none text-current"
               }`}
             />
           </div>
           <span
             className={`text-[10px] mt-0.5 tracking-tight truncate max-w-full transition-colors duration-200 ${
-              isAccount ? "font-bold text-[#465947]" : "font-medium text-neutral-500"
+              isAccount ? "font-bold text-[#465947]" : "font-medium text-neutral-400"
             }`}
           >
             {labels.account}

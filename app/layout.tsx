@@ -1,15 +1,9 @@
 import type { Metadata } from "next";
 import { Outfit, Urbanist, Cairo } from "next/font/google";
 import "./globals.css";
-import { TopBar } from "@/components/layout/TopBar";
-import { Header } from "@/components/layout/Header";
-import { Footer } from "@/components/layout/Footer";
-import { CartDrawer } from "@/components/cart/CartDrawer";
-import { FloatingWhatsApp } from "@/components/layout/FloatingWhatsApp";
-import { ScrollToTopOnNavigation } from "@/components/layout/ScrollToTopOnNavigation";
-import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
 import { RouteProgressBar } from "@/components/layout/RouteProgressBar";
-import { PageTransition } from "@/components/layout/PageTransition";
+import { ScrollToTopOnNavigation } from "@/components/layout/ScrollToTopOnNavigation";
+import { StorefrontChrome } from "@/components/layout/StorefrontChrome";
 
 const outfit = Outfit({
   variable: "--font-heading",
@@ -85,28 +79,8 @@ export default function RootLayout({
         {/* Instant Scroll to Top on Page Changes */}
         <ScrollToTopOnNavigation />
 
-        {/* Top Location & Announcement Bar */}
-        <TopBar />
-
-        {/* Sticky Luxury Header */}
-        <Header />
-
-        {/* Page Content with safe padding for mobile bottom bar and smooth page entry */}
-        <main className="flex-1 pb-16 md:pb-0 min-w-0 max-w-full">
-          <PageTransition>{children}</PageTransition>
-        </main>
-
-        {/* Global Slideout Cart Drawer */}
-        <CartDrawer />
-
-        {/* Floating WhatsApp Support Button */}
-        <FloatingWhatsApp />
-
-        {/* Persistent Mobile Bottom Navigation Bar */}
-        <MobileBottomNav />
-
-        {/* Comprehensive Luxury Footer */}
-        <Footer />
+        {/* Storefront Layout (Omits public header/footer on admin routes) */}
+        <StorefrontChrome>{children}</StorefrontChrome>
       </body>
     </html>
   );

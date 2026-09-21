@@ -38,6 +38,7 @@ export default async function AdminOrdersPage() {
       addressLine1: shipping.addressLine1 || "",
       area: shipping.area,
       deliveryNotes: o.deliveryNotes,
+      adminNotes: o.adminNotes,
       paymentGatewayRef: o.paymentGatewayRef,
       carrierName: o.carrierName,
       trackingNumber: o.trackingNumber,

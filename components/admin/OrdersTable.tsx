@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import Link from "next/link";
 import {
   Search,
   ChevronDown,
@@ -19,8 +20,13 @@ import {
   Edit2,
   Copy,
   Check,
+  Printer,
+  Share2,
+  Lock,
+  FileText,
 } from "lucide-react";
 import { formatPrice } from "@/lib/utils";
+import { generateWhatsAppInvoiceUrl, InvoiceOrderData } from "@/lib/admin/invoiceUtils";
 
 export interface AdminOrderItem {
   id: string;
@@ -52,6 +58,7 @@ export interface AdminOrder {
   addressLine1?: string;
   area?: string | null;
   deliveryNotes?: string | null;
+  adminNotes?: string | null;
   paymentGatewayRef?: string | null;
   carrierName?: string | null;
   trackingNumber?: string | null;
@@ -81,6 +88,45 @@ export function OrdersTable({
   const [countryFilter, setCountryFilter] = useState("ALL");
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<AdminOrder | null>(null);
+  const [modalAdminNotes, setModalAdminNotes] = useState("");
+  const [isSavingModalNotes, setIsSavingModalNotes] = useState(false);
+  const [modalNotesSaved, setModalNotesSaved] = useState(false);
+
+  const handleOpenOrderModal = (order: AdminOrder) => {
+    setSelectedOrder(order);
+    setModalAdminNotes(order.adminNotes || "");
+    setModalNotesSaved(false);
+  };
+
+  const handleSaveModalNotes = async () => {
+    if (!selectedOrder) return;
+    setIsSavingModalNotes(true);
+    try {
+      const res = await fetch(`/api/admin/orders/${selectedOrder.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ adminNotes: modalAdminNotes }),
+      });
+
+      if (res.ok) {
+        setModalNotesSaved(true);
+        setOrders(
+          orders.map((o) =>
+            o.id === selectedOrder.id ? { ...o, adminNotes: modalAdminNotes } : o
+          )
+        );
+        setSelectedOrder({ ...selectedOrder, adminNotes: modalAdminNotes });
+        setTimeout(() => setModalNotesSaved(false), 2500);
+      } else {
+        alert("Failed to save admin notes.");
+      }
+    } catch (err) {
+      console.error("Failed to save notes:", err);
+      alert("Network error saving notes.");
+    } finally {
+      setIsSavingModalNotes(false);
+    }
+  };
 
   // Shipment tracking popup modal state
   const [shippingModalOrder, setShippingModalOrder] = useState<AdminOrder | null>(null);
@@ -322,9 +368,13 @@ export function OrdersTable({
                 <tr key={order.id} className="hover:bg-[#fbf9f5]/60 transition-colors">
                   {/* Order Number */}
                   <td className="py-3.5 px-3">
-                    <span className="font-mono font-bold text-[#1c1c1c] block">
-                      {order.orderNumber}
-                    </span>
+                    <Link
+                      href={`/admin/orders/${order.id}`}
+                      className="font-mono font-bold text-[#1c1c1c] hover:text-[#b6713e] hover:underline block"
+                      title="View Full Order Details"
+                    >
+                      #{order.orderNumber}
+                    </Link>
                     <span className="text-[10px] text-neutral-400">
                       {new Date(order.createdAt).toLocaleDateString("en-US", {
                         month: "short",
@@ -333,6 +383,15 @@ export function OrdersTable({
                         minute: "2-digit",
                       })}
                     </span>
+                    {order.adminNotes && (
+                      <div
+                        className="mt-1 flex items-center gap-1 text-[10px] text-amber-900 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 max-w-[150px] truncate"
+                        title={`Admin Note: ${order.adminNotes}`}
+                      >
+                        <Lock size={9} className="shrink-0 text-amber-700" />
+                        <span className="truncate">{order.adminNotes}</span>
+                      </div>
+                    )}
                   </td>
 
                   {/* Market / Country */}
@@ -428,14 +487,23 @@ export function OrdersTable({
 
                   {/* View Details */}
                   <td className="py-3.5 px-3 text-right">
-                    <button
-                      type="button"
-                      onClick={() => setSelectedOrder(order)}
-                      className="p-1.5 text-[#b6713e] hover:bg-[#faedcd]/50 rounded transition-colors"
-                      title="Inspect Order Details"
-                    >
-                      <Eye size={16} />
-                    </button>
+                    <div className="flex items-center justify-end gap-1">
+                      <button
+                        type="button"
+                        onClick={() => handleOpenOrderModal(order)}
+                        className="p-1.5 text-[#b6713e] hover:bg-[#faedcd]/50 rounded transition-colors cursor-pointer"
+                        title="Quick Inspect Popup"
+                      >
+                        <Eye size={16} />
+                      </button>
+                      <Link
+                        href={`/admin/orders/${order.id}`}
+                        className="p-1.5 text-neutral-400 hover:text-neutral-800 hover:bg-neutral-100 rounded transition-colors"
+                        title="Open Full Order Page"
+                      >
+                        <ExternalLink size={15} />
+                      </Link>
+                    </div>
                   </td>
                 </tr>
               );
@@ -446,30 +514,45 @@ export function OrdersTable({
 
       {/* Order Detail Modal */}
       {selectedOrder && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="bg-white rounded-[10px] shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col border border-[#e5e5e5] overflow-hidden">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-6 bg-black/60 backdrop-blur-xs overflow-y-auto animate-in fade-in duration-150">
+          <div className="bg-white rounded-[10px] shadow-2xl w-full max-w-2xl max-h-[92vh] flex flex-col border border-[#e5e5e5] overflow-hidden my-auto">
             {/* Modal Header */}
-            <div className="px-6 py-4 border-b border-[#e5e5e5] flex items-center justify-between bg-[#fbf9f5]">
-              <div className="flex items-center gap-2.5">
-                <span className="text-2xl">{getCountryFlag(selectedOrder.country)}</span>
-                <div>
-                  <h2 className="text-base font-bold text-[#1c1c1c] font-mono">
-                    {selectedOrder.orderNumber}
-                  </h2>
-                  <p className="text-xs text-neutral-500">
-                    Market: {selectedOrder.country} • Placed on{" "}
-                    {new Date(selectedOrder.createdAt).toLocaleString()}
+            <div className="px-5 sm:px-6 py-4 border-b border-[#e5e5e5] flex items-center justify-between bg-[#fbf9f5] gap-3">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <span className="text-2xl shrink-0">{getCountryFlag(selectedOrder.country)}</span>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-base font-bold text-[#1c1c1c] font-mono truncate">
+                      {selectedOrder.orderNumber}
+                    </h2>
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-neutral-200/80 text-neutral-700">
+                      {selectedOrder.country}
+                    </span>
+                  </div>
+                  <p className="text-xs text-neutral-500 truncate">
+                    Placed on {new Date(selectedOrder.createdAt).toLocaleString()}
                   </p>
                 </div>
               </div>
 
-              <button
-                type="button"
-                onClick={() => setSelectedOrder(null)}
-                className="text-neutral-400 hover:text-neutral-700 p-1.5 rounded-md hover:bg-neutral-100"
-              >
-                <X size={18} />
-              </button>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <Link
+                  href={`/admin/orders/${selectedOrder.id}`}
+                  className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-[#b6713e] hover:bg-[#faedcd]/40 rounded transition-colors"
+                  title="Open Full Page"
+                >
+                  <span>Full Page</span>
+                  <ExternalLink size={12} />
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => setSelectedOrder(null)}
+                  className="text-neutral-400 hover:text-neutral-700 p-1.5 rounded-md hover:bg-neutral-100 cursor-pointer"
+                  aria-label="Close modal"
+                >
+                  <X size={18} />
+                </button>
+              </div>
             </div>
 
             {/* Modal Body */}
@@ -506,6 +589,44 @@ export function OrdersTable({
                       Note: {selectedOrder.deliveryNotes}
                     </p>
                   )}
+                </div>
+              </div>
+
+              {/* Admin Internal Notes in Quick Modal */}
+              <div className="p-3.5 bg-amber-50/70 border border-amber-200 rounded-[8px] space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 text-amber-900 font-bold text-xs">
+                    <Lock size={13} className="text-amber-700" />
+                    <span>Admin Internal Notes</span>
+                  </div>
+                  <span className="text-[10px] font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded border border-amber-300">
+                    🔒 Admin Only
+                  </span>
+                </div>
+                <textarea
+                  value={modalAdminNotes}
+                  onChange={(e) => setModalAdminNotes(e.target.value)}
+                  rows={2}
+                  placeholder="e.g. Stock wasn't there so preparing, called customer to confirm delivery..."
+                  className="w-full text-xs p-2.5 bg-white border border-amber-300 rounded-[5px] focus:outline-none focus:border-[#b6713e] placeholder:text-neutral-400"
+                />
+                <div className="flex items-center justify-between pt-0.5">
+                  <span className="text-[10px] text-amber-700 italic">
+                    Strictly internal • Never visible to customer
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleSaveModalNotes}
+                    disabled={isSavingModalNotes}
+                    className="btn-primary h-7 px-3 text-[11px] font-bold inline-flex items-center gap-1 cursor-pointer"
+                  >
+                    {isSavingModalNotes ? (
+                      <Loader2 size={11} className="animate-spin" />
+                    ) : modalNotesSaved ? (
+                      <Check size={11} className="text-emerald-300" />
+                    ) : null}
+                    <span>{modalNotesSaved ? "Saved!" : isSavingModalNotes ? "Saving..." : "Save Note"}</span>
+                  </button>
                 </div>
               </div>
 
@@ -667,17 +788,52 @@ export function OrdersTable({
             </div>
 
             {/* Modal Footer */}
-            <div className="px-6 py-3.5 border-t border-[#e5e5e5] bg-[#fbf9f5] flex items-center justify-between">
-              <span className="text-xs text-neutral-500">
-                Order ID: <code className="font-mono text-[11px]">{selectedOrder.id}</code>
-              </span>
-              <button
-                type="button"
-                onClick={() => setSelectedOrder(null)}
-                className="btn-primary h-8 px-4 text-xs font-semibold"
-              >
-                Done
-              </button>
+            <div className="px-5 sm:px-6 py-3.5 border-t border-[#e5e5e5] bg-[#fbf9f5] flex flex-col sm:flex-row items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <Link
+                  href={`/admin/orders/${selectedOrder.id}`}
+                  className="text-xs font-bold text-[#b6713e] hover:underline inline-flex items-center gap-1"
+                >
+                  <span>Open Full Order Page</span>
+                  <ExternalLink size={12} />
+                </Link>
+                <span className="text-neutral-300 hidden sm:inline">•</span>
+                <span className="text-[11px] text-neutral-400 font-mono hidden sm:inline">
+                  {selectedOrder.id.substring(0, 12)}...
+                </span>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2 justify-end w-full sm:w-auto">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const url = generateWhatsAppInvoiceUrl(selectedOrder as any);
+                    window.open(url, "_blank", "noopener,noreferrer");
+                  }}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#25D366] hover:bg-[#20ba5a] text-white text-xs font-bold rounded-[5px] transition-colors cursor-pointer shadow-2xs"
+                  title="Share invoice on WhatsApp"
+                >
+                  <Share2 size={12} />
+                  <span>WhatsApp</span>
+                </button>
+
+                <Link
+                  href={`/admin/orders/${selectedOrder.id}/invoice`}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-neutral-800 hover:bg-black text-white text-xs font-bold rounded-[5px] transition-colors shadow-2xs"
+                  title="Print / Save PDF Invoice"
+                >
+                  <Printer size={12} />
+                  <span>Invoice</span>
+                </Link>
+
+                <button
+                  type="button"
+                  onClick={() => setSelectedOrder(null)}
+                  className="btn-primary h-8 px-4 text-xs font-semibold cursor-pointer"
+                >
+                  Done
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -685,7 +841,7 @@ export function OrdersTable({
 
       {/* Shipment Tracking Popup Modal */}
       {shippingModalOrder && (
-        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs overflow-y-auto animate-in fade-in duration-150">
           <div className="bg-white rounded-[10px] shadow-2xl w-full max-w-lg border border-[#e5e5e5] overflow-hidden">
             {/* Header */}
             <div className="px-6 py-4 border-b border-[#e5e5e5] flex items-center justify-between bg-[#fbf9f5]">
