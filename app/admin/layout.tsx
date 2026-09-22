@@ -1,7 +1,7 @@
 import React from "react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getSession } from "@/lib/auth/session";
+import { getSession, isAdminRole } from "@/lib/auth/session";
 import prisma from "@/lib/db/prisma";
 import {
   LayoutDashboard,
@@ -28,29 +28,18 @@ export default async function AdminLayout({
     redirect("/account/login");
   }
 
-  if (session.role !== "ADMIN") {
-    return (
-      <div className="min-h-[70vh] flex items-center justify-center p-4">
-        <div className="text-center max-w-md p-8 bg-red-50 border border-red-200 rounded-[8px]">
-          <ShieldAlert size={48} className="text-red-600 mx-auto mb-4" />
-          <h1 className="text-xl font-bold text-red-800 mb-2">Access Denied</h1>
-          <p className="text-xs text-red-700 mb-6">
-            You must have administrator privileges to access the Ramillette store management dashboard.
-          </p>
-          <Link href="/" className="btn-primary h-10 px-5 text-xs inline-flex items-center">
-            Return to Store
-          </Link>
-        </div>
-      </div>
-    );
+  if (!isAdminRole(session.role)) {
+    redirect("/erp");
   }
 
   const adminNav = [
     { label: "Dashboard", href: "/admin", icon: LayoutDashboard },
+    { label: "Store ERP & POS", href: "/erp", icon: Store },
     { label: "Products & Stock", href: "/admin/products", icon: Package },
     { label: "Orders & Delivery", href: "/admin/orders", icon: ShoppingBag },
     { label: "Countries & Markets", href: "/admin/countries", icon: Globe },
     { label: "Coupons & Promos", href: "/admin/coupons", icon: Tag },
+    { label: "Roles & Permissions", href: "/admin/roles", icon: Users },
     { label: "Store & Tax Settings", href: "/admin/settings", icon: Settings },
   ];
 

@@ -88,7 +88,9 @@ function LoginForm() {
 
     if (redirect) {
       window.location.href = redirect;
-    } else if (data.user?.role === "ADMIN") {
+    } else if (data.landingPage) {
+      window.location.href = data.landingPage;
+    } else if (data.user?.role === "ADMIN" || data.user?.role === "SUPER_ADMIN") {
       window.location.href = "/admin";
     } else {
       window.location.href = isAr ? "/ar/account" : "/account";

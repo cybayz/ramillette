@@ -289,7 +289,7 @@ export function Header() {
                               <Package size={14} className="text-[#b6713e]" />
                               <span>{isAr ? "طلباتي" : "My Orders"}</span>
                             </Link>
-                            {user.role === "ADMIN" && (
+                            {user.role && user.role !== "CUSTOMER" && (
                               <Link
                                 href="/admin"
                                 onClick={() => setIsAccountDropdownOpen(false)}

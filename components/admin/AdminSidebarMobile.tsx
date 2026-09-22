@@ -13,15 +13,18 @@ import {
   Tag,
   Settings,
   Store,
+  Users,
 } from "lucide-react";
 import { LogoutButton } from "@/components/account/LogoutButton";
 
 const adminNav = [
   { label: "Dashboard", href: "/admin", icon: LayoutDashboard },
+  { label: "Store ERP & POS", href: "/erp", icon: Store },
   { label: "Products & Stock", href: "/admin/products", icon: Package },
   { label: "Orders & Delivery", href: "/admin/orders", icon: ShoppingBag },
   { label: "Countries & Markets", href: "/admin/countries", icon: Globe },
   { label: "Coupons & Promos", href: "/admin/coupons", icon: Tag },
+  { label: "Roles & Permissions", href: "/admin/roles", icon: Users },
   { label: "Store & Tax Settings", href: "/admin/settings", icon: Settings },
 ];
 

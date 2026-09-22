@@ -314,18 +314,39 @@ export async function DELETE(request: Request, { params }: Props) {
       return NextResponse.json({ error: "Product not found" }, { status: 404 });
     }
 
+    // Check if product has historical orders or transactions
+    const [ordersCount, transactionsCount] = await Promise.all([
+      prisma.orderItem.count({ where: { productId: id } }),
+      prisma.inventoryTransaction.count({ where: { productId: id } }),
+    ]);
+
+    if (ordersCount > 0 || transactionsCount > 0) {
+      // Soft-delete: de-activate to protect historical order and inventory integrity
+      await prisma.$transaction(async (tx) => {
+        await tx.product.update({
+          where: { id },
+          data: { active: false, deletedAt: new Date() },
+        });
+        await tx.productVariant.updateMany({
+          where: { productId: id },
+          data: { active: false, deletedAt: new Date() },
+        });
+      });
+
+      return NextResponse.json({
+        success: true,
+        message: `Fragrance "${existing.name}" is referenced by ${ordersCount} historical order(s) and has been deactivated/archived safely.`,
+      });
+    }
+
+    // Otherwise, safe physical deletion
     await prisma.$transaction(async (tx) => {
-      // 1. Delete cart items
       await tx.cartItem.deleteMany({ where: { productId: id } });
-      // 2. Delete wishlists
       await tx.wishlist.deleteMany({ where: { productId: id } });
-      // 3. Delete reviews
       await tx.review.deleteMany({ where: { productId: id } });
-      // 4. Delete regional prices
       await tx.productCountry.deleteMany({ where: { productId: id } });
-      // 5. Delete images
       await tx.productImage.deleteMany({ where: { productId: id } });
-      // 6. Delete variant country prices and variants
+      await tx.storeInventory.deleteMany({ where: { productId: id } });
       const variants = await tx.productVariant.findMany({
         where: { productId: id },
         select: { id: true },
@@ -339,7 +360,6 @@ export async function DELETE(request: Request, { params }: Props) {
           where: { id: { in: variantIds } },
         });
       }
-      // 7. Delete product
       await tx.product.delete({ where: { id } });
     });
 

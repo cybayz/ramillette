@@ -6,6 +6,7 @@ import { resolveProductForCountry, resolveVariantForCountry } from "@/lib/countr
 import { getPaymentProvider } from "@/lib/services/payment";
 import { getSmsProvider } from "@/lib/services/sms";
 import { getEmailProvider } from "@/lib/services/email";
+import { findOptimalFulfillmentStore, reserveStockForOrder } from "@/lib/inventory/inventoryService";
 
 export async function POST(request: Request) {
   try {
@@ -199,6 +200,17 @@ export async function POST(request: Request) {
     const dateStr = new Date().toISOString().slice(2, 7).replace("-", "");
     const orderNumber = `RAM-${targetCountryCode}-${dateStr}-${randomSuffix}`;
 
+    // 5b. Smart Order Fulfillment Routing to Store
+    const fulfillmentStore = await findOptimalFulfillmentStore({
+      countryCode: targetCountryCode,
+      cityName: city || area || null,
+      items: validatedOrderItems.map((oi) => ({
+        productId: oi.productId,
+        variantId: oi.variantId,
+        quantity: oi.quantity,
+      })),
+    });
+
     // 6. Database Transaction: Create Order, Deduct Country Stock, Increment Coupon
     const order = await prisma.$transaction(
       async (tx) => {
@@ -206,6 +218,9 @@ export async function POST(request: Request) {
         data: {
           userId: session?.userId || null,
           orderNumber,
+          channel: "ONLINE",
+          assignedStoreId: fulfillmentStore?.storeId || null,
+          idempotencyKey: `CHK-${orderNumber}`,
           status: "CONFIRMED",
           paymentStatus: paymentMethod === "ONLINE" || paymentMethod === "TABBY_TAMARA" || paymentMethod === "BENEFIT_PAY" ? "PAID" : "PENDING",
           fulfillmentStatus: "UNFULFILLED",
@@ -321,6 +336,27 @@ export async function POST(request: Request) {
                 isDefault: true,
               },
             });
+          }
+        }
+      }
+
+      // Reserve stock in assigned physical store if store was resolved
+      if (fulfillmentStore) {
+        for (const item of validatedOrderItems) {
+          try {
+            await reserveStockForOrder(
+              {
+                storeId: fulfillmentStore.storeId,
+                productId: item.productId,
+                variantId: item.variantId,
+                quantity: item.quantity,
+                referenceId: orderNumber,
+                performedById: session?.userId || null,
+              },
+              tx
+            );
+          } catch (reserveErr) {
+            console.warn("Store stock reservation fallback:", reserveErr);
           }
         }
       }

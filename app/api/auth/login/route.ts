@@ -3,6 +3,7 @@ import prisma from "@/lib/db/prisma";
 import bcrypt from "bcryptjs";
 import { createSession } from "@/lib/auth/session";
 import { mergeUserCartAndWishlist } from "@/lib/cart/mergeCart";
+import { getDefaultLandingPage, getUserPermissions } from "@/lib/erp/context";
 
 export async function POST(request: Request) {
   try {
@@ -20,6 +21,13 @@ export async function POST(request: Request) {
 
     const user = await prisma.user.findUnique({
       where: { email: normalizedEmail },
+      include: {
+        customRole: {
+          include: {
+            permissions: true,
+          },
+        },
+      },
     });
 
     if (!user) {
@@ -51,6 +59,9 @@ export async function POST(request: Request) {
       guestWishlist
     );
 
+    const landingPage = getDefaultLandingPage(user);
+    const permissions = getUserPermissions(user);
+
     return NextResponse.json({
       success: true,
       user: {
@@ -60,7 +71,10 @@ export async function POST(request: Request) {
         lastName: user.lastName,
         phone: user.phone,
         role: user.role,
+        customRoleName: user.customRole?.displayName || user.role,
       },
+      landingPage,
+      permissions,
       mergedCart,
       mergedWishlist,
     });

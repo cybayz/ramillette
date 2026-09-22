@@ -7,10 +7,12 @@ const SECRET_KEY = new TextEncoder().encode(
 
 const SESSION_COOKIE_NAME = "ramillette_session";
 
+import { Role } from "@prisma/client";
+
 export interface SessionPayload {
   userId: string;
   email: string;
-  role: "CUSTOMER" | "ADMIN";
+  role: Role | string;
   name?: string | null;
 }
 
@@ -51,3 +53,14 @@ export async function clearSession() {
   const cookieStore = await cookies();
   cookieStore.delete(SESSION_COOKIE_NAME);
 }
+
+export function isAdminRole(role?: Role | string | null): boolean {
+  if (!role) return false;
+  return role === "ADMIN" || role === "SUPER_ADMIN" || role === Role.ADMIN || role === Role.SUPER_ADMIN;
+}
+
+export function isSuperAdmin(role?: Role | string | null): boolean {
+  if (!role) return false;
+  return role === "SUPER_ADMIN" || role === Role.SUPER_ADMIN;
+}
+
