@@ -191,7 +191,7 @@ export function CartDrawer() {
                 >
                   {showNoteInput
                     ? "Hide order note"
-                    : "Add gift message or delivery note"}
+                    : "Add delivery note"}
                 </button>
                 {showNoteInput && (
                   <textarea
