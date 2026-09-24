@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import Link from "next/link";
 import {
   Globe,
   Plus,
@@ -16,6 +17,7 @@ import {
   AlertTriangle,
   Info,
   Gift,
+  ExternalLink,
 } from "lucide-react";
 import Image from "next/image";
 import { GiftWrapOption } from "@/lib/country/config";
@@ -99,6 +101,84 @@ export function CountryManager({ initialCountries }: CountryManagerProps) {
   const [paymentOnline, setPaymentOnline] = useState(true);
   const [paymentTabby, setPaymentTabby] = useState(false);
   const [paymentBenefit, setPaymentBenefit] = useState(false);
+
+  // Sub-modal state for editing/adding single wrap option inside Country modal
+  const [isWrapOptModalOpen, setIsWrapOptModalOpen] = useState(false);
+  const [editingWrapOptIdx, setEditingWrapOptIdx] = useState<number | null>(null);
+  const [wrapOptId, setWrapOptId] = useState("");
+  const [wrapOptName, setWrapOptName] = useState("");
+  const [wrapOptNameAr, setWrapOptNameAr] = useState("");
+  const [wrapOptPrice, setWrapOptPrice] = useState(10);
+  const [wrapOptImage, setWrapOptImage] = useState("");
+  const [wrapOptBadge, setWrapOptBadge] = useState("");
+  const [wrapOptDesc, setWrapOptDesc] = useState("");
+
+  const handleOpenNewWrapOption = () => {
+    setEditingWrapOptIdx(null);
+    setWrapOptId("");
+    setWrapOptName("");
+    setWrapOptNameAr("");
+    setWrapOptPrice(10);
+    setWrapOptImage("/gift-wrap/paper-wrap.jpg");
+    setWrapOptBadge("");
+    setWrapOptDesc("");
+    setIsWrapOptModalOpen(true);
+  };
+
+  const handleOpenEditWrapOption = (idx: number) => {
+    const opt = giftWrapOptions[idx];
+    setEditingWrapOptIdx(idx);
+    setWrapOptId(opt.id);
+    setWrapOptName(opt.name);
+    setWrapOptNameAr(opt.nameAr || "");
+    setWrapOptPrice(opt.price);
+    setWrapOptImage(opt.image || "");
+    setWrapOptBadge(opt.badge || "");
+    setWrapOptDesc(opt.description || "");
+    setIsWrapOptModalOpen(true);
+  };
+
+  const handleSaveWrapOption = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!wrapOptName.trim()) return;
+
+    const finalId =
+      wrapOptId.trim() ||
+      wrapOptName
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-|-$/g, "");
+
+    const newOpt: GiftWrapOption = {
+      id: finalId,
+      name: wrapOptName.trim(),
+      nameAr: wrapOptNameAr.trim() || undefined,
+      price: Number(wrapOptPrice) || 0,
+      description: wrapOptDesc.trim(),
+      image: wrapOptImage.trim() || undefined,
+      badge: wrapOptBadge.trim() || undefined,
+      active: true,
+    };
+
+    setGiftWrapOptions((prev) => {
+      const copy = [...prev];
+      if (editingWrapOptIdx !== null) {
+        copy[editingWrapOptIdx] = { ...copy[editingWrapOptIdx], ...newOpt };
+      } else {
+        copy.push(newOpt);
+      }
+      return copy;
+    });
+
+    setIsWrapOptModalOpen(false);
+  };
+
+  const handleDeleteWrapOption = (idx: number) => {
+    if (confirm("Remove this packaging option?")) {
+      setGiftWrapOptions((prev) => prev.filter((_, i) => i !== idx));
+    }
+  };
 
   const openCreateModal = () => {
     setEditingCountry(null);
@@ -851,8 +931,33 @@ export function CountryManager({ initialCountries }: CountryManagerProps) {
                       Configure regional pricing and presentation options for gift wrap. Customers will see these sample photos and prices when selecting gift wrap at checkout.
                     </p>
 
+                    {/* Gift Wrap Packages List Header */}
+                    <div className="flex items-center justify-between pt-1">
+                      <span className="text-[11px] font-bold text-neutral-700">
+                        Configured Presentation Packages ({giftWrapOptions.length})
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <Link
+                          href="/admin/gift-wrap"
+                          target="_blank"
+                          className="text-[11px] font-bold text-[#b6713e] hover:underline flex items-center gap-1"
+                        >
+                          <span>Packaging Studio</span>
+                          <ExternalLink size={11} />
+                        </Link>
+                        <button
+                          type="button"
+                          onClick={handleOpenNewWrapOption}
+                          className="px-2.5 py-1 bg-[#1c1c1c] hover:bg-[#b6713e] text-white text-[11px] font-bold rounded flex items-center gap-1 transition-colors cursor-pointer"
+                        >
+                          <Plus size={11} />
+                          <span>Add Package</span>
+                        </button>
+                      </div>
+                    </div>
+
                     {/* Gift Wrap Packages List */}
-                    <div className="space-y-3 pt-2">
+                    <div className="space-y-3 pt-1">
                       {giftWrapOptions.map((opt, idx) => (
                         <div
                           key={opt.id || `gwo-${idx}`}
@@ -889,7 +994,7 @@ export function CountryManager({ initialCountries }: CountryManagerProps) {
                             </div>
                           </div>
 
-                          <div className="flex items-center gap-3 shrink-0 self-end sm:self-center">
+                          <div className="flex items-center gap-2.5 shrink-0 self-end sm:self-center">
                             <div className="flex items-center gap-1.5">
                               <span className="text-[11px] text-neutral-400 font-semibold">{currency}</span>
                               <input
@@ -920,6 +1025,24 @@ export function CountryManager({ initialCountries }: CountryManagerProps) {
                               />
                               <span>Active</span>
                             </label>
+                            <div className="flex items-center gap-1 pl-1 border-l border-neutral-200">
+                              <button
+                                type="button"
+                                onClick={() => handleOpenEditWrapOption(idx)}
+                                className="p-1 rounded text-[#b6713e] hover:bg-[#faedcd]/40"
+                                title="Edit full option details"
+                              >
+                                <Edit2 size={13} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteWrapOption(idx)}
+                                className="p-1 rounded text-red-500 hover:bg-red-50"
+                                title="Delete option"
+                              >
+                                <Trash2 size={13} />
+                              </button>
+                            </div>
                           </div>
                         </div>
                       ))}
@@ -1169,6 +1292,176 @@ export function CountryManager({ initialCountries }: CountryManagerProps) {
                       <span>{editingCountry ? "Save Changes" : "Create Market"}</span>
                     </>
                   )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Sub-modal: Add / Edit Single Wrap Option */}
+      {isWrapOptModalOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <div className="bg-white rounded-[10px] border border-[#e5e5e5] w-full max-w-lg p-5 space-y-4 shadow-2xl animate-in fade-in duration-200">
+            <div className="flex items-center justify-between pb-3 border-b border-[#f0ece1]">
+              <div className="flex items-center gap-2">
+                <Gift size={16} className="text-[#b6713e]" />
+                <h4 className="font-bold text-sm text-[#1c1c1c]">
+                  {editingWrapOptIdx !== null ? "Edit Packaging Option" : "Add Packaging Option"}
+                </h4>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsWrapOptModalOpen(false)}
+                className="text-neutral-400 hover:text-neutral-700"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveWrapOption} className="space-y-3 text-xs">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-neutral-700 mb-1">
+                    Option ID / Slug *
+                  </label>
+                  <input
+                    type="text"
+                    value={wrapOptId}
+                    onChange={(e) => setWrapOptId(e.target.value)}
+                    placeholder="e.g. custom-box"
+                    className="w-full p-2 border rounded font-mono text-[11px]"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-neutral-700 mb-1">
+                    Price ({currency || "Price"}) *
+                  </label>
+                  <input
+                    type="number"
+                    step="any"
+                    min="0"
+                    value={wrapOptPrice}
+                    onChange={(e) => setWrapOptPrice(parseFloat(e.target.value) || 0)}
+                    className="w-full p-2 border rounded font-bold font-mono"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-neutral-700 mb-1">
+                    Name (English) *
+                  </label>
+                  <input
+                    type="text"
+                    value={wrapOptName}
+                    onChange={(e) => setWrapOptName(e.target.value)}
+                    placeholder="e.g. Bespoke Keepsake Box"
+                    className="w-full p-2 border rounded"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-neutral-700 mb-1">
+                    Name (Arabic)
+                  </label>
+                  <input
+                    type="text"
+                    value={wrapOptNameAr}
+                    onChange={(e) => setWrapOptNameAr(e.target.value)}
+                    placeholder="e.g. صندوق هدايا ملكي"
+                    dir="rtl"
+                    className="w-full p-2 border rounded font-arabic"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-neutral-700 mb-1">
+                  Sample Photo URL
+                </label>
+                <input
+                  type="text"
+                  value={wrapOptImage}
+                  onChange={(e) => setWrapOptImage(e.target.value)}
+                  placeholder="e.g. /gift-wrap/custom-box.jpg"
+                  className="w-full p-2 border rounded font-mono text-[11px]"
+                />
+                <div className="flex gap-1.5 mt-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setWrapOptImage("/gift-wrap/paper-wrap.jpg")}
+                    className="text-[10px] px-2 py-0.5 bg-neutral-100 hover:bg-neutral-200 rounded"
+                  >
+                    Paper Wrap
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setWrapOptImage("/gift-wrap/custom-box.jpg")}
+                    className="text-[10px] px-2 py-0.5 bg-neutral-100 hover:bg-neutral-200 rounded"
+                  >
+                    Custom Box
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setWrapOptImage("/gift-wrap/flowers-chocolate-box.jpg")}
+                    className="text-[10px] px-2 py-0.5 bg-neutral-100 hover:bg-neutral-200 rounded"
+                  >
+                    VIP Flowers Box
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setWrapOptImage("")}
+                    className="text-[10px] px-2 py-0.5 bg-neutral-100 hover:bg-neutral-200 rounded text-neutral-500"
+                  >
+                    None (Card)
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-neutral-700 mb-1">
+                  Badge (Optional)
+                </label>
+                <input
+                  type="text"
+                  value={wrapOptBadge}
+                  onChange={(e) => setWrapOptBadge(e.target.value)}
+                  placeholder="e.g. Free, Most Popular, Ultimate Luxury"
+                  className="w-full p-2 border rounded"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-neutral-700 mb-1">
+                  Description *
+                </label>
+                <textarea
+                  rows={2}
+                  value={wrapOptDesc}
+                  onChange={(e) => setWrapOptDesc(e.target.value)}
+                  placeholder="Details of the wrapping materials..."
+                  className="w-full p-2 border rounded"
+                  required
+                />
+              </div>
+
+              <div className="pt-3 border-t border-neutral-200 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsWrapOptModalOpen(false)}
+                  className="px-3 py-1.5 border rounded text-neutral-600 hover:bg-neutral-50 font-semibold"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-1.5 bg-[#b6713e] hover:bg-[#9a5d30] text-white font-bold rounded"
+                >
+                  {editingWrapOptIdx !== null ? "Update Option" : "Add to Market"}
                 </button>
               </div>
             </form>

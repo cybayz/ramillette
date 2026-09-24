@@ -1,6 +1,7 @@
 import React from "react";
 import prisma from "@/lib/db/prisma";
 import { CountryManager, AdminCountry } from "@/components/admin/CountryManager";
+import { COUNTRIES, CountryCode } from "@/lib/country/config";
 
 export const revalidate = 0; // Always fresh in admin
 
@@ -22,6 +23,11 @@ export default async function AdminCountriesPage() {
     phonePrefix: c.phonePrefix,
     standardShippingFee: Number(c.standardShippingFee),
     freeShippingThreshold: Number(c.freeShippingThreshold),
+    giftWrapFee: Number(c.giftWrapFee ?? 25),
+    allowGiftWrap: c.allowGiftWrap ?? true,
+    giftWrapOptions: c.giftWrapOptions
+      ? JSON.parse(c.giftWrapOptions)
+      : (COUNTRIES[c.code as CountryCode]?.giftWrapOptions || []),
     taxRate: Number(c.taxRate),
     taxName: c.taxName,
     taxIncludedInPrice: c.taxIncludedInPrice,

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
 import { getSession } from "@/lib/auth/session";
+import { COUNTRIES, CountryCode } from "@/lib/country/config";
 
 export async function GET() {
   try {
@@ -28,7 +29,9 @@ export async function GET() {
       freeShippingThreshold: Number(c.freeShippingThreshold),
       giftWrapFee: Number(c.giftWrapFee ?? 25),
       allowGiftWrap: c.allowGiftWrap ?? true,
-      giftWrapOptions: c.giftWrapOptions ? JSON.parse(c.giftWrapOptions) : null,
+      giftWrapOptions: c.giftWrapOptions
+        ? JSON.parse(c.giftWrapOptions)
+        : (COUNTRIES[c.code as CountryCode]?.giftWrapOptions || []),
       taxRate: Number(c.taxRate),
       taxName: c.taxName,
       taxIncludedInPrice: c.taxIncludedInPrice,

@@ -675,16 +675,16 @@ export default function CheckoutPage() {
                               >
                                 {/* Sample Photo or Graphic Header */}
                                 {opt.image ? (
-                                  <div className="relative w-full h-36 bg-neutral-100 overflow-hidden">
+                                  <div className="relative w-full aspect-[16/10] sm:aspect-auto sm:h-40 bg-neutral-100 overflow-hidden rounded-t-[9px] isolate">
                                     <Image
                                       src={opt.image}
                                       alt={isAr && opt.nameAr ? opt.nameAr : opt.name}
                                       fill
-                                      sizes="(max-width: 640px) 100vw, 300px"
-                                      className="object-cover group-hover:scale-105 transition-transform duration-300"
+                                      sizes="(max-width: 640px) 95vw, (max-width: 1024px) 45vw, 360px"
+                                      className="object-cover object-center group-hover:scale-105 transition-transform duration-300"
                                     />
                                     {opt.badge && (
-                                      <span className="absolute top-2.5 right-2.5 text-[10px] font-bold tracking-wider uppercase px-2 py-0.5 rounded-full bg-[#1c1c1c]/85 text-[#d4af37] border border-[#d4af37]/40 shadow-xs backdrop-blur-xs">
+                                      <span className="absolute top-2.5 right-2.5 max-w-[50%] truncate text-[10px] font-bold tracking-wider uppercase px-2.5 py-0.5 rounded-full bg-[#1c1c1c]/85 text-[#d4af37] border border-[#d4af37]/40 shadow-xs backdrop-blur-xs">
                                         {isAr && opt.badgeAr ? opt.badgeAr : opt.badge}
                                       </span>
                                     )}
@@ -696,7 +696,7 @@ export default function CheckoutPage() {
                                     )}
                                   </div>
                                 ) : (
-                                  <div className="relative w-full h-28 bg-gradient-to-br from-[#fcf9f5] via-[#faedcd]/35 to-[#f6ecdd] flex flex-col items-center justify-center p-3 text-center border-b border-[#f0ece1]">
+                                  <div className="relative w-full h-32 sm:h-28 bg-gradient-to-br from-[#fcf9f5] via-[#faedcd]/35 to-[#f6ecdd] flex flex-col items-center justify-center p-3 text-center border-b border-[#f0ece1] rounded-t-[9px] isolate">
                                     <div className="w-10 h-10 rounded-full bg-white shadow-xs border border-[#ecdac1] flex items-center justify-center text-[#b6713e] mb-1">
                                       <Gift size={20} />
                                     </div>
@@ -704,7 +704,7 @@ export default function CheckoutPage() {
                                       {isAr ? "بطاقة إهداء راميليت الملكية" : "Ramillette Royal Note Card"}
                                     </span>
                                     {opt.badge && (
-                                      <span className="absolute top-2.5 right-2.5 text-[10px] font-bold tracking-wider uppercase px-2 py-0.5 rounded-full bg-[#1c1c1c]/85 text-[#d4af37] border border-[#d4af37]/40 shadow-xs backdrop-blur-xs">
+                                      <span className="absolute top-2.5 right-2.5 max-w-[50%] truncate text-[10px] font-bold tracking-wider uppercase px-2.5 py-0.5 rounded-full bg-[#1c1c1c]/85 text-[#d4af37] border border-[#d4af37]/40 shadow-xs backdrop-blur-xs">
                                         {isAr && opt.badgeAr ? opt.badgeAr : opt.badge}
                                       </span>
                                     )}

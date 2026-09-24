@@ -14,6 +14,7 @@ import {
   Settings,
   Store,
   Users,
+  Gift,
 } from "lucide-react";
 import { LogoutButton } from "@/components/account/LogoutButton";
 
@@ -23,6 +24,7 @@ const adminNav = [
   { label: "Products & Stock", href: "/admin/products", icon: Package },
   { label: "Orders & Delivery", href: "/admin/orders", icon: ShoppingBag },
   { label: "Countries & Markets", href: "/admin/countries", icon: Globe },
+  { label: "Gift Packaging", href: "/admin/gift-wrap", icon: Gift },
   { label: "Coupons & Promos", href: "/admin/coupons", icon: Tag },
   { label: "Roles & Permissions", href: "/admin/roles", icon: Users },
   { label: "Store & Tax Settings", href: "/admin/settings", icon: Settings },
