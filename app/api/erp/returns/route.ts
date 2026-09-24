@@ -1,14 +1,14 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
-import { getErpUser, getActiveErpStore, canManageInventory } from "@/lib/erp/context";
+import { getErpUser, getActiveErpStore, canManageReturns } from "@/lib/erp/context";
 import { getOrCreateStoreInventory } from "@/lib/inventory/inventoryService";
 import { InventoryTransactionType } from "@prisma/client";
 
 export async function GET() {
   try {
     const user = await getErpUser();
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized access to ERP" }, { status: 403 });
+    if (!user || !canManageReturns(user)) {
+      return NextResponse.json({ error: "Unauthorized access to returns" }, { status: 403 });
     }
 
     const storeContext = await getActiveErpStore();
@@ -68,7 +68,7 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const user = await getErpUser();
-    if (!user || !canManageInventory(user.role)) {
+    if (!user || !canManageReturns(user)) {
       return NextResponse.json({ error: "Unauthorized: Insufficient permissions to process returns" }, { status: 403 });
     }
 
@@ -78,7 +78,17 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { orderNumber, items, reason, refundMethod = "CASH" } = body;
+    const {
+      orderNumber,
+      resolutionType = "REFUND", // "REFUND" or "REPLACEMENT"
+      items,
+      reason,
+      refundMethod = "CASH",
+      replacementItemId = null,
+      replacementProductId = null,
+      replacementVariantId = null,
+      replacementQuantity = 1,
+    } = body;
 
     if (!orderNumber || !items || !Array.isArray(items) || items.length === 0) {
       return NextResponse.json({ error: "Order number and returned items are required" }, { status: 400 });
@@ -101,6 +111,35 @@ export async function POST(request: Request) {
       calculatedRefund += (Number(it.unitPrice) || 0) * (Number(it.quantity) || 1);
     }
 
+    // If replacement was selected, check available stock of replacement product
+    let replacementInv: any = null;
+    if (resolutionType === "REPLACEMENT") {
+      const repProdId = replacementProductId || items[0]?.productId;
+      const repVarId = replacementVariantId !== undefined ? replacementVariantId : (items[0]?.variantId || null);
+      const repQty = Number(replacementQuantity) || 1;
+
+      replacementInv = await prisma.storeInventory.findFirst({
+        where: {
+          storeId,
+          productId: repProdId,
+          variantId: repVarId || null,
+        },
+      });
+
+      if (!replacementInv || replacementInv.availableQuantity < repQty) {
+        return NextResponse.json(
+          {
+            error: `Replacement product is out of stock in this branch (Available: ${replacementInv?.availableQuantity || 0}, Requested: ${repQty})`,
+          },
+          { status: 400 }
+        );
+      }
+    }
+
+    const effectiveMethod = resolutionType === "REPLACEMENT" ? "EXCHANGE_REPLACEMENT" : refundMethod;
+    const returnStatus = resolutionType === "REPLACEMENT" ? "APPROVED" : "REFUNDED";
+    const finalRefundAmount = resolutionType === "REPLACEMENT" ? 0 : calculatedRefund;
+
     // Atomic Return Transaction
     const result = await prisma.$transaction(async (tx) => {
       const createdReturn = await tx.orderReturn.create({
@@ -108,10 +147,10 @@ export async function POST(request: Request) {
           returnNumber,
           orderId: order.id,
           storeId,
-          status: "REFUNDED",
-          reason: reason?.trim() || null,
-          refundAmount: calculatedRefund,
-          refundMethod,
+          status: returnStatus as any,
+          reason: reason?.trim() ? `[${resolutionType}] ${reason.trim()}` : `[${resolutionType}] Customer return request`,
+          refundAmount: finalRefundAmount,
+          refundMethod: effectiveMethod,
           inspectedAt: new Date(),
           inspectedById: user.id,
           items: {
@@ -119,7 +158,7 @@ export async function POST(request: Request) {
               productId: it.productId,
               variantId: it.variantId || null,
               quantity: Number(it.quantity) || 1,
-              condition: it.condition || "UNOPENED",
+              condition: it.condition || (it.restockToInventory ? "UNOPENED" : "DAMAGED"),
               restockToInventory: Boolean(it.restockToInventory),
               unitPrice: Number(it.unitPrice) || 0,
             })),
@@ -128,16 +167,18 @@ export async function POST(request: Request) {
         include: { items: true },
       });
 
-      // Handle inventory update: only restock sellable unopened items
+      // 1. Process returned items stock: sellable vs damaged
       for (const it of items) {
-        if (Boolean(it.restockToInventory)) {
-          const inv = await getOrCreateStoreInventory(storeId, it.productId, it.variantId, tx);
+        const qty = Number(it.quantity) || 1;
+        const inv = await getOrCreateStoreInventory(storeId, it.productId, it.variantId, tx);
 
+        if (Boolean(it.restockToInventory)) {
+          // Unopened & clean: increase physical stock and available sellable stock
           await tx.storeInventory.update({
             where: { id: inv.id },
             data: {
-              quantity: { increment: Number(it.quantity) || 1 },
-              availableQuantity: { increment: Number(it.quantity) || 1 },
+              quantity: { increment: qty },
+              availableQuantity: { increment: qty },
             },
           });
 
@@ -147,33 +188,73 @@ export async function POST(request: Request) {
               productId: it.productId,
               variantId: it.variantId || null,
               type: InventoryTransactionType.RETURN,
-              quantity: Number(it.quantity) || 1,
+              quantity: qty,
               previousQuantity: inv.quantity,
-              newQuantity: inv.quantity + (Number(it.quantity) || 1),
+              newQuantity: inv.quantity + qty,
               referenceType: "RETURN",
               referenceId: returnNumber,
               performedById: user.id,
-              reason: `Restocked return from order #${order.orderNumber} (${it.condition || "Good condition"})`,
+              reason: `Unopened return accepted & restocked to sellable inventory (Ref #${order.orderNumber})`,
             },
           });
         } else {
-          // Log damaged return without incrementing sellable stock
+          // Damaged/opened: Move into damagedStock quarantine (damagedQuantity)
+          await tx.storeInventory.update({
+            where: { id: inv.id },
+            data: {
+              damagedQuantity: { increment: qty },
+            },
+          });
+
           await tx.inventoryTransaction.create({
             data: {
               storeId,
               productId: it.productId,
               variantId: it.variantId || null,
               type: InventoryTransactionType.DAMAGE,
-              quantity: 0,
-              previousQuantity: 0,
-              newQuantity: 0,
+              quantity: qty,
+              previousQuantity: inv.quantity,
+              newQuantity: inv.quantity, // sellable physical quantity stays unchanged, damaged counter increased
               referenceType: "RETURN_DAMAGED",
               referenceId: returnNumber,
               performedById: user.id,
-              reason: `Damaged item returned from order #${order.orderNumber} (${it.condition || "Damaged"}) - quarantined`,
+              reason: `Damaged/opened return from #${order.orderNumber} (${it.condition || "Damaged/Defective"}) - quarantined to damaged stock`,
             },
           });
         }
+      }
+
+      // 2. If REPLACEMENT resolution: dispatch replacement bottle from sellable stock
+      if (resolutionType === "REPLACEMENT") {
+        const repProdId = replacementProductId || items[0]?.productId;
+        const repVarId = replacementVariantId !== undefined ? replacementVariantId : (items[0]?.variantId || null);
+        const repQty = Number(replacementQuantity) || 1;
+
+        const currentRepInv = await getOrCreateStoreInventory(storeId, repProdId, repVarId, tx);
+
+        await tx.storeInventory.update({
+          where: { id: currentRepInv.id },
+          data: {
+            quantity: { decrement: repQty },
+            availableQuantity: { decrement: repQty },
+          },
+        });
+
+        await tx.inventoryTransaction.create({
+          data: {
+            storeId,
+            productId: repProdId,
+            variantId: repVarId || null,
+            type: InventoryTransactionType.SALE,
+            quantity: -repQty,
+            previousQuantity: currentRepInv.quantity,
+            newQuantity: currentRepInv.quantity - repQty,
+            referenceType: "RETURN_REPLACEMENT",
+            referenceId: returnNumber,
+            performedById: user.id,
+            reason: `Replacement product dispensed to customer for return #${returnNumber}`,
+          },
+        });
       }
 
       return createdReturn;
@@ -181,7 +262,9 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       success: true,
-      message: `Return #${returnNumber} processed successfully`,
+      message: resolutionType === "REPLACEMENT"
+        ? `Exchange #${returnNumber} processed with replacement stock dispensed`
+        : `Return #${returnNumber} processed with refund (${effectiveMethod})`,
       orderReturn: result,
     });
   } catch (error: any) {
@@ -189,3 +272,4 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: error?.message || "Failed to process return" }, { status: 500 });
   }
 }
+

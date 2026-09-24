@@ -46,6 +46,7 @@ export async function getOrCreateStoreInventory(
         quantity: 0,
         reservedQuantity: 0,
         availableQuantity: 0,
+        damagedQuantity: 0,
         lowStockThreshold: 10,
       },
     });

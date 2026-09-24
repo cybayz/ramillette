@@ -386,6 +386,15 @@ export function PosTerminal({ storeContext, cashierName }: PosTerminalProps) {
           >
             <RotateCcw size={14} />
           </button>
+
+          <a
+            href="/erp/returns"
+            className="px-3 py-2.5 bg-[#242424] hover:bg-[#2e2e2e] border border-[#383838] hover:border-amber-400/40 rounded-[6px] text-xs text-amber-300 font-bold transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
+            title="Customer Returns & Exchanges Desk"
+          >
+            <RotateCcw size={13} className="text-amber-300" />
+            <span className="hidden sm:inline">Returns Desk</span>
+          </a>
         </div>
 
         {/* Category Pill Filters */}

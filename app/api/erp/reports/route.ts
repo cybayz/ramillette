@@ -27,12 +27,12 @@ export async function GET(request: Request) {
       startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
     }
 
-    const [orders, lowStockCount, totalProductsCount] = await Promise.all([
+    const [orders, lowStockCount, totalProductsCount, storeReturns, damagedAggregate] = await Promise.all([
       prisma.order.findMany({
         where: {
           assignedStoreId: storeId,
           createdAt: { gte: startDate },
-          status: { notIn: ["CANCELLED", "REFUNDED"] },
+          status: { notIn: ["CANCELLED"] },
         },
         include: {
           items: true,
@@ -48,6 +48,21 @@ export async function GET(request: Request) {
       }),
       prisma.storeInventory.count({
         where: { storeId },
+      }),
+      prisma.orderReturn.findMany({
+        where: {
+          storeId,
+          createdAt: { gte: startDate },
+        },
+        include: {
+          items: true,
+          order: { select: { orderNumber: true, channel: true } },
+        },
+        orderBy: { createdAt: "desc" },
+      }),
+      prisma.storeInventory.aggregate({
+        where: { storeId },
+        _sum: { damagedQuantity: true },
       }),
     ]);
 
@@ -96,6 +111,33 @@ export async function GET(request: Request) {
       }
     }
 
+    // Process Returns & Exchanges analytics
+    let totalRefundAmount = 0;
+    let totalReturnsCount = storeReturns.length;
+    let returnedItemsCount = 0;
+    let restockedItemsCount = 0;
+    let damagedReturnsCount = 0;
+    let replacementsCount = 0;
+
+    for (const ret of storeReturns) {
+      totalRefundAmount += Number(ret.refundAmount) || 0;
+      if (ret.refundMethod === "EXCHANGE_REPLACEMENT" || ret.reason?.includes("[REPLACEMENT]")) {
+        replacementsCount += 1;
+      }
+
+      for (const it of ret.items) {
+        returnedItemsCount += it.quantity;
+        if (it.restockToInventory) {
+          restockedItemsCount += it.quantity;
+        } else {
+          damagedReturnsCount += it.quantity;
+        }
+      }
+    }
+
+    const netRevenue = Math.max(0, totalRevenue - totalRefundAmount);
+    const totalDamagedInStore = damagedAggregate._sum.damagedQuantity || 0;
+
     const topProducts = Object.values(productSales)
       .sort((a, b) => b.revenue - a.revenue)
       .slice(0, 5);
@@ -113,19 +155,40 @@ export async function GET(request: Request) {
       success: true,
       store: storeContext.context,
       metrics: {
-        totalRevenue,
+        totalGrossRevenue: totalRevenue,
+        totalRevenue: netRevenue, // Net revenue after refunds
         posRevenue,
         onlineRevenue,
         totalOrders: orders.length,
-        averageOrderValue: orders.length > 0 ? totalRevenue / orders.length : 0,
+        averageOrderValue: orders.length > 0 ? netRevenue / orders.length : 0,
         totalDiscount,
         totalTax,
         pendingOnlineCount,
         lowStockCount,
         totalProductsCount,
+        // Returns & Exchanges breakdown
+        totalReturnsCount,
+        totalRefundAmount,
+        replacementsCount,
+        returnedItemsCount,
+        restockedItemsCount,
+        damagedReturnsCount,
+        totalDamagedInStore,
       },
       paymentMethods,
       topProducts,
+      recentReturns: storeReturns.slice(0, 6).map((r) => ({
+        id: r.id,
+        returnNumber: r.returnNumber,
+        orderNumber: r.order.orderNumber,
+        channel: r.order.channel,
+        refundAmount: Number(r.refundAmount),
+        refundMethod: r.refundMethod,
+        reason: r.reason,
+        status: r.status,
+        createdAt: r.createdAt,
+        itemsCount: r.items.reduce((acc, it) => acc + it.quantity, 0),
+      })),
       recentOrders: orders.slice(0, 10).map((o) => ({
         id: o.id,
         orderNumber: o.orderNumber,

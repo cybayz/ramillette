@@ -30,6 +30,7 @@ interface InventoryItem {
   quantity: number;
   reservedQuantity: number;
   availableQuantity: number;
+  damagedQuantity: number;
   lowStockThreshold: number;
   isLowStock: boolean;
   isOutOfStock: boolean;
@@ -256,9 +257,10 @@ export function StoreInventoryManager({ storeContext }: StoreInventoryManagerPro
                     <tr className="border-b border-[#262626] text-neutral-400 text-[10px] uppercase font-bold bg-[#181818]">
                       <th className="py-3 px-4">Fragrance</th>
                       <th className="py-3 px-4">SKU / Barcode</th>
-                      <th className="py-3 px-4 text-center">Physical (On Hand)</th>
+                      <th className="py-3 px-4 text-center">Physical (Sellable)</th>
                       <th className="py-3 px-4 text-center">Reserved (Online)</th>
                       <th className="py-3 px-4 text-center">Available (POS)</th>
+                      <th className="py-3 px-4 text-center">Damaged Stock</th>
                       <th className="py-3 px-4 text-right">Actions</th>
                     </tr>
                   </thead>
@@ -329,6 +331,17 @@ export function StoreInventoryManager({ storeContext }: StoreInventoryManagerPro
                           >
                             {inv.availableQuantity} available
                           </span>
+                        </td>
+
+                        {/* Damaged Stock Quarantine */}
+                        <td className="py-3 px-4 text-center font-mono">
+                          {inv.damagedQuantity > 0 ? (
+                            <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-red-950/80 text-red-400 border border-red-800">
+                              {inv.damagedQuantity} damaged
+                            </span>
+                          ) : (
+                            <span className="text-neutral-600 text-[11px]">-</span>
+                          )}
                         </td>
 
                         {/* Action: Stock Adjustment */}

@@ -566,6 +566,7 @@ model StoreInventory {
   quantity          Int             @default(0) // Physical stock in store
   reservedQuantity  Int             @default(0) // Reserved for pending online orders
   availableQuantity Int             @default(0) // quantity - reservedQuantity
+  damagedQuantity   Int             @default(0) // Damaged / quarantined non-sellable stock
   lowStockThreshold Int             @default(10)
   createdAt         DateTime        @default(now())
   updatedAt         DateTime        @updatedAt

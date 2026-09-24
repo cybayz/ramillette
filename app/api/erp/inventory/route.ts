@@ -65,6 +65,7 @@ export async function GET(request: Request) {
       quantity: inv.quantity,
       reservedQuantity: inv.reservedQuantity,
       availableQuantity: inv.availableQuantity,
+      damagedQuantity: inv.damagedQuantity || 0,
       lowStockThreshold: inv.lowStockThreshold,
       isLowStock: inv.availableQuantity <= inv.lowStockThreshold,
       isOutOfStock: inv.availableQuantity <= 0,

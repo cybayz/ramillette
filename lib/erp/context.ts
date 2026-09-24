@@ -264,3 +264,18 @@ export function canViewReports(userOrRole: any): boolean {
   }
   return hasPermission(userOrRole, "reports:view");
 }
+
+export function canManageReturns(userOrRole: any): boolean {
+  if (typeof userOrRole === "string") {
+    const allowed: Role[] = [
+      Role.ADMIN,
+      Role.SUPER_ADMIN,
+      Role.COUNTRY_ADMIN,
+      Role.REGION_MANAGER,
+      Role.STORE_MANAGER,
+      Role.CASHIER,
+    ];
+    return allowed.includes(userOrRole as Role);
+  }
+  return hasPermission(userOrRole, "returns:manage");
+}
