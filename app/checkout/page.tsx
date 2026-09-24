@@ -23,6 +23,7 @@ import {
   Sparkles,
   MapPin,
   Plus,
+  Gift,
 } from "lucide-react";
 
 interface SavedAddress {
@@ -65,6 +66,9 @@ export default function CheckoutPage() {
   const [area, setArea] = useState(config.defaultCity);
   const [deliveryNotes, setDeliveryNotes] = useState(orderNote || "");
   const [paymentMethod, setPaymentMethod] = useState<string>("COD");
+  const [isGift, setIsGift] = useState(false);
+  const [giftMessage, setGiftMessage] = useState("");
+  const [hasGiftWrap, setHasGiftWrap] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
@@ -192,10 +196,13 @@ export default function CheckoutPage() {
   const subtotal = getSubtotal();
   const discount = getDiscountTotal();
   const shipping = subtotal >= config.freeShippingThreshold ? 0.0 : config.standardShippingFee;
+  const allowGiftWrap = (config as any).allowGiftWrap !== false;
+  const giftWrapFee = (config as any).giftWrapFee !== undefined ? Number((config as any).giftWrapFee) : 25;
+  const giftWrapAmount = (isGift && hasGiftWrap && allowGiftWrap) ? giftWrapFee : 0;
   const taxableAmount = Math.max(0, subtotal - discount);
   const taxRate = (config as any).taxRate ?? (country === "AE" ? 5 : country === "BH" ? 10 : 0);
   const taxAmount = Number(((taxableAmount * taxRate) / 100).toFixed(config.currencyDecimals || 2));
-  const finalTotal = Math.max(0, subtotal - discount + shipping + taxAmount);
+  const finalTotal = Math.max(0, subtotal - discount + shipping + giftWrapAmount + taxAmount);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -216,6 +223,9 @@ export default function CheckoutPage() {
         deliveryNotes: deliveryNotes.trim() || undefined,
         paymentMethod,
         couponCode: coupon?.code,
+        isGift,
+        giftMessage: isGift && giftMessage.trim() ? giftMessage.trim() : undefined,
+        hasGiftWrap: isGift && hasGiftWrap && allowGiftWrap,
         items: items.map((i) => ({
           productId: i.productId,
           variantId: i.variantId,
@@ -524,10 +534,144 @@ export default function CheckoutPage() {
                 </div>
               </div>
 
-              {/* Step 3: Payment Method (Dynamic for QA, AE, BH) */}
+              {/* Step 3: Gift Options & Personalization */}
+              <div className="bg-white p-6 rounded-[8px] border border-[#e5e5e5] shadow-xs space-y-4">
+                <div className="flex items-center justify-between pb-3 border-b border-[#f0ece1]">
+                  <div className="flex items-center gap-2">
+                    <Gift size={18} className="text-[#b6713e]" />
+                    <h2 className="text-base font-bold text-[#1c1c1c]">
+                      {isAr ? "3. خيارات الإهداء والتغليف الفاخر" : "3. Gift Options & Personalization"}
+                    </h2>
+                  </div>
+                  <span className="text-[11px] text-[#b6713e] font-semibold bg-[#faedcd]/40 px-2 py-0.5 rounded border border-[#ecdec1]">
+                    {isAr ? "اختياري" : "Optional"}
+                  </span>
+                </div>
+
+                {/* Gift Checkbox Toggle Card */}
+                <label
+                  htmlFor="is-gift-checkbox"
+                  className={`flex items-start gap-3.5 p-4 rounded-[8px] border transition-all cursor-pointer ${
+                    isGift
+                      ? "bg-[#faedcd]/25 border-[#b6713e] ring-1 ring-[#b6713e]/60 shadow-xs"
+                      : "bg-[#fbf9f5] border-[#e5e5e5] hover:border-neutral-300"
+                  }`}
+                >
+                  <input
+                    id="is-gift-checkbox"
+                    type="checkbox"
+                    checked={isGift}
+                    onChange={(e) => {
+                      setIsGift(e.target.checked);
+                      if (!e.target.checked) {
+                        setHasGiftWrap(false);
+                      }
+                    }}
+                    className="mt-0.5 w-4 h-4 text-[#b6713e] rounded border-neutral-300 focus:ring-[#b6713e] cursor-pointer"
+                  />
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-[#1c1c1c] flex items-center gap-1.5">
+                        <Gift size={14} className="text-[#b6713e]" />
+                        <span>{isAr ? "هذا الطلب هدية لشخص مميز 🎁" : "This order is a gift"}</span>
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-neutral-500 mt-1 leading-relaxed">
+                      {isAr
+                        ? "أضف بطاقة إهداء شخصية مجانية وتغليف فاخر بصندوق راميليت الملكي."
+                        : "Include a personal message card and optional signature boutique gift wrapping."}
+                    </p>
+                  </div>
+                </label>
+
+                {/* Expanded Gift Options (Gift Message & Optional Gift Wrapping) */}
+                {isGift && (
+                  <div className="pt-2 space-y-4 animate-in fade-in-50 duration-300">
+                    {/* Gift Message Textbox */}
+                    <div className="p-4 bg-[#fbf9f5] rounded-[6px] border border-[#f0ece1] space-y-2">
+                      <div className="flex items-center justify-between">
+                        <label className="block text-xs font-bold uppercase tracking-wider text-neutral-700">
+                          {isAr ? "رسالة الإهداء (بطاقة فاخرة مجانية)" : "Gift Message (Complimentary Card Included)"}
+                        </label>
+                        <span className="text-[10px] text-neutral-400 font-mono">
+                          {giftMessage.length}/300
+                        </span>
+                      </div>
+                      <textarea
+                        rows={3}
+                        maxLength={300}
+                        value={giftMessage}
+                        onChange={(e) => setGiftMessage(e.target.value)}
+                        placeholder={
+                          isAr
+                            ? "اكتب كلمتك الخاصة هنا لتتم كتابتها بأناقة على بطاقة الإهداء الملكية..."
+                            : "Write a personal message to be handwritten or printed on our signature luxury card..."
+                        }
+                        className="w-full text-xs p-3 border border-[#e5e5e5] rounded-[5px] focus:outline-none focus:border-[#b6713e] bg-white leading-relaxed"
+                      />
+                      <p className="text-[10px] text-neutral-400 flex items-center gap-1">
+                        <span>✨</span>
+                        <span>
+                          {isAr
+                            ? "توضع بطاقة الإهداء في مغلف مذهب ومختوم بشعار راميليت."
+                            : "Placed inside a gold-foil envelope with the Ramillette royal emblem."}
+                        </span>
+                      </p>
+                    </div>
+
+                    {/* Gift Wrap Checkbox with Admin Specified Fee for the Active Region */}
+                    {allowGiftWrap && (
+                      <label
+                        htmlFor="include-gift-wrap-checkbox"
+                        className={`flex items-start gap-3.5 p-4 rounded-[8px] border transition-all cursor-pointer ${
+                          hasGiftWrap
+                            ? "bg-[#faedcd]/30 border-[#b6713e] ring-1 ring-[#b6713e]/70 shadow-xs"
+                            : "bg-white border-[#e5e5e5] hover:border-[#b6713e]/50"
+                        }`}
+                      >
+                        <input
+                          id="include-gift-wrap-checkbox"
+                          type="checkbox"
+                          checked={hasGiftWrap}
+                          onChange={(e) => setHasGiftWrap(e.target.checked)}
+                          className="mt-1 w-4 h-4 text-[#b6713e] rounded border-neutral-300 focus:ring-[#b6713e] cursor-pointer"
+                        />
+                        <div className="flex-1">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <span className="text-xs font-bold text-[#1c1c1c] flex items-center gap-1.5">
+                              <Sparkles size={14} className="text-[#b6713e]" />
+                              <span>
+                                {isAr ? "إضافة تغليف هدايا ملكي فاخر" : "Include Signature Luxury Gift Wrap"}
+                              </span>
+                            </span>
+                            <span className="inline-flex items-center text-xs font-extrabold text-[#b6713e] bg-[#faedcd] px-2.5 py-0.5 rounded border border-[#ecdac1]">
+                              +{formatPrice(giftWrapFee, country)}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-neutral-600 mt-1 leading-relaxed">
+                            {isAr
+                              ? "صندوق هدايا فاخر مغلف يدوياً بشريط مخملي حريري وختم راميليت الشمعي المذهب."
+                              : "Hand-wrapped in our signature rigid gift box with a double-faced silk ribbon and wax seal."}
+                          </p>
+                          <div className="mt-2 flex items-center gap-2 text-[10px] text-neutral-400">
+                            <CheckCircle2 size={12} className="text-[#0d9d00]" />
+                            <span>
+                              {isAr
+                                ? `السعر المحدد لمنطقة ${config.name}: ${formatPrice(giftWrapFee, country)} يُضاف للفاتورة`
+                                : `Region price for ${config.name}: +${formatPrice(giftWrapFee, country)} added to order total`}
+                            </span>
+                          </div>
+                        </div>
+                      </label>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Step 4: Payment Method (Dynamic for QA, AE, BH) */}
               <div className="bg-white p-6 rounded-[8px] border border-[#e5e5e5] shadow-xs space-y-4">
                 <h2 className="text-base font-bold text-[#1c1c1c] pb-3 border-b border-[#f0ece1]">
-                  3. Payment Method ({config.name})
+                  {isAr ? `4. طريقة الدفع (${config.name})` : `4. Payment Method (${config.name})`}
                 </h2>
 
                 <div className="space-y-3">
@@ -668,6 +812,23 @@ export default function CheckoutPage() {
                     )}
                   </span>
                 </div>
+
+                {/* Gift Wrap / Gift Card Line Item in Summary */}
+                {isGift && (
+                  <div className="flex justify-between items-center text-neutral-600 py-0.5">
+                    <span className="flex items-center gap-1.5">
+                      <Gift size={13} className="text-[#b6713e]" />
+                      <span>{hasGiftWrap ? (isAr ? "تغليف هدايا فاخر" : "Luxury Gift Wrap") : (isAr ? "بطاقة إهداء شخصية" : "Personal Gift Card")}</span>
+                    </span>
+                    <span className="font-semibold text-[#1c1c1c]">
+                      {hasGiftWrap ? (
+                        <span className="text-[#b6713e]">+{formatPrice(giftWrapAmount, country)}</span>
+                      ) : (
+                        <span className="text-[#0d9d00] font-bold text-[10px] uppercase">{isAr ? "مجاناً" : "FREE"}</span>
+                      )}
+                    </span>
+                  </div>
+                )}
 
                 {taxAmount > 0 && (
                   <div className="flex justify-between text-neutral-600">

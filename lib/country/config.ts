@@ -12,6 +12,8 @@ export interface CountryConfig {
   phonePrefix: string;
   freeShippingThreshold: number;
   standardShippingFee: number;
+  giftWrapFee: number;
+  allowGiftWrap: boolean;
   defaultCity: string;
   cities: string[];
   boutiqueName: string;
@@ -45,6 +47,8 @@ export const COUNTRIES: Record<CountryCode, CountryConfig> = {
     phonePrefix: "+974",
     freeShippingThreshold: 900,
     standardShippingFee: 30,
+    giftWrapFee: 25,
+    allowGiftWrap: true,
     defaultCity: "Doha",
     cities: [
       "Doha",
@@ -94,6 +98,8 @@ export const COUNTRIES: Record<CountryCode, CountryConfig> = {
     phonePrefix: "+971",
     freeShippingThreshold: 900,
     standardShippingFee: 30,
+    giftWrapFee: 25,
+    allowGiftWrap: true,
     defaultCity: "Dubai",
     cities: [
       "Dubai",
@@ -151,6 +157,8 @@ export const COUNTRIES: Record<CountryCode, CountryConfig> = {
     phonePrefix: "+973",
     freeShippingThreshold: 90,
     standardShippingFee: 3,
+    giftWrapFee: 3,
+    allowGiftWrap: true,
     defaultCity: "Manama",
     cities: [
       "Manama",

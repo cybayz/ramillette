@@ -130,6 +130,19 @@ export function InvoiceDocument({ order }: InvoiceDocumentProps) {
                 Client instructions: &ldquo;{order.deliveryNotes}&rdquo;
               </p>
             )}
+            {order.isGift && (
+              <div className="mt-2 p-2.5 rounded bg-[#faedcd]/40 border border-[#ecdac1] text-[11px]">
+                <div className="font-bold text-[#b6713e] flex items-center justify-between">
+                  <span>🎁 Gift Order Service</span>
+                  <span>{order.hasGiftWrap ? "Signature Gift Wrapping Included" : "Complimentary Card Included"}</span>
+                </div>
+                {order.giftMessage && (
+                  <p className="mt-1 font-serif italic text-neutral-800 bg-white p-2 rounded border border-[#ecdac1]">
+                    &ldquo;{order.giftMessage}&rdquo;
+                  </p>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -216,6 +229,15 @@ export function InvoiceDocument({ order }: InvoiceDocumentProps) {
                 : "FREE (Complimentary)"}
             </span>
           </div>
+
+          {(order.giftWrapFee || 0) > 0 && (
+            <div className="flex justify-between text-neutral-600">
+              <span>Luxury Gift Wrap</span>
+              <span className="font-mono text-[#b6713e]">
+                +{formatPrice(order.giftWrapFee || 0, order.country)}
+              </span>
+            </div>
+          )}
 
           {order.tax > 0 && (
             <div className="flex justify-between text-neutral-600">

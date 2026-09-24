@@ -16,6 +16,8 @@ import {
   Mail,
   RotateCcw,
   Search,
+  Gift,
+  Sparkles,
 } from "lucide-react";
 
 interface OrderItem {
@@ -55,6 +57,10 @@ interface OrderData {
   carrierName?: string | null;
   trackingNumber?: string | null;
   deliveryNotes?: string | null;
+  isGift?: boolean;
+  giftMessage?: string | null;
+  hasGiftWrap?: boolean;
+  giftWrapFee?: number;
   createdAt: string;
   items: OrderItem[];
 }
@@ -366,6 +372,30 @@ export function OrderFulfillmentHub({ storeContext }: OrderFulfillmentHubProps) 
                     {ord.deliveryNotes && (
                       <div className="p-1.5 rounded bg-[#242424] text-[10px] text-amber-300/90 mt-1">
                         Note: {ord.deliveryNotes}
+                      </div>
+                    )}
+                    {ord.isGift && (
+                      <div className="p-2 rounded bg-amber-950/40 border border-amber-800/60 text-[11px] text-amber-200 mt-1.5 space-y-1">
+                        <div className="flex items-center justify-between font-bold">
+                          <span className="flex items-center gap-1 text-[#b6713e]">
+                            <Gift size={12} />
+                            <span>GIFT ORDER</span>
+                          </span>
+                          {ord.hasGiftWrap ? (
+                            <span className="text-[9px] bg-[#b6713e] text-white px-1.5 py-0.5 rounded font-bold">
+                              LUXURY GIFT WRAP REQUIRED
+                            </span>
+                          ) : (
+                            <span className="text-[9px] bg-neutral-800 text-neutral-300 px-1.5 py-0.5 rounded">
+                              Card Only
+                            </span>
+                          )}
+                        </div>
+                        {ord.giftMessage && (
+                          <div className="bg-[#171717] p-1.5 rounded text-[10px] italic text-neutral-300 border border-neutral-800">
+                            Message: &ldquo;{ord.giftMessage}&rdquo;
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>

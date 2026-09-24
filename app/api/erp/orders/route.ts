@@ -137,6 +137,10 @@ export async function GET(request: Request) {
           carrierName: o.carrierName,
           trackingNumber: o.trackingNumber,
           deliveryNotes: o.deliveryNotes,
+          isGift: o.isGift,
+          giftMessage: o.giftMessage,
+          hasGiftWrap: o.hasGiftWrap,
+          giftWrapFee: Number(o.giftWrapFee || 0),
           createdAt: o.createdAt,
           items: o.items.map((it) => ({
             id: it.id,

@@ -184,6 +184,7 @@ export function StoreSettingsView({ countries: initialCountries, settings }: Sto
                 <th className="py-3 px-6">VAT Rate</th>
                 <th className="py-3 px-6">Delivery Fee</th>
                 <th className="py-3 px-6">Free Delivery Threshold</th>
+                <th className="py-3 px-6">Gift Wrap Fee</th>
                 <th className="py-3 px-6">Gateways</th>
                 <th className="py-3 px-6 text-right">Status</th>
               </tr>
@@ -223,6 +224,14 @@ export function StoreSettingsView({ countries: initialCountries, settings }: Sto
 
                   <td className="py-3.5 px-6 font-medium text-emerald-700">
                     {c.freeShippingThreshold.toFixed(c.currencyDecimals)} {c.currency}
+                  </td>
+
+                  <td className="py-3.5 px-6 font-medium text-[#b6713e]">
+                    {c.allowGiftWrap !== false ? (
+                      <span>{(c.giftWrapFee ?? 25).toFixed(c.currencyDecimals)} {c.currency}</span>
+                    ) : (
+                      <span className="text-neutral-400">Disabled</span>
+                    )}
                   </td>
 
                   <td className="py-3.5 px-6 text-neutral-600">

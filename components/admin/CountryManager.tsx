@@ -15,6 +15,7 @@ import {
   Building,
   AlertTriangle,
   Info,
+  Gift,
 } from "lucide-react";
 
 export interface AdminCountry {
@@ -30,6 +31,8 @@ export interface AdminCountry {
   phonePrefix: string;
   standardShippingFee: number;
   freeShippingThreshold: number;
+  giftWrapFee?: number;
+  allowGiftWrap?: boolean;
   taxRate: number;
   taxName: string;
   taxIncludedInPrice: boolean;
@@ -73,6 +76,8 @@ export function CountryManager({ initialCountries }: CountryManagerProps) {
   const [phonePrefix, setPhonePrefix] = useState("");
   const [standardShippingFee, setStandardShippingFee] = useState(30);
   const [freeShippingThreshold, setFreeShippingThreshold] = useState(900);
+  const [giftWrapFee, setGiftWrapFee] = useState(25);
+  const [allowGiftWrap, setAllowGiftWrap] = useState(true);
   const [taxRate, setTaxRate] = useState(0);
   const [taxName, setTaxName] = useState("VAT");
   const [defaultCity, setDefaultCity] = useState("");
@@ -105,6 +110,8 @@ export function CountryManager({ initialCountries }: CountryManagerProps) {
     setPhonePrefix("+966");
     setStandardShippingFee(35);
     setFreeShippingThreshold(900);
+    setGiftWrapFee(25);
+    setAllowGiftWrap(true);
     setTaxRate(15.0);
     setTaxName("VAT (15%)");
     setDefaultCity("Riyadh");
@@ -141,6 +148,8 @@ export function CountryManager({ initialCountries }: CountryManagerProps) {
     setPhonePrefix(c.phonePrefix);
     setStandardShippingFee(c.standardShippingFee);
     setFreeShippingThreshold(c.freeShippingThreshold);
+    setGiftWrapFee(c.giftWrapFee !== undefined ? c.giftWrapFee : 25);
+    setAllowGiftWrap(c.allowGiftWrap !== undefined ? c.allowGiftWrap : true);
     setTaxRate(c.taxRate);
     setTaxName(c.taxName);
     setDefaultCity(c.defaultCity);
@@ -241,6 +250,8 @@ export function CountryManager({ initialCountries }: CountryManagerProps) {
         phonePrefix: phonePrefix.trim(),
         standardShippingFee: Number(standardShippingFee),
         freeShippingThreshold: Number(freeShippingThreshold),
+        giftWrapFee: Number(giftWrapFee),
+        allowGiftWrap: Boolean(allowGiftWrap),
         taxRate: Number(taxRate),
         taxName: taxName.trim(),
         defaultCity: defaultCity.trim() || (citiesArray[0] || "City"),
@@ -411,6 +422,31 @@ export function CountryManager({ initialCountries }: CountryManagerProps) {
                   </span>
                   <span className="text-[11px] text-neutral-500 block truncate">
                     {c.cities?.length || 0} cities ({c.defaultCity})
+                  </span>
+                </div>
+
+                <div className="bg-[#fbf9f5] p-2.5 rounded-md border border-[#ecdec1]/50 col-span-2 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Gift size={14} className="text-[#b6713e]" />
+                    <div>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 block">
+                        Luxury Gift Wrap
+                      </span>
+                      <span className="font-bold text-[#1c1c1c] text-xs">
+                        {c.allowGiftWrap !== false
+                          ? `${c.currency} ${c.giftWrapFee ?? 25}`
+                          : "Disabled"}
+                      </span>
+                    </div>
+                  </div>
+                  <span
+                    className={`text-[9px] font-bold px-2 py-0.5 rounded ${
+                      c.allowGiftWrap !== false
+                        ? "bg-emerald-100 text-emerald-800"
+                        : "bg-neutral-200 text-neutral-600"
+                    }`}
+                  >
+                    {c.allowGiftWrap !== false ? "Checkout Option Active" : "Disabled in Checkout"}
                   </span>
                 </div>
               </div>
@@ -689,6 +725,53 @@ export function CountryManager({ initialCountries }: CountryManagerProps) {
                         onChange={(e) => setTaxName(e.target.value)}
                         className="w-full text-xs px-3 py-2 border border-neutral-300 rounded focus:outline-none focus:border-[#b6713e]"
                       />
+                    </div>
+                  </div>
+
+                  {/* Luxury Gift Wrap Settings */}
+                  <div className="p-3.5 bg-neutral-50 border border-neutral-200 rounded-[8px] space-y-3 sm:col-span-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-xs font-bold text-[#1c1c1c]">
+                        <Gift size={15} className="text-[#b6713e]" />
+                        <span>Luxury Gift Wrap Configuration ({currency})</span>
+                      </div>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={allowGiftWrap}
+                          onChange={(e) => setAllowGiftWrap(e.target.checked)}
+                          className="w-4 h-4 text-[#b6713e] rounded focus:ring-[#b6713e]"
+                        />
+                        <span className="text-xs font-semibold text-neutral-700">
+                          Enable Gift Wrapping in Checkout
+                        </span>
+                      </label>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                      <div>
+                        <label className="block text-[11px] font-semibold text-neutral-700 mb-1">
+                          Gift Wrap Fee ({currency}) *
+                        </label>
+                        <input
+                          type="number"
+                          step="0.1"
+                          disabled={!allowGiftWrap}
+                          required
+                          value={giftWrapFee}
+                          onChange={(e) => setGiftWrapFee(parseFloat(e.target.value) || 0)}
+                          className="w-full text-xs px-3 py-2 border border-neutral-300 rounded font-mono font-bold focus:outline-none focus:border-[#b6713e] disabled:opacity-50"
+                        />
+                        <span className="text-[10px] text-neutral-400 block mt-0.5">
+                          Amount added to customer bill when they select &ldquo;Include gift wrap&rdquo; at checkout.
+                        </span>
+                      </div>
+                      <div className="p-2.5 bg-white border border-[#e5e5e5] rounded text-[11px] text-neutral-500 flex flex-col justify-center">
+                        <span className="font-semibold text-neutral-700 mb-0.5">Checkout Experience:</span>
+                        <span>
+                          When customer checks &ldquo;This item is a gift&rdquo;, they will be offered this optional gift wrap service for {currency} {giftWrapFee || 0} alongside a complimentary handwritten gift message card.
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>

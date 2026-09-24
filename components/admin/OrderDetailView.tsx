@@ -23,6 +23,8 @@ import {
   FileText,
   Lock,
   ChevronDown,
+  Gift,
+  Sparkles,
 } from "lucide-react";
 import { formatPrice } from "@/lib/utils";
 import { InvoiceOrderData, generateWhatsAppInvoiceUrl } from "@/lib/admin/invoiceUtils";
@@ -292,6 +294,18 @@ export function OrderDetailView({ initialOrder }: OrderDetailViewProps) {
                 </span>
               </div>
 
+              {(order.giftWrapFee || 0) > 0 && (
+                <div className="flex justify-between text-neutral-600">
+                  <span className="flex items-center gap-1">
+                    <Gift size={12} className="text-[#b6713e]" />
+                    <span>Luxury Gift Wrap</span>
+                  </span>
+                  <span className="font-mono text-[#b6713e]">
+                    +{formatPrice(order.giftWrapFee || 0, order.country)}
+                  </span>
+                </div>
+              )}
+
               {order.tax > 0 && (
                 <div className="flex justify-between text-neutral-600">
                   <span>VAT / Taxes</span>
@@ -501,6 +515,52 @@ export function OrderDetailView({ initialOrder }: OrderDetailViewProps) {
               )}
             </div>
           </div>
+
+          {/* Gift Order & Message Card */}
+          {order.isGift && (
+            <div className="bg-white rounded-[10px] border border-[#ecdac1] shadow-xs p-5 space-y-3 text-xs bg-gradient-to-br from-[#fbf9f5] to-white">
+              <div className="flex items-center justify-between pb-2 border-b border-[#f0ece1]">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-full bg-[#faedcd] flex items-center justify-center text-[#b6713e]">
+                    <Gift size={14} />
+                  </div>
+                  <h3 className="font-bold text-[#1c1c1c]">Gift Order Service</h3>
+                </div>
+                {order.hasGiftWrap ? (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-[#faedcd] text-[#b6713e] border border-[#ecdec1]">
+                    <Sparkles size={10} />
+                    <span>Gift Wrap Included</span>
+                  </span>
+                ) : (
+                  <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-neutral-100 text-neutral-600">
+                    Complimentary Card Only
+                  </span>
+                )}
+              </div>
+
+              {order.hasGiftWrap && (
+                <div className="p-2.5 rounded bg-white border border-[#ecdec1] text-[11px] text-[#b6713e] font-medium flex items-center justify-between">
+                  <span>Luxury Gift Wrap Added</span>
+                  <span className="font-bold font-mono">+{formatPrice(order.giftWrapFee || 0, order.country)}</span>
+                </div>
+              )}
+
+              {order.giftMessage ? (
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 block mb-1">
+                    Client Gift Card Message:
+                  </span>
+                  <div className="p-3 bg-white rounded-[6px] border border-[#f0ece1] text-xs font-serif italic text-neutral-800 leading-relaxed">
+                    &ldquo;{order.giftMessage}&rdquo;
+                  </div>
+                </div>
+              ) : (
+                <p className="text-[11px] text-neutral-400 italic">
+                  Customer selected gift service without adding custom card message.
+                </p>
+              )}
+            </div>
+          )}
 
           {/* Payment Card */}
           <div className="bg-white rounded-[10px] border border-[#e5e5e5] shadow-xs p-5 space-y-3 text-xs">

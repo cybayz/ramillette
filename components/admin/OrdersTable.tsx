@@ -24,6 +24,8 @@ import {
   Share2,
   Lock,
   FileText,
+  Gift,
+  Sparkles,
 } from "lucide-react";
 import { formatPrice } from "@/lib/utils";
 import { generateWhatsAppInvoiceUrl, InvoiceOrderData } from "@/lib/admin/invoiceUtils";
@@ -59,6 +61,10 @@ export interface AdminOrder {
   area?: string | null;
   deliveryNotes?: string | null;
   adminNotes?: string | null;
+  isGift?: boolean;
+  giftMessage?: string | null;
+  hasGiftWrap?: boolean;
+  giftWrapFee?: number;
   paymentGatewayRef?: string | null;
   carrierName?: string | null;
   trackingNumber?: string | null;
@@ -407,9 +413,15 @@ export function OrdersTable({
                     <span className="font-bold text-[#1c1c1c] block">
                       {order.customerName}
                     </span>
-                    <span className="text-[11px] text-neutral-500">
+                    <span className="text-[11px] text-neutral-500 block">
                       {order.customerPhone}
                     </span>
+                    {order.isGift && (
+                      <span className="inline-flex items-center gap-1 mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#faedcd] text-[#b6713e]">
+                        <Gift size={10} />
+                        <span>Gift {order.hasGiftWrap ? "• Wrapped" : ""}</span>
+                      </span>
+                    )}
                   </td>
 
                   {/* City */}
@@ -589,6 +601,26 @@ export function OrdersTable({
                       Note: {selectedOrder.deliveryNotes}
                     </p>
                   )}
+                  {selectedOrder.isGift && (
+                    <div className="mt-2 p-2.5 bg-[#faedcd]/35 rounded border border-[#ecdac1] space-y-1">
+                      <div className="flex items-center justify-between text-xs font-bold text-[#b6713e]">
+                        <span className="flex items-center gap-1">
+                          <Gift size={12} />
+                          <span>Gift Order Service</span>
+                        </span>
+                        {selectedOrder.hasGiftWrap && (
+                          <span className="text-[10px] bg-[#faedcd] px-1.5 py-0.5 rounded">
+                            Luxury Wrapped
+                          </span>
+                        )}
+                      </div>
+                      {selectedOrder.giftMessage && (
+                        <p className="text-[11px] italic font-serif text-neutral-700 bg-white p-2 rounded border border-[#f0ece1]">
+                          &ldquo;{selectedOrder.giftMessage}&rdquo;
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -752,6 +784,18 @@ export function OrdersTable({
                       : "Free Delivery"}
                   </span>
                 </div>
+
+                {(selectedOrder.giftWrapFee || 0) > 0 && (
+                  <div className="flex justify-between text-neutral-600">
+                    <span className="flex items-center gap-1">
+                      <Gift size={11} className="text-[#b6713e]" />
+                      <span>Luxury Gift Wrap</span>
+                    </span>
+                    <span className="font-mono text-[#b6713e]">
+                      +{formatPrice(selectedOrder.giftWrapFee || 0, selectedOrder.country)}
+                    </span>
+                  </div>
+                )}
 
                 {selectedOrder.tax > 0 && (
                   <div className="flex justify-between text-neutral-600">

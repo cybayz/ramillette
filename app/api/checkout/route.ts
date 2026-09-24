@@ -34,6 +34,9 @@ export async function POST(request: Request) {
       deliveryNotes,
       paymentMethod = "COD",
       couponCode,
+      isGift = false,
+      giftMessage,
+      hasGiftWrap = false,
       items,
     } = body;
 
@@ -191,9 +194,16 @@ export async function POST(request: Request) {
       : (targetCountryCode === "AE" ? 5.0 : targetCountryCode === "BH" ? 10.0 : 0.0);
 
     const shippingFee = calculatedSubtotal >= freeShippingThreshold ? 0.0 : standardShippingFee;
+    const allowGiftWrap = dbCountry?.allowGiftWrap ?? countryConfig.allowGiftWrap ?? true;
+    const configuredGiftWrapFee = dbCountry?.giftWrapFee !== undefined
+      ? Number(dbCountry.giftWrapFee)
+      : (countryConfig.giftWrapFee ?? 25);
+    const shouldApplyGiftWrap = Boolean(isGift && hasGiftWrap && allowGiftWrap);
+    const giftWrapAmount = shouldApplyGiftWrap ? configuredGiftWrapFee : 0;
+
     const taxableAmount = Math.max(0, calculatedSubtotal - discountAmount);
     const taxAmount = Number(((taxableAmount * taxRate) / 100).toFixed(countryConfig.currencyDecimals || 2));
-    const finalTotal = Math.max(0, calculatedSubtotal - discountAmount + shippingFee + taxAmount);
+    const finalTotal = Math.max(0, calculatedSubtotal - discountAmount + shippingFee + giftWrapAmount + taxAmount);
 
     // 5. Generate Human-readable Unique Order Number (e.g. RAM-QA-2609-8472)
     const randomSuffix = Math.floor(1000 + Math.random() * 9000);
@@ -244,6 +254,10 @@ export async function POST(request: Request) {
             country: countryConfig.name,
           },
           deliveryNotes: deliveryNotes || null,
+          isGift: Boolean(isGift),
+          giftMessage: isGift && giftMessage ? String(giftMessage).trim() : null,
+          hasGiftWrap: shouldApplyGiftWrap,
+          giftWrapFee: giftWrapAmount,
           subtotal: calculatedSubtotal,
           discount: discountAmount,
           shipping: shippingFee,

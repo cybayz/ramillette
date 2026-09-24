@@ -25,6 +25,8 @@ export async function GET() {
         phonePrefix: c.phonePrefix,
         standardShippingFee: Number(c.standardShippingFee),
         freeShippingThreshold: Number(c.freeShippingThreshold),
+        giftWrapFee: Number(c.giftWrapFee ?? 25),
+        allowGiftWrap: c.allowGiftWrap ?? true,
         taxRate: Number(c.taxRate),
         taxName: c.taxName,
         taxIncludedInPrice: c.taxIncludedInPrice,

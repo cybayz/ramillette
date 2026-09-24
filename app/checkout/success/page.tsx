@@ -2,7 +2,7 @@ import React from "react";
 import Link from "next/link";
 import prisma from "@/lib/db/prisma";
 import { formatPrice } from "@/lib/utils";
-import { CheckCircle2, Package, MapPin, Truck, ArrowRight, ExternalLink } from "lucide-react";
+import { CheckCircle2, Package, MapPin, Truck, ArrowRight, ExternalLink, Gift, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 
 interface PageProps {
@@ -182,6 +182,46 @@ export default async function OrderSuccessPage({ searchParams, isAr = false }: P
             </div>
           </div>
 
+          {/* Gift Order Details Banner */}
+          {order.isGift && (
+            <div className="p-5 rounded-[8px] bg-[#faedcd]/25 border border-[#ecdac1] space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-full bg-[#faedcd] flex items-center justify-center text-[#b6713e]">
+                    <Gift size={16} />
+                  </div>
+                  <div>
+                    <h3 className="text-xs font-bold text-[#1c1c1c]">
+                      {isAr ? "طلب إهداء مجهز بعناية" : "Prepared as a Gift Order"}
+                    </h3>
+                    <p className="text-[11px] text-neutral-500">
+                      {order.hasGiftWrap
+                        ? (isAr ? "مغلف بصندوق راميليت الملكي مع شريط حريري" : "Hand-wrapped in our signature boutique box with silk ribbon")
+                        : (isAr ? "مرفق ببطاقة إهداء فاخرة" : "Includes complimentary personalized gift card")}
+                    </p>
+                  </div>
+                </div>
+                {order.hasGiftWrap && (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-[#faedcd] text-[#b6713e] font-bold text-[10px] border border-[#ecdec1]">
+                    <Sparkles size={11} />
+                    <span>{isAr ? "تغليف هدايا ملكي" : "Luxury Gift Wrap"}</span>
+                  </span>
+                )}
+              </div>
+
+              {order.giftMessage && (
+                <div className="p-3 bg-white rounded-[6px] border border-[#ecdec1] text-xs space-y-1">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 block">
+                    {isAr ? "رسالة الإهداء المرفقة:" : "Personal Gift Card Message:"}
+                  </span>
+                  <p className="italic text-neutral-700 font-serif leading-relaxed">
+                    &ldquo;{order.giftMessage}&rdquo;
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Order Items Table */}
           <div>
             <h3 className="text-xs font-bold uppercase tracking-wider text-neutral-600 mb-3 pb-2 border-b border-[#e5e5e5]">
@@ -204,7 +244,7 @@ export default async function OrderSuccessPage({ searchParams, isAr = false }: P
                     )}
                   </div>
                   <span className="font-semibold text-[#1c1c1c]">
-                    {formatPrice(item.total)}
+                    {formatPrice(item.total, order.country)}
                   </span>
                 </div>
               ))}
@@ -215,24 +255,35 @@ export default async function OrderSuccessPage({ searchParams, isAr = false }: P
               <div className="flex justify-between text-neutral-600">
                 <span>Subtotal</span>
                 <span className="font-medium text-[#1c1c1c]">
-                  {formatPrice(order.subtotal)}
+                  {formatPrice(order.subtotal, order.country)}
                 </span>
               </div>
               {Number(order.discount) > 0 && (
                 <div className="flex justify-between text-emerald-700 font-semibold">
                   <span>Discount</span>
-                  <span>-{formatPrice(order.discount)}</span>
+                  <span>-{formatPrice(order.discount, order.country)}</span>
                 </div>
               )}
               <div className="flex justify-between text-neutral-600">
                 <span>Shipping</span>
                 <span className="font-medium text-[#1c1c1c]">
-                  {Number(order.shipping) === 0 ? "FREE" : formatPrice(order.shipping)}
+                  {Number(order.shipping) === 0 ? "FREE" : formatPrice(order.shipping, order.country)}
                 </span>
               </div>
+              {Number(order.giftWrapFee) > 0 && (
+                <div className="flex justify-between text-neutral-600">
+                  <span className="flex items-center gap-1">
+                    <Gift size={12} className="text-[#b6713e]" />
+                    <span>{isAr ? "تغليف هدايا ملكي" : "Luxury Gift Wrap"}</span>
+                  </span>
+                  <span className="font-medium text-[#1c1c1c]">
+                    +{formatPrice(order.giftWrapFee, order.country)}
+                  </span>
+                </div>
+              )}
               <div className="flex justify-between text-sm font-extrabold text-[#1c1c1c] pt-2 border-t border-[#e5e5e5]">
                 <span>Total Paid / Payable</span>
-                <span className="text-[#b6713e]">{formatPrice(order.total)}</span>
+                <span className="text-[#b6713e]">{formatPrice(order.total, order.country)}</span>
               </div>
             </div>
           </div>

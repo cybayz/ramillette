@@ -22,6 +22,10 @@ export interface InvoiceOrderData {
   area?: string | null;
   deliveryNotes?: string | null;
   adminNotes?: string | null;
+  isGift?: boolean;
+  giftMessage?: string | null;
+  hasGiftWrap?: boolean;
+  giftWrapFee?: number;
   paymentGatewayRef?: string | null;
   carrierName?: string | null;
   trackingNumber?: string | null;
