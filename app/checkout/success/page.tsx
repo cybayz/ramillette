@@ -194,17 +194,19 @@ export default async function OrderSuccessPage({ searchParams, isAr = false }: P
                     <h3 className="text-xs font-bold text-[#1c1c1c]">
                       {isAr ? "طلب إهداء مجهز بعناية" : "Prepared as a Gift Order"}
                     </h3>
-                    <p className="text-[11px] text-neutral-500">
-                      {order.hasGiftWrap
-                        ? (isAr ? "مغلف بصندوق راميليت الملكي مع شريط حريري" : "Hand-wrapped in our signature boutique box with silk ribbon")
-                        : (isAr ? "مرفق ببطاقة إهداء فاخرة" : "Includes complimentary personalized gift card")}
+                    <p className="text-[11px] text-neutral-600">
+                      {order.giftWrapName
+                        ? `${isAr ? "طريقة التغليف المحددة:" : "Presentation Style:"} ${order.giftWrapName}`
+                        : (order.hasGiftWrap
+                            ? (isAr ? "مغلف بصندوق راميليت الملكي مع شريط حريري" : "Hand-wrapped in our signature boutique box with silk ribbon")
+                            : (isAr ? "مرفق ببطاقة إهداء فاخرة مجانية" : "Includes complimentary personalized gift card"))}
                     </p>
                   </div>
                 </div>
                 {order.hasGiftWrap && (
                   <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-[#faedcd] text-[#b6713e] font-bold text-[10px] border border-[#ecdec1]">
                     <Sparkles size={11} />
-                    <span>{isAr ? "تغليف هدايا ملكي" : "Luxury Gift Wrap"}</span>
+                    <span>{order.giftWrapName || (isAr ? "تغليف هدايا ملكي" : "Luxury Gift Wrap")}</span>
                   </span>
                 )}
               </div>
@@ -274,7 +276,7 @@ export default async function OrderSuccessPage({ searchParams, isAr = false }: P
                 <div className="flex justify-between text-neutral-600">
                   <span className="flex items-center gap-1">
                     <Gift size={12} className="text-[#b6713e]" />
-                    <span>{isAr ? "تغليف هدايا ملكي" : "Luxury Gift Wrap"}</span>
+                    <span>{order.giftWrapName || (isAr ? "تغليف هدايا ملكي" : "Luxury Gift Wrap")}</span>
                   </span>
                   <span className="font-medium text-[#1c1c1c]">
                     +{formatPrice(order.giftWrapFee, order.country)}

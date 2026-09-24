@@ -140,6 +140,8 @@ export async function GET(request: Request) {
           isGift: o.isGift,
           giftMessage: o.giftMessage,
           hasGiftWrap: o.hasGiftWrap,
+          giftWrapOptionId: o.giftWrapOptionId,
+          giftWrapName: o.giftWrapName,
           giftWrapFee: Number(o.giftWrapFee || 0),
           createdAt: o.createdAt,
           items: o.items.map((it) => ({

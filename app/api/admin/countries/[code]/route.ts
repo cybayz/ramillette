@@ -32,6 +32,7 @@ export async function PATCH(request: Request, { params }: Props) {
     if (body.freeShippingThreshold !== undefined) dataToUpdate.freeShippingThreshold = Number(body.freeShippingThreshold);
     if (body.giftWrapFee !== undefined) dataToUpdate.giftWrapFee = Number(body.giftWrapFee);
     if (body.allowGiftWrap !== undefined) dataToUpdate.allowGiftWrap = Boolean(body.allowGiftWrap);
+    if (body.giftWrapOptions !== undefined) dataToUpdate.giftWrapOptions = JSON.stringify(body.giftWrapOptions);
     if (body.taxRate !== undefined) dataToUpdate.taxRate = Number(body.taxRate);
     if (body.taxName !== undefined) dataToUpdate.taxName = body.taxName.trim();
     if (body.taxIncludedInPrice !== undefined) dataToUpdate.taxIncludedInPrice = Boolean(body.taxIncludedInPrice);

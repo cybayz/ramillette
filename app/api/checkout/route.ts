@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
 import { getSession } from "@/lib/auth/session";
-import { CountryCode, getCountryConfig, isValidCountry } from "@/lib/country/config";
+import { CountryCode, getCountryConfig, isValidCountry, GiftWrapOption } from "@/lib/country/config";
 import { resolveProductForCountry, resolveVariantForCountry } from "@/lib/country/productResolver";
 import { getPaymentProvider } from "@/lib/services/payment";
 import { getSmsProvider } from "@/lib/services/sms";
@@ -37,6 +37,8 @@ export async function POST(request: Request) {
       isGift = false,
       giftMessage,
       hasGiftWrap = false,
+      giftWrapOptionId,
+      giftWrapName,
       items,
     } = body;
 
@@ -195,11 +197,39 @@ export async function POST(request: Request) {
 
     const shippingFee = calculatedSubtotal >= freeShippingThreshold ? 0.0 : standardShippingFee;
     const allowGiftWrap = dbCountry?.allowGiftWrap ?? countryConfig.allowGiftWrap ?? true;
-    const configuredGiftWrapFee = dbCountry?.giftWrapFee !== undefined
-      ? Number(dbCountry.giftWrapFee)
-      : (countryConfig.giftWrapFee ?? 25);
-    const shouldApplyGiftWrap = Boolean(isGift && hasGiftWrap && allowGiftWrap);
-    const giftWrapAmount = shouldApplyGiftWrap ? configuredGiftWrapFee : 0;
+
+    // Resolve available gift wrap tiers from database or fallback defaults
+    let availableGiftOptions: GiftWrapOption[] = [];
+    if (dbCountry?.giftWrapOptions) {
+      try {
+        availableGiftOptions = typeof dbCountry.giftWrapOptions === "string"
+          ? JSON.parse(dbCountry.giftWrapOptions)
+          : (dbCountry.giftWrapOptions as any);
+      } catch (e) {
+        availableGiftOptions = [];
+      }
+    }
+    if (!availableGiftOptions || !Array.isArray(availableGiftOptions) || availableGiftOptions.length === 0) {
+      availableGiftOptions = countryConfig.giftWrapOptions || [];
+    }
+
+    let selectedWrapOpt: GiftWrapOption | undefined = undefined;
+    if (isGift && giftWrapOptionId) {
+      selectedWrapOpt = availableGiftOptions.find((opt) => opt.id === giftWrapOptionId && opt.active !== false);
+    }
+    if (!selectedWrapOpt && isGift && hasGiftWrap) {
+      selectedWrapOpt = availableGiftOptions.find((opt) => opt.price > 0 && opt.active !== false) || {
+        id: "paper-wrap",
+        name: giftWrapName || "Classic Artisanal Paper Wrap",
+        price: dbCountry?.giftWrapFee !== undefined ? Number(dbCountry.giftWrapFee) : (countryConfig.giftWrapFee ?? 25),
+        description: "Signature gift wrap",
+      };
+    }
+
+    const giftWrapAmount = (isGift && selectedWrapOpt && allowGiftWrap) ? Number(selectedWrapOpt.price || 0) : 0;
+    const shouldApplyGiftWrap = Boolean(isGift && selectedWrapOpt && giftWrapAmount > 0);
+    const finalGiftWrapOptionId = isGift && selectedWrapOpt ? selectedWrapOpt.id : null;
+    const finalGiftWrapName = isGift && selectedWrapOpt ? selectedWrapOpt.name : null;
 
     const taxableAmount = Math.max(0, calculatedSubtotal - discountAmount);
     const taxAmount = Number(((taxableAmount * taxRate) / 100).toFixed(countryConfig.currencyDecimals || 2));
@@ -257,6 +287,8 @@ export async function POST(request: Request) {
           isGift: Boolean(isGift),
           giftMessage: isGift && giftMessage ? String(giftMessage).trim() : null,
           hasGiftWrap: shouldApplyGiftWrap,
+          giftWrapOptionId: finalGiftWrapOptionId,
+          giftWrapName: finalGiftWrapName,
           giftWrapFee: giftWrapAmount,
           subtotal: calculatedSubtotal,
           discount: discountAmount,

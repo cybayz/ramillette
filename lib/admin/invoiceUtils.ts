@@ -25,6 +25,8 @@ export interface InvoiceOrderData {
   isGift?: boolean;
   giftMessage?: string | null;
   hasGiftWrap?: boolean;
+  giftWrapOptionId?: string | null;
+  giftWrapName?: string | null;
   giftWrapFee?: number;
   paymentGatewayRef?: string | null;
   carrierName?: string | null;

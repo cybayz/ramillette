@@ -1,5 +1,18 @@
 export type CountryCode = "QA" | "AE" | "BH";
 
+export interface GiftWrapOption {
+  id: string;
+  name: string;
+  nameAr?: string;
+  price: number;
+  description: string;
+  descriptionAr?: string;
+  image?: string;
+  badge?: string;
+  badgeAr?: string;
+  active?: boolean;
+}
+
 export interface CountryConfig {
   code: CountryCode;
   name: string;
@@ -14,6 +27,7 @@ export interface CountryConfig {
   standardShippingFee: number;
   giftWrapFee: number;
   allowGiftWrap: boolean;
+  giftWrapOptions?: GiftWrapOption[];
   defaultCity: string;
   cities: string[];
   boutiqueName: string;
@@ -85,6 +99,54 @@ export const COUNTRIES: Record<CountryCode, CountryConfig> = {
         badge: "Instant",
       },
     ],
+    giftWrapOptions: [
+      {
+        id: "free-card",
+        name: "Complimentary Luxury Message Card",
+        nameAr: "بطاقة إهداء فاخرة مجانية",
+        price: 0,
+        description: "Handwritten personal note on our signature gold-embossed card with a wax seal envelope.",
+        descriptionAr: "رسالة مكتوبة بخط اليد على بطاقة مذهبة ومغلفة بختم شمعي مميز ومغلف ملكي.",
+        image: "",
+        badge: "Free",
+        badgeAr: "مجاناً",
+        active: true,
+      },
+      {
+        id: "paper-wrap",
+        name: "Classic Artisanal Paper Wrap",
+        nameAr: "تغليف ورقي فاخر بشريط حريري",
+        price: 10,
+        description: "Textured cream & gold foil gift paper with hand-tied satin ribbon and royal wax seal stamp.",
+        descriptionAr: "ورق تغليف كريمي فاخر بنقوش ذهبية مع شريط ستان أنيق وختم شمعي ملكي أصلي.",
+        image: "/gift-wrap/paper-wrap.jpg",
+        active: true,
+      },
+      {
+        id: "custom-box",
+        name: "Bespoke Keepsake Gift Box",
+        nameAr: "صندوق هدايا ملكي ممغنط ومخملي",
+        price: 50,
+        description: "Rigid magnetic presentation box, champagne silk velvet cushioning, ribbon and wax emblem.",
+        descriptionAr: "صندوق فاخر ببطانة حريرية مخملية وشريط حريري وختم راميليت الملكي المميز.",
+        image: "/gift-wrap/custom-box.jpg",
+        badge: "Most Popular",
+        badgeAr: "الأكثر طلباً",
+        active: true,
+      },
+      {
+        id: "flowers-chocolates",
+        name: "Royal VIP Box with Flowers & Chocolates",
+        nameAr: "باقة ملكية مع ورود طبيعية وشوكولاتة سويسرية",
+        price: 100,
+        description: "Lavish presentation box, preserved Ecuadorian roses, and gourmet gold-wrapped Swiss chocolates.",
+        descriptionAr: "صندوق ملكي متكامل مع باقة ورود إكوادورية دائمة، وشوكولاتة سويسرية فاخرة وبطاقة خاصة.",
+        image: "/gift-wrap/flowers-chocolate-box.jpg",
+        badge: "Ultimate Luxury",
+        badgeAr: "الفخامة المطلقة",
+        active: true,
+      },
+    ],
   },
   AE: {
     code: "AE",
@@ -144,6 +206,54 @@ export const COUNTRIES: Record<CountryCode, CountryConfig> = {
         badge: "0% Interest",
       },
     ],
+    giftWrapOptions: [
+      {
+        id: "free-card",
+        name: "Complimentary Luxury Message Card",
+        nameAr: "بطاقة إهداء فاخرة مجانية",
+        price: 0,
+        description: "Handwritten personal note on our signature gold-embossed card with a wax seal envelope.",
+        descriptionAr: "رسالة مكتوبة بخط اليد على بطاقة مذهبة ومغلفة بختم شمعي مميز ومغلف ملكي.",
+        image: "",
+        badge: "Free",
+        badgeAr: "مجاناً",
+        active: true,
+      },
+      {
+        id: "paper-wrap",
+        name: "Classic Artisanal Paper Wrap",
+        nameAr: "تغليف ورقي فاخر بشريط حريري",
+        price: 10,
+        description: "Textured cream & gold foil gift paper with hand-tied satin ribbon and royal wax seal stamp.",
+        descriptionAr: "ورق تغليف كريمي فاخر بنقوش ذهبية مع شريط ستان أنيق وختم شمعي ملكي أصلي.",
+        image: "/gift-wrap/paper-wrap.jpg",
+        active: true,
+      },
+      {
+        id: "custom-box",
+        name: "Bespoke Keepsake Gift Box",
+        nameAr: "صندوق هدايا ملكي ممغنط ومخملي",
+        price: 50,
+        description: "Rigid magnetic presentation box, champagne silk velvet cushioning, ribbon and wax emblem.",
+        descriptionAr: "صندوق فاخر ببطانة حريرية مخملية وشريط حريري وختم راميليت الملكي المميز.",
+        image: "/gift-wrap/custom-box.jpg",
+        badge: "Most Popular",
+        badgeAr: "الأكثر طلباً",
+        active: true,
+      },
+      {
+        id: "flowers-chocolates",
+        name: "Royal VIP Box with Flowers & Chocolates",
+        nameAr: "باقة ملكية مع ورود طبيعية وشوكولاتة سويسرية",
+        price: 100,
+        description: "Lavish presentation box, preserved Ecuadorian roses, and gourmet gold-wrapped Swiss chocolates.",
+        descriptionAr: "صندوق ملكي متكامل مع باقة ورود إكوادورية دائمة، وشوكولاتة سويسرية فاخرة وبطاقة خاصة.",
+        image: "/gift-wrap/flowers-chocolate-box.jpg",
+        badge: "Ultimate Luxury",
+        badgeAr: "الفخامة المطلقة",
+        active: true,
+      },
+    ],
   },
   BH: {
     code: "BH",
@@ -201,6 +311,54 @@ export const COUNTRIES: Record<CountryCode, CountryConfig> = {
         nameAr: "بطاقة الائتمان / الخصم",
         description: "Visa, Mastercard & GCC cards via Tap Bahrain.",
         descriptionAr: "فيزا، ماستركارد وبطاقات دول الخليج عبر تاب البحرين.",
+      },
+    ],
+    giftWrapOptions: [
+      {
+        id: "free-card",
+        name: "Complimentary Luxury Message Card",
+        nameAr: "بطاقة إهداء فاخرة مجانية",
+        price: 0,
+        description: "Handwritten personal note on our signature gold-embossed card with a wax seal envelope.",
+        descriptionAr: "رسالة مكتوبة بخط اليد على بطاقة مذهبة ومغلفة بختم شمعي مميز ومغلف ملكي.",
+        image: "",
+        badge: "Free",
+        badgeAr: "مجاناً",
+        active: true,
+      },
+      {
+        id: "paper-wrap",
+        name: "Classic Artisanal Paper Wrap",
+        nameAr: "تغليف ورقي فاخر بشريط حريري",
+        price: 1,
+        description: "Textured cream & gold foil gift paper with hand-tied satin ribbon and royal wax seal stamp.",
+        descriptionAr: "ورق تغليف كريمي فاخر بنقوش ذهبية مع شريط ستان أنيق وختم شمعي ملكي أصلي.",
+        image: "/gift-wrap/paper-wrap.jpg",
+        active: true,
+      },
+      {
+        id: "custom-box",
+        name: "Bespoke Keepsake Gift Box",
+        nameAr: "صندوق هدايا ملكي ممغنط ومخملي",
+        price: 5,
+        description: "Rigid magnetic presentation box, champagne silk velvet cushioning, ribbon and wax emblem.",
+        descriptionAr: "صندوق فاخر ببطانة حريرية مخملية وشريط حريري وختم راميليت الملكي المميز.",
+        image: "/gift-wrap/custom-box.jpg",
+        badge: "Most Popular",
+        badgeAr: "الأكثر طلباً",
+        active: true,
+      },
+      {
+        id: "flowers-chocolates",
+        name: "Royal VIP Box with Flowers & Chocolates",
+        nameAr: "باقة ملكية مع ورود طبيعية وشوكولاتة سويسرية",
+        price: 10,
+        description: "Lavish presentation box, preserved Ecuadorian roses, and gourmet gold-wrapped Swiss chocolates.",
+        descriptionAr: "صندوق ملكي متكامل مع باقة ورود إكوادورية دائمة، وشوكولاتة سويسرية فاخرة وبطاقة خاصة.",
+        image: "/gift-wrap/flowers-chocolate-box.jpg",
+        badge: "Ultimate Luxury",
+        badgeAr: "الفخامة المطلقة",
+        active: true,
       },
     ],
   },

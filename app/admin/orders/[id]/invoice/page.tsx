@@ -50,6 +50,8 @@ export default async function AdminOrderInvoicePage({ params }: InvoicePageProps
     isGift: orderRaw.isGift,
     giftMessage: orderRaw.giftMessage,
     hasGiftWrap: orderRaw.hasGiftWrap,
+    giftWrapOptionId: orderRaw.giftWrapOptionId,
+    giftWrapName: orderRaw.giftWrapName,
     giftWrapFee: Number(orderRaw.giftWrapFee || 0),
     paymentGatewayRef: orderRaw.paymentGatewayRef,
     carrierName: orderRaw.carrierName,

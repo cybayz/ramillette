@@ -365,6 +365,8 @@ model Order {
   isGift            Boolean           @default(false)
   giftMessage       String?           @db.Text
   hasGiftWrap       Boolean           @default(false)
+  giftWrapOptionId  String?
+  giftWrapName      String?
   giftWrapFee       Decimal           @default(0.00) @db.Decimal(10, 2)
   subtotal          Decimal           @db.Decimal(10, 2)
   discount          Decimal           @default(0.00) @db.Decimal(10, 2)
@@ -478,6 +480,7 @@ model Country {
   freeShippingThreshold Decimal  @default(900) @db.Decimal(10, 3)
   giftWrapFee           Decimal  @default(25) @db.Decimal(10, 3)
   allowGiftWrap         Boolean  @default(true)
+  giftWrapOptions       String?  @db.Text // JSON string of GiftWrapOption[]
   taxRate               Decimal  @default(0) @db.Decimal(5, 2)
   taxName               String   @default("VAT")
   taxIncludedInPrice    Boolean  @default(false)

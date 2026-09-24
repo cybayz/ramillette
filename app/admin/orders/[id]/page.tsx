@@ -49,6 +49,8 @@ export default async function AdminOrderDetailPage({ params }: OrderPageProps) {
     isGift: orderRaw.isGift,
     giftMessage: orderRaw.giftMessage,
     hasGiftWrap: orderRaw.hasGiftWrap,
+    giftWrapOptionId: orderRaw.giftWrapOptionId,
+    giftWrapName: orderRaw.giftWrapName,
     giftWrapFee: Number(orderRaw.giftWrapFee || 0),
     paymentGatewayRef: orderRaw.paymentGatewayRef,
     carrierName: orderRaw.carrierName,

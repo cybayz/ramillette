@@ -27,6 +27,9 @@ export async function GET() {
         freeShippingThreshold: Number(c.freeShippingThreshold),
         giftWrapFee: Number(c.giftWrapFee ?? 25),
         allowGiftWrap: c.allowGiftWrap ?? true,
+        giftWrapOptions: c.giftWrapOptions
+          ? JSON.parse(c.giftWrapOptions)
+          : (fallbackCountries[c.code as keyof typeof fallbackCountries]?.giftWrapOptions || fallbackCountries.QA.giftWrapOptions),
         taxRate: Number(c.taxRate),
         taxName: c.taxName,
         taxIncludedInPrice: c.taxIncludedInPrice,

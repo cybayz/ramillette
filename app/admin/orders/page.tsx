@@ -42,6 +42,8 @@ export default async function AdminOrdersPage() {
       isGift: o.isGift,
       giftMessage: o.giftMessage,
       hasGiftWrap: o.hasGiftWrap,
+      giftWrapOptionId: o.giftWrapOptionId,
+      giftWrapName: o.giftWrapName,
       giftWrapFee: Number(o.giftWrapFee || 0),
       paymentGatewayRef: o.paymentGatewayRef,
       carrierName: o.carrierName,

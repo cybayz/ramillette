@@ -17,6 +17,8 @@ import {
   Info,
   Gift,
 } from "lucide-react";
+import Image from "next/image";
+import { GiftWrapOption } from "@/lib/country/config";
 
 export interface AdminCountry {
   code: string;
@@ -33,6 +35,7 @@ export interface AdminCountry {
   freeShippingThreshold: number;
   giftWrapFee?: number;
   allowGiftWrap?: boolean;
+  giftWrapOptions?: GiftWrapOption[];
   taxRate: number;
   taxName: string;
   taxIncludedInPrice: boolean;
@@ -78,6 +81,7 @@ export function CountryManager({ initialCountries }: CountryManagerProps) {
   const [freeShippingThreshold, setFreeShippingThreshold] = useState(900);
   const [giftWrapFee, setGiftWrapFee] = useState(25);
   const [allowGiftWrap, setAllowGiftWrap] = useState(true);
+  const [giftWrapOptions, setGiftWrapOptions] = useState<GiftWrapOption[]>([]);
   const [taxRate, setTaxRate] = useState(0);
   const [taxName, setTaxName] = useState("VAT");
   const [defaultCity, setDefaultCity] = useState("");
@@ -112,6 +116,51 @@ export function CountryManager({ initialCountries }: CountryManagerProps) {
     setFreeShippingThreshold(900);
     setGiftWrapFee(25);
     setAllowGiftWrap(true);
+    setGiftWrapOptions([
+      {
+        id: "free-card",
+        name: "Complimentary Luxury Message Card",
+        nameAr: "بطاقة إهداء فاخرة مجانية",
+        price: 0,
+        description: "Handwritten personal note on our signature gold-embossed card with a wax seal envelope.",
+        descriptionAr: "رسالة مكتوبة بخط اليد على بطاقة مذهبة ومغلفة بختم شمعي مميز ومغلف ملكي.",
+        image: "",
+        badge: "Free",
+        active: true,
+      },
+      {
+        id: "paper-wrap",
+        name: "Classic Artisanal Paper Wrap",
+        nameAr: "تغليف ورقي فاخر بشريط حريري",
+        price: 10,
+        description: "Textured cream & gold foil gift paper with hand-tied satin ribbon and royal wax seal stamp.",
+        descriptionAr: "ورق تغليف كريمي فاخر بنقوش ذهبية مع شريط ستان أنيق وختم شمعي ملكي أصلي.",
+        image: "/gift-wrap/paper-wrap.jpg",
+        active: true,
+      },
+      {
+        id: "custom-box",
+        name: "Bespoke Keepsake Gift Box",
+        nameAr: "صندوق هدايا ملكي ممغنط ومخملي",
+        price: 50,
+        description: "Rigid magnetic presentation box, champagne silk velvet cushioning, ribbon and wax emblem.",
+        descriptionAr: "صندوق فاخر ببطانة حريرية مخملية وشريط حريري وختم راميليت الملكي المميز.",
+        image: "/gift-wrap/custom-box.jpg",
+        badge: "Most Popular",
+        active: true,
+      },
+      {
+        id: "flowers-chocolates",
+        name: "Royal VIP Box with Flowers & Chocolates",
+        nameAr: "باقة ملكية مع ورود طبيعية وشوكولاتة سويسرية",
+        price: 100,
+        description: "Lavish presentation box, preserved Ecuadorian roses, and gourmet gold-wrapped Swiss chocolates.",
+        descriptionAr: "صندوق ملكي متكامل مع باقة ورود إكوادورية دائمة، وشوكولاتة سويسرية فاخرة وبطاقة خاصة.",
+        image: "/gift-wrap/flowers-chocolate-box.jpg",
+        badge: "Ultimate Luxury",
+        active: true,
+      },
+    ]);
     setTaxRate(15.0);
     setTaxName("VAT (15%)");
     setDefaultCity("Riyadh");
@@ -150,6 +199,55 @@ export function CountryManager({ initialCountries }: CountryManagerProps) {
     setFreeShippingThreshold(c.freeShippingThreshold);
     setGiftWrapFee(c.giftWrapFee !== undefined ? c.giftWrapFee : 25);
     setAllowGiftWrap(c.allowGiftWrap !== undefined ? c.allowGiftWrap : true);
+    setGiftWrapOptions(
+      c.giftWrapOptions && c.giftWrapOptions.length > 0
+        ? c.giftWrapOptions
+        : [
+            {
+              id: "free-card",
+              name: "Complimentary Luxury Message Card",
+              nameAr: "بطاقة إهداء فاخرة مجانية",
+              price: 0,
+              description: "Handwritten personal note on our signature gold-embossed card with a wax seal envelope.",
+              descriptionAr: "رسالة مكتوبة بخط اليد على بطاقة مذهبة ومغلفة بختم شمعي مميز ومغلف ملكي.",
+              image: "",
+              badge: "Free",
+              active: true,
+            },
+            {
+              id: "paper-wrap",
+              name: "Classic Artisanal Paper Wrap",
+              nameAr: "تغليف ورقي فاخر بشريط حريري",
+              price: c.currency === "BHD" ? 1 : 10,
+              description: "Textured cream & gold foil gift paper with hand-tied satin ribbon and royal wax seal stamp.",
+              descriptionAr: "ورق تغليف كريمي فاخر بنقوش ذهبية مع شريط ستان أنيق وختم شمعي ملكي أصلي.",
+              image: "/gift-wrap/paper-wrap.jpg",
+              active: true,
+            },
+            {
+              id: "custom-box",
+              name: "Bespoke Keepsake Gift Box",
+              nameAr: "صندوق هدايا ملكي ممغنط ومخملي",
+              price: c.currency === "BHD" ? 5 : 50,
+              description: "Rigid magnetic presentation box, champagne silk velvet cushioning, ribbon and wax emblem.",
+              descriptionAr: "صندوق فاخر ببطانة حريرية مخملية وشريط حريري وختم راميليت الملكي المميز.",
+              image: "/gift-wrap/custom-box.jpg",
+              badge: "Most Popular",
+              active: true,
+            },
+            {
+              id: "flowers-chocolates",
+              name: "Royal VIP Box with Flowers & Chocolates",
+              nameAr: "باقة ملكية مع ورود طبيعية وشوكولاتة سويسرية",
+              price: c.currency === "BHD" ? 10 : 100,
+              description: "Lavish presentation box, preserved Ecuadorian roses, and gourmet gold-wrapped Swiss chocolates.",
+              descriptionAr: "صندوق ملكي متكامل مع باقة ورود إكوادورية دائمة، وشوكولاتة سويسرية فاخرة وبطاقة خاصة.",
+              image: "/gift-wrap/flowers-chocolate-box.jpg",
+              badge: "Ultimate Luxury",
+              active: true,
+            },
+          ]
+    );
     setTaxRate(c.taxRate);
     setTaxName(c.taxName);
     setDefaultCity(c.defaultCity);
@@ -252,6 +350,7 @@ export function CountryManager({ initialCountries }: CountryManagerProps) {
         freeShippingThreshold: Number(freeShippingThreshold),
         giftWrapFee: Number(giftWrapFee),
         allowGiftWrap: Boolean(allowGiftWrap),
+        giftWrapOptions,
         taxRate: Number(taxRate),
         taxName: taxName.trim(),
         defaultCity: defaultCity.trim() || (citiesArray[0] || "City"),
@@ -430,11 +529,11 @@ export function CountryManager({ initialCountries }: CountryManagerProps) {
                     <Gift size={14} className="text-[#b6713e]" />
                     <div>
                       <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 block">
-                        Luxury Gift Wrap
+                        Luxury Gift Wrap Packages
                       </span>
                       <span className="font-bold text-[#1c1c1c] text-xs">
                         {c.allowGiftWrap !== false
-                          ? `${c.currency} ${c.giftWrapFee ?? 25}`
+                          ? `${c.giftWrapOptions ? c.giftWrapOptions.filter(o => o.active !== false && o.price > 0).length : 3} packages configured`
                           : "Disabled"}
                       </span>
                     </div>
@@ -446,7 +545,7 @@ export function CountryManager({ initialCountries }: CountryManagerProps) {
                         : "bg-neutral-200 text-neutral-600"
                     }`}
                   >
-                    {c.allowGiftWrap !== false ? "Checkout Option Active" : "Disabled in Checkout"}
+                    {c.allowGiftWrap !== false ? "Active in Checkout" : "Disabled"}
                   </span>
                 </div>
               </div>
@@ -728,12 +827,12 @@ export function CountryManager({ initialCountries }: CountryManagerProps) {
                     </div>
                   </div>
 
-                  {/* Luxury Gift Wrap Settings */}
-                  <div className="p-3.5 bg-neutral-50 border border-neutral-200 rounded-[8px] space-y-3 sm:col-span-2">
+                  {/* Luxury Gift Wrap Settings & Packages */}
+                  <div className="p-4 bg-neutral-50 border border-neutral-200 rounded-[8px] space-y-3 sm:col-span-2">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2 text-xs font-bold text-[#1c1c1c]">
                         <Gift size={15} className="text-[#b6713e]" />
-                        <span>Luxury Gift Wrap Configuration ({currency})</span>
+                        <span>Luxury Gift Wrap Packages & Regional Pricing ({currency})</span>
                       </div>
                       <label className="flex items-center gap-2 cursor-pointer">
                         <input
@@ -748,30 +847,82 @@ export function CountryManager({ initialCountries }: CountryManagerProps) {
                       </label>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                      <div>
-                        <label className="block text-[11px] font-semibold text-neutral-700 mb-1">
-                          Gift Wrap Fee ({currency}) *
-                        </label>
-                        <input
-                          type="number"
-                          step="0.1"
-                          disabled={!allowGiftWrap}
-                          required
-                          value={giftWrapFee}
-                          onChange={(e) => setGiftWrapFee(parseFloat(e.target.value) || 0)}
-                          className="w-full text-xs px-3 py-2 border border-neutral-300 rounded font-mono font-bold focus:outline-none focus:border-[#b6713e] disabled:opacity-50"
-                        />
-                        <span className="text-[10px] text-neutral-400 block mt-0.5">
-                          Amount added to customer bill when they select &ldquo;Include gift wrap&rdquo; at checkout.
-                        </span>
-                      </div>
-                      <div className="p-2.5 bg-white border border-[#e5e5e5] rounded text-[11px] text-neutral-500 flex flex-col justify-center">
-                        <span className="font-semibold text-neutral-700 mb-0.5">Checkout Experience:</span>
-                        <span>
-                          When customer checks &ldquo;This item is a gift&rdquo;, they will be offered this optional gift wrap service for {currency} {giftWrapFee || 0} alongside a complimentary handwritten gift message card.
-                        </span>
-                      </div>
+                    <p className="text-[11px] text-neutral-500">
+                      Configure regional pricing and presentation options for gift wrap. Customers will see these sample photos and prices when selecting gift wrap at checkout.
+                    </p>
+
+                    {/* Gift Wrap Packages List */}
+                    <div className="space-y-3 pt-2">
+                      {giftWrapOptions.map((opt, idx) => (
+                        <div
+                          key={opt.id || `gwo-${idx}`}
+                          className="p-3 bg-white border border-[#e5e5e5] rounded-[6px] flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            {opt.image ? (
+                              <div className="relative w-12 h-12 rounded border border-[#e5e5e5] overflow-hidden shrink-0 bg-neutral-50">
+                                <Image
+                                  src={opt.image}
+                                  alt={opt.name}
+                                  fill
+                                  className="object-cover"
+                                  sizes="48px"
+                                />
+                              </div>
+                            ) : (
+                              <div className="w-12 h-12 rounded border border-dashed border-[#d5d5d5] flex items-center justify-center text-neutral-400 shrink-0 bg-neutral-50">
+                                <Gift size={18} />
+                              </div>
+                            )}
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="font-bold text-[#1c1c1c] truncate">{opt.name}</span>
+                                {opt.badge && (
+                                  <span className="text-[9px] bg-[#faedcd] text-[#b6713e] font-bold px-1.5 py-0.5 rounded">
+                                    {opt.badge}
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-[11px] text-neutral-500 line-clamp-1 mt-0.5">
+                                {opt.description}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-3 shrink-0 self-end sm:self-center">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[11px] text-neutral-400 font-semibold">{currency}</span>
+                              <input
+                                type="number"
+                                step="1"
+                                disabled={!allowGiftWrap}
+                                value={opt.price}
+                                onChange={(e) => {
+                                  const newPrice = parseFloat(e.target.value) || 0;
+                                  setGiftWrapOptions((prev) =>
+                                    prev.map((o, i) => (i === idx ? { ...o, price: newPrice } : o))
+                                  );
+                                }}
+                                className="w-20 text-xs px-2 py-1.5 border border-neutral-300 rounded font-mono font-bold text-right focus:outline-none focus:border-[#b6713e]"
+                              />
+                            </div>
+                            <label className="flex items-center gap-1 text-[11px] text-neutral-600 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={opt.active !== false}
+                                onChange={(e) => {
+                                  const isActive = e.target.checked;
+                                  setGiftWrapOptions((prev) =>
+                                    prev.map((o, i) => (i === idx ? { ...o, active: isActive } : o))
+                                  );
+                                }}
+                                className="w-3.5 h-3.5 text-[#b6713e] rounded"
+                              />
+                              <span>Active</span>
+                            </label>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 </div>

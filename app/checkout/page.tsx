@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { useCartStore } from "@/lib/store/useCartStore";
 import { useCountryStore } from "@/lib/store/useCountryStore";
-import { resolvePaymentMethods } from "@/lib/country/config";
+import { resolvePaymentMethods, COUNTRIES, CountryCode, GiftWrapOption } from "@/lib/country/config";
 import { Button } from "@/components/ui/Button";
 import { formatPrice } from "@/lib/utils";
 import { CheckoutCoupons } from "@/components/checkout/CheckoutCoupons";
@@ -24,6 +24,7 @@ import {
   MapPin,
   Plus,
   Gift,
+  Check,
 } from "lucide-react";
 
 interface SavedAddress {
@@ -68,7 +69,7 @@ export default function CheckoutPage() {
   const [paymentMethod, setPaymentMethod] = useState<string>("COD");
   const [isGift, setIsGift] = useState(false);
   const [giftMessage, setGiftMessage] = useState("");
-  const [hasGiftWrap, setHasGiftWrap] = useState(false);
+  const [selectedGiftWrapOptionId, setSelectedGiftWrapOptionId] = useState<string>("free-card");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
@@ -197,8 +198,22 @@ export default function CheckoutPage() {
   const discount = getDiscountTotal();
   const shipping = subtotal >= config.freeShippingThreshold ? 0.0 : config.standardShippingFee;
   const allowGiftWrap = (config as any).allowGiftWrap !== false;
-  const giftWrapFee = (config as any).giftWrapFee !== undefined ? Number((config as any).giftWrapFee) : 25;
-  const giftWrapAmount = (isGift && hasGiftWrap && allowGiftWrap) ? giftWrapFee : 0;
+  const availableGiftWrapOptions: GiftWrapOption[] = (
+    (config as any).giftWrapOptions && Array.isArray((config as any).giftWrapOptions) && (config as any).giftWrapOptions.length > 0
+      ? (config as any).giftWrapOptions
+      : (COUNTRIES[country as CountryCode]?.giftWrapOptions || [])
+  ).filter((opt: GiftWrapOption) => opt.active !== false);
+
+  const selectedGiftWrapOption =
+    availableGiftWrapOptions.find((opt) => opt.id === selectedGiftWrapOptionId) ||
+    availableGiftWrapOptions[0] ||
+    null;
+
+  const hasGiftWrap = Boolean(isGift && selectedGiftWrapOption && Number(selectedGiftWrapOption.price) > 0);
+  const giftWrapAmount = (isGift && selectedGiftWrapOption && allowGiftWrap)
+    ? Number(selectedGiftWrapOption.price || 0)
+    : 0;
+
   const taxableAmount = Math.max(0, subtotal - discount);
   const taxRate = (config as any).taxRate ?? (country === "AE" ? 5 : country === "BH" ? 10 : 0);
   const taxAmount = Number(((taxableAmount * taxRate) / 100).toFixed(config.currencyDecimals || 2));
@@ -226,6 +241,9 @@ export default function CheckoutPage() {
         isGift,
         giftMessage: isGift && giftMessage.trim() ? giftMessage.trim() : undefined,
         hasGiftWrap: isGift && hasGiftWrap && allowGiftWrap,
+        giftWrapOptionId: isGift && selectedGiftWrapOption ? selectedGiftWrapOption.id : undefined,
+        giftWrapName: isGift && selectedGiftWrapOption ? selectedGiftWrapOption.name : undefined,
+        giftWrapFee: giftWrapAmount,
         items: items.map((i) => ({
           productId: i.productId,
           variantId: i.variantId,
@@ -563,8 +581,8 @@ export default function CheckoutPage() {
                     checked={isGift}
                     onChange={(e) => {
                       setIsGift(e.target.checked);
-                      if (!e.target.checked) {
-                        setHasGiftWrap(false);
+                      if (e.target.checked && (!selectedGiftWrapOptionId || !availableGiftWrapOptions.some(o => o.id === selectedGiftWrapOptionId))) {
+                        setSelectedGiftWrapOptionId(availableGiftWrapOptions[0]?.id || "free-card");
                       }
                     }}
                     className="mt-0.5 w-4 h-4 text-[#b6713e] rounded border-neutral-300 focus:ring-[#b6713e] cursor-pointer"
@@ -578,20 +596,20 @@ export default function CheckoutPage() {
                     </div>
                     <p className="text-[11px] text-neutral-500 mt-1 leading-relaxed">
                       {isAr
-                        ? "أضف بطاقة إهداء شخصية مجانية وتغليف فاخر بصندوق راميليت الملكي."
-                        : "Include a personal message card and optional signature boutique gift wrapping."}
+                        ? "أضف بطاقة إهداء شخصية واختر من باقات التغليف الملكي الحصرية."
+                        : "Include a personal message card and select from our bespoke luxury gift presentations."}
                     </p>
                   </div>
                 </label>
 
-                {/* Expanded Gift Options (Gift Message & Optional Gift Wrapping) */}
+                {/* Expanded Gift Options (Gift Message & Multi-tier Gift Wrap Selection) */}
                 {isGift && (
-                  <div className="pt-2 space-y-4 animate-in fade-in-50 duration-300">
+                  <div className="pt-2 space-y-5 animate-in fade-in-50 duration-300">
                     {/* Gift Message Textbox */}
-                    <div className="p-4 bg-[#fbf9f5] rounded-[6px] border border-[#f0ece1] space-y-2">
+                    <div className="p-4 bg-[#fbf9f5] rounded-[8px] border border-[#f0ece1] space-y-2">
                       <div className="flex items-center justify-between">
                         <label className="block text-xs font-bold uppercase tracking-wider text-neutral-700">
-                          {isAr ? "رسالة الإهداء (بطاقة فاخرة مجانية)" : "Gift Message (Complimentary Card Included)"}
+                          {isAr ? "رسالة الإهداء (بطاقة فاخرة مجانية مع كل هدية)" : "Gift Message (Complimentary Luxury Card Included)"}
                         </label>
                         <span className="text-[10px] text-neutral-400 font-mono">
                           {giftMessage.length}/300
@@ -607,62 +625,151 @@ export default function CheckoutPage() {
                             ? "اكتب كلمتك الخاصة هنا لتتم كتابتها بأناقة على بطاقة الإهداء الملكية..."
                             : "Write a personal message to be handwritten or printed on our signature luxury card..."
                         }
-                        className="w-full text-xs p-3 border border-[#e5e5e5] rounded-[5px] focus:outline-none focus:border-[#b6713e] bg-white leading-relaxed"
+                        className="w-full text-xs p-3 border border-[#e5e5e5] rounded-[6px] focus:outline-none focus:border-[#b6713e] bg-white leading-relaxed"
                       />
-                      <p className="text-[10px] text-neutral-400 flex items-center gap-1">
+                      <p className="text-[10px] text-neutral-500 flex items-center gap-1">
                         <span>✨</span>
                         <span>
                           {isAr
-                            ? "توضع بطاقة الإهداء في مغلف مذهب ومختوم بشعار راميليت."
-                            : "Placed inside a gold-foil envelope with the Ramillette royal emblem."}
+                            ? "توضع بطاقة الإهداء في مغلف مذهب ومختوم بشعار راميليت الملكي."
+                            : "Placed inside a gold-foil envelope with the Ramillette royal seal."}
                         </span>
                       </p>
                     </div>
 
-                    {/* Gift Wrap Checkbox with Admin Specified Fee for the Active Region */}
-                    {allowGiftWrap && (
-                      <label
-                        htmlFor="include-gift-wrap-checkbox"
-                        className={`flex items-start gap-3.5 p-4 rounded-[8px] border transition-all cursor-pointer ${
-                          hasGiftWrap
-                            ? "bg-[#faedcd]/30 border-[#b6713e] ring-1 ring-[#b6713e]/70 shadow-xs"
-                            : "bg-white border-[#e5e5e5] hover:border-[#b6713e]/50"
-                        }`}
-                      >
-                        <input
-                          id="include-gift-wrap-checkbox"
-                          type="checkbox"
-                          checked={hasGiftWrap}
-                          onChange={(e) => setHasGiftWrap(e.target.checked)}
-                          className="mt-1 w-4 h-4 text-[#b6713e] rounded border-neutral-300 focus:ring-[#b6713e] cursor-pointer"
-                        />
-                        <div className="flex-1">
-                          <div className="flex flex-wrap items-center justify-between gap-2">
-                            <span className="text-xs font-bold text-[#1c1c1c] flex items-center gap-1.5">
-                              <Sparkles size={14} className="text-[#b6713e]" />
-                              <span>
-                                {isAr ? "إضافة تغليف هدايا ملكي فاخر" : "Include Signature Luxury Gift Wrap"}
-                              </span>
-                            </span>
-                            <span className="inline-flex items-center text-xs font-extrabold text-[#b6713e] bg-[#faedcd] px-2.5 py-0.5 rounded border border-[#ecdac1]">
-                              +{formatPrice(giftWrapFee, country)}
-                            </span>
-                          </div>
-                          <p className="text-[11px] text-neutral-600 mt-1 leading-relaxed">
-                            {isAr
-                              ? "صندوق هدايا فاخر مغلف يدوياً بشريط مخملي حريري وختم راميليت الشمعي المذهب."
-                              : "Hand-wrapped in our signature rigid gift box with a double-faced silk ribbon and wax seal."}
-                          </p>
-                          <div className="mt-2 flex items-center gap-2 text-[10px] text-neutral-400">
-                            <CheckCircle2 size={12} className="text-[#0d9d00]" />
-                            <span>
+                    {/* Multi-tier Gift Packaging & Presentation Options */}
+                    {allowGiftWrap && availableGiftWrapOptions.length > 0 && (
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <h3 className="text-xs font-bold text-[#1c1c1c] flex items-center gap-1.5 uppercase tracking-wide">
+                              <Sparkles size={13} className="text-[#b6713e]" />
+                              <span>{isAr ? "اختر طريقة التغليف والتقديم" : "Select Gift Packaging & Presentation"}</span>
+                            </h3>
+                            <p className="text-[11px] text-neutral-500 mt-0.5">
                               {isAr
-                                ? `السعر المحدد لمنطقة ${config.name}: ${formatPrice(giftWrapFee, country)} يُضاف للفاتورة`
-                                : `Region price for ${config.name}: +${formatPrice(giftWrapFee, country)} added to order total`}
-                            </span>
+                                ? "خيارات مصممة بعناية لتجعل تجربة فتح الهدية لا تُنسى"
+                                : "Curated bespoke presentation styles for your special occasions"}
+                            </p>
                           </div>
+                          <span className="text-[10px] font-semibold text-neutral-400 bg-neutral-100 px-2 py-0.5 rounded">
+                            {availableGiftWrapOptions.length} {isAr ? "خيارات متاحة" : "Options"}
+                          </span>
                         </div>
-                      </label>
+
+                        {/* Options Grid */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                          {availableGiftWrapOptions.map((opt) => {
+                            const isSelected = selectedGiftWrapOptionId === opt.id;
+                            const isFree = Number(opt.price) === 0;
+
+                            return (
+                              <div
+                                key={opt.id}
+                                onClick={() => setSelectedGiftWrapOptionId(opt.id)}
+                                className={`group relative rounded-[10px] border overflow-hidden transition-all cursor-pointer flex flex-col justify-between ${
+                                  isSelected
+                                    ? "border-[#b6713e] bg-[#faedcd]/20 ring-2 ring-[#b6713e]/70 shadow-sm"
+                                    : "border-[#e5e5e5] bg-white hover:border-[#b6713e]/50 hover:bg-[#fbf9f5]/50"
+                                }`}
+                              >
+                                {/* Sample Photo or Graphic Header */}
+                                {opt.image ? (
+                                  <div className="relative w-full h-36 bg-neutral-100 overflow-hidden">
+                                    <Image
+                                      src={opt.image}
+                                      alt={isAr && opt.nameAr ? opt.nameAr : opt.name}
+                                      fill
+                                      sizes="(max-width: 640px) 100vw, 300px"
+                                      className="object-cover group-hover:scale-105 transition-transform duration-300"
+                                    />
+                                    {opt.badge && (
+                                      <span className="absolute top-2.5 right-2.5 text-[10px] font-bold tracking-wider uppercase px-2 py-0.5 rounded-full bg-[#1c1c1c]/85 text-[#d4af37] border border-[#d4af37]/40 shadow-xs backdrop-blur-xs">
+                                        {isAr && opt.badgeAr ? opt.badgeAr : opt.badge}
+                                      </span>
+                                    )}
+                                    {isSelected && (
+                                      <span className="absolute top-2.5 left-2.5 flex items-center gap-1 text-[10px] font-bold bg-[#b6713e] text-white px-2 py-0.5 rounded-full shadow-xs">
+                                        <Check size={11} className="stroke-[3]" />
+                                        <span>{isAr ? "تم الاختيار" : "Selected"}</span>
+                                      </span>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <div className="relative w-full h-28 bg-gradient-to-br from-[#fcf9f5] via-[#faedcd]/35 to-[#f6ecdd] flex flex-col items-center justify-center p-3 text-center border-b border-[#f0ece1]">
+                                    <div className="w-10 h-10 rounded-full bg-white shadow-xs border border-[#ecdac1] flex items-center justify-center text-[#b6713e] mb-1">
+                                      <Gift size={20} />
+                                    </div>
+                                    <span className="text-[11px] font-bold text-[#8c5828]">
+                                      {isAr ? "بطاقة إهداء راميليت الملكية" : "Ramillette Royal Note Card"}
+                                    </span>
+                                    {opt.badge && (
+                                      <span className="absolute top-2.5 right-2.5 text-[10px] font-bold tracking-wider uppercase px-2 py-0.5 rounded-full bg-[#1c1c1c]/85 text-[#d4af37] border border-[#d4af37]/40 shadow-xs backdrop-blur-xs">
+                                        {isAr && opt.badgeAr ? opt.badgeAr : opt.badge}
+                                      </span>
+                                    )}
+                                    {isSelected && (
+                                      <span className="absolute top-2.5 left-2.5 flex items-center gap-1 text-[10px] font-bold bg-[#b6713e] text-white px-2 py-0.5 rounded-full shadow-xs">
+                                        <Check size={11} className="stroke-[3]" />
+                                        <span>{isAr ? "تم الاختيار" : "Selected"}</span>
+                                      </span>
+                                    )}
+                                  </div>
+                                )}
+
+                                {/* Option Info & Pricing */}
+                                <div className="p-3.5 space-y-2 flex-1 flex flex-col justify-between">
+                                  <div>
+                                    <div className="flex items-start justify-between gap-2">
+                                      <div className="flex items-center gap-2">
+                                        <div
+                                          className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 transition-colors ${
+                                            isSelected
+                                              ? "border-[#b6713e] bg-[#b6713e]"
+                                              : "border-neutral-300 bg-white"
+                                          }`}
+                                        >
+                                          {isSelected && (
+                                            <div className="w-1.5 h-1.5 rounded-full bg-white" />
+                                          )}
+                                        </div>
+                                        <h4 className="text-xs font-bold text-[#1c1c1c] leading-tight">
+                                          {isAr && opt.nameAr ? opt.nameAr : opt.name}
+                                        </h4>
+                                      </div>
+                                      {isFree ? (
+                                        <span className="shrink-0 text-[10px] font-extrabold text-[#0d9d00] bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 uppercase">
+                                          {isAr ? "مجاناً" : "FREE"}
+                                        </span>
+                                      ) : (
+                                        <span className="shrink-0 text-xs font-extrabold text-[#b6713e] bg-[#faedcd] px-2 py-0.5 rounded-full border border-[#ecdac1] whitespace-nowrap">
+                                          +{formatPrice(opt.price, country)}
+                                        </span>
+                                      )}
+                                    </div>
+                                    <p className="text-[11px] text-neutral-600 mt-1.5 leading-relaxed line-clamp-2">
+                                      {isAr && opt.descriptionAr ? opt.descriptionAr : opt.description}
+                                    </p>
+                                  </div>
+
+                                  <div className="pt-2 flex items-center justify-between text-[10px] text-neutral-400 border-t border-neutral-100">
+                                    <span>{config.name}</span>
+                                    {isSelected ? (
+                                      <span className="text-[#b6713e] font-semibold flex items-center gap-1">
+                                        <Check size={10} /> {isAr ? "محدد للطلب" : "Selected"}
+                                      </span>
+                                    ) : (
+                                      <span className="group-hover:text-[#b6713e] transition-colors">
+                                        {isAr ? "انقر للاختيار" : "Click to select"}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
                     )}
                   </div>
                 )}
@@ -816,12 +923,16 @@ export default function CheckoutPage() {
                 {/* Gift Wrap / Gift Card Line Item in Summary */}
                 {isGift && (
                   <div className="flex justify-between items-center text-neutral-600 py-0.5">
-                    <span className="flex items-center gap-1.5">
-                      <Gift size={13} className="text-[#b6713e]" />
-                      <span>{hasGiftWrap ? (isAr ? "تغليف هدايا فاخر" : "Luxury Gift Wrap") : (isAr ? "بطاقة إهداء شخصية" : "Personal Gift Card")}</span>
+                    <span className="flex items-center gap-1.5 truncate max-w-[210px]">
+                      <Gift size={13} className="text-[#b6713e] shrink-0" />
+                      <span className="truncate">
+                        {selectedGiftWrapOption
+                          ? (isAr && selectedGiftWrapOption.nameAr ? selectedGiftWrapOption.nameAr : selectedGiftWrapOption.name)
+                          : (isAr ? "بطاقة إهداء شخصية" : "Personal Gift Card")}
+                      </span>
                     </span>
-                    <span className="font-semibold text-[#1c1c1c]">
-                      {hasGiftWrap ? (
+                    <span className="font-semibold text-[#1c1c1c] shrink-0">
+                      {giftWrapAmount > 0 ? (
                         <span className="text-[#b6713e]">+{formatPrice(giftWrapAmount, country)}</span>
                       ) : (
                         <span className="text-[#0d9d00] font-bold text-[10px] uppercase">{isAr ? "مجاناً" : "FREE"}</span>

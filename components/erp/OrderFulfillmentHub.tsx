@@ -60,6 +60,8 @@ interface OrderData {
   isGift?: boolean;
   giftMessage?: string | null;
   hasGiftWrap?: boolean;
+  giftWrapOptionId?: string | null;
+  giftWrapName?: string | null;
   giftWrapFee?: number;
   createdAt: string;
   items: OrderItem[];
@@ -381,7 +383,11 @@ export function OrderFulfillmentHub({ storeContext }: OrderFulfillmentHubProps) 
                             <Gift size={12} />
                             <span>GIFT ORDER</span>
                           </span>
-                          {ord.hasGiftWrap ? (
+                          {ord.giftWrapName ? (
+                            <span className="text-[9px] bg-[#b6713e] text-white px-1.5 py-0.5 rounded font-bold uppercase">
+                              🎁 {ord.giftWrapName}
+                            </span>
+                          ) : ord.hasGiftWrap ? (
                             <span className="text-[9px] bg-[#b6713e] text-white px-1.5 py-0.5 rounded font-bold">
                               LUXURY GIFT WRAP REQUIRED
                             </span>

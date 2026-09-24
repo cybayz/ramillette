@@ -64,6 +64,8 @@ export interface AdminOrder {
   isGift?: boolean;
   giftMessage?: string | null;
   hasGiftWrap?: boolean;
+  giftWrapOptionId?: string | null;
+  giftWrapName?: string | null;
   giftWrapFee?: number;
   paymentGatewayRef?: string | null;
   carrierName?: string | null;
@@ -419,7 +421,7 @@ export function OrdersTable({
                     {order.isGift && (
                       <span className="inline-flex items-center gap-1 mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#faedcd] text-[#b6713e]">
                         <Gift size={10} />
-                        <span>Gift {order.hasGiftWrap ? "• Wrapped" : ""}</span>
+                        <span>Gift {order.giftWrapName ? `• ${order.giftWrapName}` : (order.hasGiftWrap ? "• Wrapped" : "")}</span>
                       </span>
                     )}
                   </td>
@@ -608,9 +610,17 @@ export function OrdersTable({
                           <Gift size={12} />
                           <span>Gift Order Service</span>
                         </span>
-                        {selectedOrder.hasGiftWrap && (
+                        {selectedOrder.giftWrapName ? (
+                          <span className="text-[10px] bg-[#faedcd] px-1.5 py-0.5 rounded font-bold">
+                            {selectedOrder.giftWrapName}
+                          </span>
+                        ) : selectedOrder.hasGiftWrap ? (
                           <span className="text-[10px] bg-[#faedcd] px-1.5 py-0.5 rounded">
                             Luxury Wrapped
+                          </span>
+                        ) : (
+                          <span className="text-[10px] bg-neutral-100 text-neutral-600 px-1.5 py-0.5 rounded">
+                            Card Only
                           </span>
                         )}
                       </div>

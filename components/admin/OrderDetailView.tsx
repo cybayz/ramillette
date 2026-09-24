@@ -526,7 +526,12 @@ export function OrderDetailView({ initialOrder }: OrderDetailViewProps) {
                   </div>
                   <h3 className="font-bold text-[#1c1c1c]">Gift Order Service</h3>
                 </div>
-                {order.hasGiftWrap ? (
+                {order.giftWrapName ? (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-[#faedcd] text-[#b6713e] border border-[#ecdec1]">
+                    <Sparkles size={10} />
+                    <span>{order.giftWrapName}</span>
+                  </span>
+                ) : order.hasGiftWrap ? (
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-[#faedcd] text-[#b6713e] border border-[#ecdec1]">
                     <Sparkles size={10} />
                     <span>Gift Wrap Included</span>
@@ -538,9 +543,9 @@ export function OrderDetailView({ initialOrder }: OrderDetailViewProps) {
                 )}
               </div>
 
-              {order.hasGiftWrap && (
+              {(order.hasGiftWrap || Number(order.giftWrapFee) > 0) && (
                 <div className="p-2.5 rounded bg-white border border-[#ecdec1] text-[11px] text-[#b6713e] font-medium flex items-center justify-between">
-                  <span>Luxury Gift Wrap Added</span>
+                  <span>{order.giftWrapName || "Luxury Gift Wrap Added"}</span>
                   <span className="font-bold font-mono">+{formatPrice(order.giftWrapFee || 0, order.country)}</span>
                 </div>
               )}
