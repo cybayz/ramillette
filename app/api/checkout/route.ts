@@ -7,6 +7,7 @@ import { getPaymentProvider } from "@/lib/services/payment";
 import { getSmsProvider } from "@/lib/services/sms";
 import { getEmailProvider } from "@/lib/services/email";
 import { findOptimalFulfillmentStore, reserveStockForOrder } from "@/lib/inventory/inventoryService";
+import { generatePickupCode, generateQrDataUrl } from "@/lib/services/qr";
 
 export async function POST(request: Request) {
   try {
@@ -34,6 +35,10 @@ export async function POST(request: Request) {
       deliveryNotes,
       paymentMethod = "COD",
       couponCode,
+      orderType = "DELIVERY", // "DELIVERY" | "PICKUP"
+      pickupStoreId,
+      pickupDate,
+      pickupTimeSlot,
       isGift = false,
       giftMessage,
       hasGiftWrap = false,
@@ -41,6 +46,8 @@ export async function POST(request: Request) {
       giftWrapName,
       items,
     } = body;
+
+    const isPickup = orderType === "PICKUP";
 
     // Resolve Country Code
     let targetCountryCode: CountryCode = "QA";
@@ -55,11 +62,40 @@ export async function POST(request: Request) {
     const countryConfig = getCountryConfig(targetCountryCode);
 
     // 1. Basic validation
-    if (!customerName || !customerEmail || !customerPhone || !addressLine1) {
+    if (!customerName || !customerEmail || !customerPhone) {
       return NextResponse.json(
-        { error: "Customer name, email, phone, and delivery address are required." },
+        { error: "Customer name, email, and phone number are required." },
         { status: 400 }
       );
+    }
+
+    if (!isPickup && !addressLine1) {
+      return NextResponse.json(
+        { error: "Delivery address is required for home delivery." },
+        { status: 400 }
+      );
+    }
+
+    let pickupStoreRecord: any = null;
+    if (isPickup) {
+      if (!pickupStoreId) {
+        return NextResponse.json(
+          { error: "Please select a boutique location for store pickup." },
+          { status: 400 }
+        );
+      }
+
+      pickupStoreRecord = await prisma.store.findUnique({
+        where: { id: pickupStoreId },
+        include: { region: true },
+      });
+
+      if (!pickupStoreRecord || !pickupStoreRecord.active) {
+        return NextResponse.json(
+          { error: "Selected pickup boutique is currently unavailable. Please choose another location." },
+          { status: 400 }
+        );
+      }
     }
 
     if (!items || !Array.isArray(items) || items.length === 0) {
@@ -195,7 +231,9 @@ export async function POST(request: Request) {
       ? Number(dbCountry.taxRate)
       : (targetCountryCode === "AE" ? 5.0 : targetCountryCode === "BH" ? 10.0 : 0.0);
 
-    const shippingFee = calculatedSubtotal >= freeShippingThreshold ? 0.0 : standardShippingFee;
+    const shippingFee = isPickup
+      ? 0.0
+      : (calculatedSubtotal >= freeShippingThreshold ? 0.0 : standardShippingFee);
     const allowGiftWrap = dbCountry?.allowGiftWrap ?? countryConfig.allowGiftWrap ?? true;
 
     // Resolve available gift wrap tiers from database or fallback defaults
@@ -239,17 +277,38 @@ export async function POST(request: Request) {
     const randomSuffix = Math.floor(1000 + Math.random() * 9000);
     const dateStr = new Date().toISOString().slice(2, 7).replace("-", "");
     const orderNumber = `RAM-${targetCountryCode}-${dateStr}-${randomSuffix}`;
+    const pickupCode = isPickup ? generatePickupCode() : null;
 
     // 5b. Smart Order Fulfillment Routing to Store
-    const fulfillmentStore = await findOptimalFulfillmentStore({
-      countryCode: targetCountryCode,
-      cityName: city || area || null,
-      items: validatedOrderItems.map((oi) => ({
-        productId: oi.productId,
-        variantId: oi.variantId,
-        quantity: oi.quantity,
-      })),
-    });
+    const fulfillmentStore = isPickup && pickupStoreRecord
+      ? { storeId: pickupStoreRecord.id, storeName: pickupStoreRecord.name }
+      : await findOptimalFulfillmentStore({
+          countryCode: targetCountryCode,
+          cityName: city || area || null,
+          items: validatedOrderItems.map((oi) => ({
+            productId: oi.productId,
+            variantId: oi.variantId,
+            quantity: oi.quantity,
+          })),
+        });
+
+    // Generate QR code Data URL for pickup verification
+    let qrDataUrl: string | null = null;
+    if (isPickup && pickupStoreRecord && pickupCode) {
+      try {
+        qrDataUrl = await generateQrDataUrl({
+          orderNumber,
+          pickupCode,
+          storeCode: pickupStoreRecord.code,
+          storeName: pickupStoreRecord.name,
+          customerName,
+          customerPhone,
+          date: pickupDate ? String(pickupDate) : undefined,
+        });
+      } catch (qrErr) {
+        console.warn("Failed to generate QR data URL:", qrErr);
+      }
+    }
 
     // 6. Database Transaction: Create Order, Deduct Country Stock, Increment Coupon
     const order = await prisma.$transaction(
@@ -258,8 +317,13 @@ export async function POST(request: Request) {
         data: {
           userId: session?.userId || null,
           orderNumber,
+          orderType: isPickup ? "PICKUP" : "DELIVERY",
           channel: "ONLINE",
           assignedStoreId: fulfillmentStore?.storeId || null,
+          pickupStoreId: isPickup && pickupStoreRecord ? pickupStoreRecord.id : null,
+          pickupDate: isPickup && pickupDate ? new Date(pickupDate) : null,
+          pickupTimeSlot: isPickup ? (pickupTimeSlot || null) : null,
+          pickupCode,
           idempotencyKey: `CHK-${orderNumber}`,
           status: "CONFIRMED",
           paymentStatus: paymentMethod === "ONLINE" || paymentMethod === "TABBY_TAMARA" || paymentMethod === "BENEFIT_PAY" ? "PAID" : "PENDING",
@@ -267,20 +331,37 @@ export async function POST(request: Request) {
           customerName,
           customerEmail,
           customerPhone,
-          shippingAddress: {
-            name: customerName,
-            phone: customerPhone,
-            addressLine1,
-            addressLine2: addressLine2 || null,
-            area: area || null,
-            city: city || countryConfig.defaultCity,
-            country: countryConfig.name,
-            countryCode: targetCountryCode,
-          },
+          shippingAddress: isPickup && pickupStoreRecord
+            ? {
+                orderType: "PICKUP",
+                name: customerName,
+                phone: customerPhone,
+                storeId: pickupStoreRecord.id,
+                storeCode: pickupStoreRecord.code,
+                storeName: pickupStoreRecord.name,
+                storeNameAr: pickupStoreRecord.nameAr || pickupStoreRecord.name,
+                addressLine1: pickupStoreRecord.address || "Flagship Boutique",
+                city: pickupStoreRecord.region?.name || city || countryConfig.defaultCity,
+                country: countryConfig.name,
+                countryCode: targetCountryCode,
+                pickupDate: pickupDate || null,
+                pickupTimeSlot: pickupTimeSlot || null,
+              }
+            : {
+                orderType: "DELIVERY",
+                name: customerName,
+                phone: customerPhone,
+                addressLine1: addressLine1 || "",
+                addressLine2: addressLine2 || null,
+                area: area || null,
+                city: city || countryConfig.defaultCity,
+                country: countryConfig.name,
+                countryCode: targetCountryCode,
+              },
           billingAddress: {
             name: customerName,
-            addressLine1,
-            city: city || countryConfig.defaultCity,
+            addressLine1: isPickup ? (pickupStoreRecord?.address || "Flagship Boutique") : (addressLine1 || ""),
+            city: isPickup ? (pickupStoreRecord?.region?.name || city || countryConfig.defaultCity) : (city || countryConfig.defaultCity),
             country: countryConfig.name,
           },
           deliveryNotes: deliveryNotes || null,
@@ -507,6 +588,14 @@ export async function POST(request: Request) {
         country: targetCountryCode,
         customerName,
         customerEmail,
+        orderType: isPickup ? "PICKUP" : "DELIVERY",
+        pickupStoreName: pickupStoreRecord?.name || null,
+        pickupStoreAddress: pickupStoreRecord?.address || null,
+        pickupStorePhone: pickupStoreRecord?.phone || null,
+        pickupDate: pickupDate ? String(pickupDate) : null,
+        pickupTimeSlot: pickupTimeSlot || null,
+        pickupCode: pickupCode || null,
+        qrCodeDataUrl: qrDataUrl || null,
         items: validatedOrderItems.map((vi) => ({
           name: vi.productName,
           variantName: vi.variantName,
@@ -523,6 +612,9 @@ export async function POST(request: Request) {
       success: true,
       orderNumber: order.orderNumber,
       orderId: order.id,
+      orderType: order.orderType,
+      pickupCode,
+      pickupDate: isPickup && pickupDate ? pickupDate : null,
       country: targetCountryCode,
       currency: countryConfig.currency,
       paymentResult,

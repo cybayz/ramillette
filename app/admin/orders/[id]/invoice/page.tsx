@@ -16,7 +16,10 @@ export default async function AdminOrderInvoicePage({ params }: InvoicePageProps
 
   const orderRaw = await prisma.order.findUnique({
     where: { id },
-    include: { items: true },
+    include: {
+      items: true,
+      pickupStore: true,
+    },
   });
 
   if (!orderRaw) {
@@ -24,6 +27,23 @@ export default async function AdminOrderInvoicePage({ params }: InvoicePageProps
   }
 
   const shipping: any = orderRaw.shippingAddress || {};
+
+  let qrDataUrl: string | null = null;
+  if (orderRaw.orderType === "PICKUP" && orderRaw.pickupCode) {
+    try {
+      const { generateQrDataUrl } = await import("@/lib/services/qr");
+      qrDataUrl = await generateQrDataUrl({
+        orderNumber: orderRaw.orderNumber,
+        pickupCode: orderRaw.pickupCode,
+        storeName: orderRaw.pickupStore?.name,
+        customerName: orderRaw.customerName,
+        customerPhone: orderRaw.customerPhone,
+        date: orderRaw.pickupDate ? orderRaw.pickupDate.toISOString().split("T")[0] : undefined,
+      });
+    } catch (e) {
+      console.error("Failed to generate QR for invoice:", e);
+    }
+  }
 
   const order: InvoiceOrderData = {
     id: orderRaw.id,
@@ -58,6 +78,17 @@ export default async function AdminOrderInvoicePage({ params }: InvoicePageProps
     trackingNumber: orderRaw.trackingNumber,
     trackingUrl: orderRaw.trackingUrl,
     shippedAt: orderRaw.shippedAt ? orderRaw.shippedAt.toISOString() : null,
+    orderType: orderRaw.orderType as "DELIVERY" | "PICKUP",
+    pickupStoreId: orderRaw.pickupStoreId,
+    pickupStoreName: orderRaw.pickupStore?.name || null,
+    pickupStoreAddress: orderRaw.pickupStore?.address || null,
+    pickupStorePhone: orderRaw.pickupStore?.phone || null,
+    pickupStoreCity: orderRaw.pickupStore?.countryCode || null,
+    pickupDate: orderRaw.pickupDate ? orderRaw.pickupDate.toISOString().split("T")[0] : null,
+    pickupTimeSlot: orderRaw.pickupTimeSlot,
+    pickupCode: orderRaw.pickupCode,
+    pickedUpAt: orderRaw.pickedUpAt ? orderRaw.pickedUpAt.toISOString() : null,
+    qrDataUrl,
     createdAt: orderRaw.createdAt.toISOString(),
     items: orderRaw.items.map((it) => ({
       id: it.id,

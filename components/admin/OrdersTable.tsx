@@ -26,6 +26,9 @@ import {
   FileText,
   Gift,
   Sparkles,
+  Store,
+  Calendar,
+  QrCode,
 } from "lucide-react";
 import { formatPrice } from "@/lib/utils";
 import { generateWhatsAppInvoiceUrl, InvoiceOrderData } from "@/lib/admin/invoiceUtils";
@@ -43,6 +46,15 @@ export interface AdminOrderItem {
 export interface AdminOrder {
   id: string;
   orderNumber: string;
+  orderType?: "DELIVERY" | "PICKUP";
+  pickupStoreId?: string | null;
+  pickupStoreName?: string | null;
+  pickupStoreAddress?: string | null;
+  pickupStoreCode?: string | null;
+  pickupDate?: string | null;
+  pickupTimeSlot?: string | null;
+  pickupCode?: string | null;
+  pickedUpAt?: string | null;
   customerName: string;
   customerPhone: string;
   customerEmail: string;
@@ -94,6 +106,7 @@ export function OrdersTable({
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [countryFilter, setCountryFilter] = useState("ALL");
+  const [typeFilter, setTypeFilter] = useState("ALL");
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<AdminOrder | null>(null);
   const [modalAdminNotes, setModalAdminNotes] = useState("");
@@ -237,6 +250,36 @@ export function OrdersTable({
     }
   };
 
+  const handleMarkPickedUp = async (orderId: string) => {
+    setUpdatingId(orderId);
+    try {
+      const nowIso = new Date().toISOString();
+      const res = await fetch(`/api/admin/orders/${orderId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "DELIVERED", pickedUpAt: nowIso }),
+      });
+
+      if (res.ok) {
+        setOrders(
+          orders.map((o) =>
+            o.id === orderId ? { ...o, status: "DELIVERED", pickedUpAt: nowIso } : o
+          )
+        );
+        if (selectedOrder && selectedOrder.id === orderId) {
+          setSelectedOrder({ ...selectedOrder, status: "DELIVERED", pickedUpAt: nowIso });
+        }
+      } else {
+        alert("Failed to mark order as picked up.");
+      }
+    } catch (err) {
+      console.error("Failed to mark picked up:", err);
+      alert("Network error updating order.");
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
   const handleConfirmShipment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!shippingModalOrder) return;
@@ -292,8 +335,11 @@ export function OrdersTable({
 
     const matchesStatus = statusFilter === "ALL" || o.status === statusFilter;
     const matchesCountry = countryFilter === "ALL" || o.country === countryFilter;
+    const matchesType =
+      typeFilter === "ALL" ||
+      (typeFilter === "PICKUP" ? o.orderType === "PICKUP" : o.orderType !== "PICKUP");
 
-    return matchesQuery && matchesStatus && matchesCountry;
+    return matchesQuery && matchesStatus && matchesCountry && matchesType;
   });
 
   return (
@@ -350,6 +396,20 @@ export function OrdersTable({
               ))}
             </select>
           </div>
+
+          {/* Type Filter */}
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-neutral-500 font-medium">Type:</span>
+            <select
+              value={typeFilter}
+              onChange={(e) => setTypeFilter(e.target.value)}
+              className="bg-white border border-[#e5e5e5] rounded-[5px] px-3 py-2 text-xs font-semibold text-[#1c1c1c] focus:outline-none focus:border-[#b6713e]"
+            >
+              <option value="ALL">All Types</option>
+              <option value="DELIVERY">Delivery</option>
+              <option value="PICKUP">Store Pickup</option>
+            </select>
+          </div>
         </div>
       </div>
 
@@ -361,7 +421,7 @@ export function OrdersTable({
               <th className="py-3 px-3">Order Number</th>
               <th className="py-3 px-3">Market</th>
               <th className="py-3 px-3">Customer</th>
-              <th className="py-3 px-3">City / Area</th>
+              <th className="py-3 px-3">Type & Location</th>
               <th className="py-3 px-3">Payment</th>
               <th className="py-3 px-3">Total Amount</th>
               <th className="py-3 px-3">Fulfillment Status</th>
@@ -426,9 +486,45 @@ export function OrdersTable({
                     )}
                   </td>
 
-                  {/* City */}
-                  <td className="py-3.5 px-3 text-neutral-600 font-medium">
-                    {order.city || order.area || "Standard Delivery"}
+                  {/* Type / City */}
+                  <td className="py-3.5 px-3">
+                    {order.orderType === "PICKUP" ? (
+                      <div className="space-y-0.5">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 text-amber-900 border border-amber-200 text-[10px] font-bold">
+                          <Store size={10} className="text-[#b6713e]" />
+                          <span>Store Pickup</span>
+                        </span>
+                        <span className="font-semibold text-[#1c1c1c] text-[11px] block truncate max-w-[150px]" title={order.pickupStoreName || ""}>
+                          {order.pickupStoreName || "Boutique"}
+                        </span>
+                        {order.pickupDate && (
+                          <span className="text-[10px] text-neutral-400 block font-mono">
+                            Visit: {new Date(order.pickupDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                          </span>
+                        )}
+                        {order.pickedUpAt ? (
+                          <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-1 py-0.2 rounded border border-emerald-200 inline-block">
+                            ✓ Collected
+                          </span>
+                        ) : (
+                          order.pickupCode && (
+                            <span className="text-[9px] font-mono font-bold text-neutral-500 bg-neutral-100 px-1 py-0.2 rounded inline-block">
+                              PIN: {order.pickupCode}
+                            </span>
+                          )
+                        )}
+                      </div>
+                    ) : (
+                      <div className="space-y-0.5">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-50 text-blue-900 border border-blue-200 text-[10px] font-semibold">
+                          <Truck size={10} className="text-blue-700" />
+                          <span>Home Delivery</span>
+                        </span>
+                        <span className="text-neutral-600 font-medium text-[11px] block truncate max-w-[150px]">
+                          {order.city || order.area || "Standard Delivery"}
+                        </span>
+                      </div>
+                    )}
                   </td>
 
                   {/* Payment */}
@@ -587,21 +683,75 @@ export function OrdersTable({
                 </div>
 
                 <div>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 block mb-1">
-                    Shipping Destination
-                  </span>
-                  <p className="text-neutral-700 flex items-start gap-1.5">
-                    <MapPin size={12} className="shrink-0 mt-0.5 text-[#b6713e]" />
-                    <span>
-                      {selectedOrder.addressLine1 || "Address not provided"}
-                      {selectedOrder.area ? `, ${selectedOrder.area}` : ""}
-                      {selectedOrder.city ? `, ${selectedOrder.city}` : ""}
-                    </span>
-                  </p>
-                  {selectedOrder.deliveryNotes && (
-                    <p className="mt-2 text-[11px] text-amber-800 bg-amber-50 p-1.5 rounded border border-amber-200">
-                      Note: {selectedOrder.deliveryNotes}
-                    </p>
+                  {selectedOrder.orderType === "PICKUP" ? (
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-[#b6713e] flex items-center gap-1">
+                          <Store size={12} />
+                          <span>Boutique Pickup Location</span>
+                        </span>
+                        <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-100 text-amber-900 border border-amber-300">
+                          STORE PICKUP
+                        </span>
+                      </div>
+                      <p className="font-bold text-[#1c1c1c]">
+                        {selectedOrder.pickupStoreName || "Ramillette Flagship Boutique"}
+                      </p>
+                      <p className="text-neutral-600 flex items-start gap-1.5 mt-0.5">
+                        <MapPin size={12} className="shrink-0 mt-0.5 text-[#b6713e]" />
+                        <span>{selectedOrder.pickupStoreAddress || "Boutique Location"}</span>
+                      </p>
+                      {selectedOrder.pickupDate && (
+                        <p className="text-neutral-700 flex items-center gap-1.5 mt-1 font-semibold">
+                          <Calendar size={12} className="text-[#b6713e]" />
+                          <span>Visit Date: {new Date(selectedOrder.pickupDate).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" })}</span>
+                        </p>
+                      )}
+                      {selectedOrder.pickupTimeSlot && (
+                        <p className="text-neutral-500 pl-4 text-[11px]">
+                          Slot: {selectedOrder.pickupTimeSlot}
+                        </p>
+                      )}
+                      <div className="mt-2 p-2 bg-[#faedcd]/40 border border-[#ecdac1] rounded flex items-center justify-between">
+                        <div>
+                          <span className="text-[9px] font-bold uppercase text-neutral-400 block">Pickup PIN</span>
+                          <span className="font-mono font-bold text-xs text-[#1c1c1c]">{selectedOrder.pickupCode || selectedOrder.orderNumber}</span>
+                        </div>
+                        {selectedOrder.pickedUpAt ? (
+                          <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded">
+                            ✓ Collected on {new Date(selectedOrder.pickedUpAt).toLocaleDateString()}
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => handleMarkPickedUp(selectedOrder.id)}
+                            disabled={updatingId === selectedOrder.id}
+                            className="px-2.5 py-1 rounded bg-[#b6713e] text-white text-[11px] font-bold hover:bg-[#965a2f] cursor-pointer"
+                          >
+                            {updatingId === selectedOrder.id ? "Updating..." : "Mark Picked Up"}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <div>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 block mb-1">
+                        Shipping Destination
+                      </span>
+                      <p className="text-neutral-700 flex items-start gap-1.5">
+                        <MapPin size={12} className="shrink-0 mt-0.5 text-[#b6713e]" />
+                        <span>
+                          {selectedOrder.addressLine1 || "Address not provided"}
+                          {selectedOrder.area ? `, ${selectedOrder.area}` : ""}
+                          {selectedOrder.city ? `, ${selectedOrder.city}` : ""}
+                        </span>
+                      </p>
+                      {selectedOrder.deliveryNotes && (
+                        <p className="mt-2 text-[11px] text-amber-800 bg-amber-50 p-1.5 rounded border border-amber-200">
+                          Note: {selectedOrder.deliveryNotes}
+                        </p>
+                      )}
+                    </div>
                   )}
                   {selectedOrder.isGift && (
                     <div className="mt-2 p-2.5 bg-[#faedcd]/35 rounded border border-[#ecdac1] space-y-1">

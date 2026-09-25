@@ -23,6 +23,8 @@ export async function PATCH(request: Request, { params }: Props) {
       trackingUrl,
       carrierName,
       shippedAt,
+      pickedUpAt,
+      pickupDate,
       adminNotes,
     } = body;
 
@@ -39,6 +41,19 @@ export async function PATCH(request: Request, { params }: Props) {
     } else if (status === "SHIPPED") {
       dataToUpdate.shippedAt = new Date();
       dataToUpdate.fulfillmentStatus = "FULFILLED";
+    }
+    if (pickedUpAt !== undefined) {
+      dataToUpdate.pickedUpAt = pickedUpAt ? new Date(pickedUpAt) : null;
+      if (pickedUpAt) {
+        dataToUpdate.status = "DELIVERED";
+        dataToUpdate.fulfillmentStatus = "FULFILLED";
+      }
+    } else if (status === "DELIVERED" && !dataToUpdate.pickedUpAt) {
+      // If marking as delivered and order is pickup, set pickedUpAt
+      dataToUpdate.pickedUpAt = new Date();
+    }
+    if (pickupDate) {
+      dataToUpdate.pickupDate = new Date(pickupDate);
     }
 
     let updated;

@@ -55,9 +55,20 @@ export function InvoiceDocument({ order }: InvoiceDocumentProps) {
 
         {/* Invoice Title & Meta */}
         <div className="sm:text-right space-y-1.5">
-          <span className="inline-block px-3 py-1 bg-[#1c1c1c] text-[#faedcd] font-mono font-bold text-xs uppercase tracking-widest rounded-xs">
-            Official Invoice
-          </span>
+          <div className="flex items-center gap-1.5 sm:justify-end">
+            <span className="inline-block px-3 py-1 bg-[#1c1c1c] text-[#faedcd] font-mono font-bold text-xs uppercase tracking-widest rounded-xs">
+              Official Invoice
+            </span>
+            <span
+              className={`inline-block px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded-xs ${
+                order.orderType === "PICKUP"
+                  ? "bg-amber-100 text-amber-900 border border-amber-300"
+                  : "bg-blue-100 text-blue-900 border border-blue-200"
+              }`}
+            >
+              {order.orderType === "PICKUP" ? "🏬 Store Pickup" : "🚚 Home Delivery"}
+            </span>
+          </div>
           <p className="text-xl font-extrabold font-mono text-[#1c1c1c] pt-1">
             INV-{order.orderNumber}
           </p>
@@ -95,55 +106,129 @@ export function InvoiceDocument({ order }: InvoiceDocumentProps) {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 py-6 border-b border-neutral-200">
         <div>
           <span className="text-[10px] font-extrabold uppercase tracking-wider text-neutral-400 block mb-2">
-            Billed & Delivered To
+            {order.orderType === "PICKUP" ? "Customer / Recipient" : "Billed & Delivered To"}
           </span>
           <p className="text-sm font-bold text-[#1c1c1c]">{order.customerName}</p>
           <div className="mt-1 text-xs text-neutral-600 space-y-0.5">
             <p>Phone: <strong className="text-neutral-800">{order.customerPhone}</strong></p>
             <p>Email: {order.customerEmail}</p>
-            <p className="pt-1 text-neutral-700">
-              {fullAddress || "Standard Boutique Delivery"}
-            </p>
+            {order.orderType === "PICKUP" ? (
+              <p className="pt-1 text-neutral-500 italic">
+                Fulfillment Mode: Client in-person boutique collection
+              </p>
+            ) : (
+              <p className="pt-1 text-neutral-700">
+                {fullAddress || "Standard Boutique Delivery"}
+              </p>
+            )}
           </div>
         </div>
 
         <div>
-          <span className="text-[10px] font-extrabold uppercase tracking-wider text-neutral-400 block mb-2">
-            Shipping & Dispatch Details
-          </span>
-          <div className="text-xs text-neutral-600 space-y-1">
-            <p>
-              <span className="text-neutral-500">Destination: </span>
-              <strong className="text-neutral-800">{order.city || "Doha"}, {order.country}</strong>
-            </p>
-            <p>
-              <span className="text-neutral-500">Courier / Carrier: </span>
-              <strong className="text-neutral-800">{order.carrierName || "Boutique Express Delivery"}</strong>
-            </p>
-            {order.trackingNumber && (
-              <p className="font-mono text-xs text-blue-900 bg-blue-50/80 p-1.5 rounded border border-blue-200 inline-block">
-                Waybill: <strong>{order.trackingNumber}</strong>
-              </p>
-            )}
-            {order.deliveryNotes && (
-              <p className="mt-1.5 text-[11px] text-amber-900 bg-amber-50 p-2 rounded border border-amber-200 italic">
-                Client instructions: &ldquo;{order.deliveryNotes}&rdquo;
-              </p>
-            )}
-            {order.isGift && (
-              <div className="mt-2 p-2.5 rounded bg-[#faedcd]/40 border border-[#ecdac1] text-[11px]">
-                <div className="font-bold text-[#b6713e] flex items-center justify-between">
-                  <span>🎁 Gift Order Service</span>
-                  <span>{order.giftWrapName || (order.hasGiftWrap ? "Signature Gift Wrapping Included" : "Complimentary Card Included")}</span>
+          {order.orderType === "PICKUP" ? (
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-amber-900">
+                  🏬 Boutique Collection Point
+                </span>
+                {order.pickupCode && (
+                  <span className="bg-neutral-900 text-[#faedcd] px-2 py-0.5 rounded text-[10px] font-mono font-bold tracking-wider">
+                    PIN: {order.pickupCode}
+                  </span>
+                )}
+              </div>
+              <div className="text-xs text-neutral-700 space-y-1.5 bg-[#fbf9f5] p-3.5 rounded border border-[#ecdac1] flex gap-3">
+                <div className="flex-1 space-y-1">
+                  <p>
+                    <span className="text-neutral-500">Boutique: </span>
+                    <strong className="text-[#1c1c1c]">{order.pickupStoreName || "Ramillette Perfumes Boutique"}</strong>
+                  </p>
+                  {order.pickupStoreAddress && (
+                    <p className="text-[11px] text-neutral-600">
+                      <span className="text-neutral-500">Location: </span>
+                      {order.pickupStoreAddress}
+                    </p>
+                  )}
+                  {order.pickupStorePhone && (
+                    <p className="text-[11px] text-neutral-600">
+                      <span className="text-neutral-500">Store Contact: </span>
+                      <strong className="text-neutral-800">{order.pickupStorePhone}</strong>
+                    </p>
+                  )}
+                  <div className="pt-1 flex flex-wrap gap-2 text-[10px]">
+                    <span className="bg-white px-2 py-0.5 rounded border border-[#e5e5e5] font-semibold text-neutral-800">
+                      Visit Date: {order.pickupDate || "Standard Operating Hours"}
+                    </span>
+                    {order.pickupTimeSlot && (
+                      <span className="bg-white px-2 py-0.5 rounded border border-[#e5e5e5] text-neutral-700">
+                        {order.pickupTimeSlot}
+                      </span>
+                    )}
+                  </div>
+                  {order.pickedUpAt ? (
+                    <p className="text-[10px] text-emerald-800 font-bold bg-emerald-100/80 px-2 py-1 rounded inline-block mt-1">
+                      ✓ Collected on {new Date(order.pickedUpAt).toLocaleString()}
+                    </p>
+                  ) : (
+                    <p className="text-[10px] text-neutral-500 italic pt-1">
+                      Present order PIN or digital QR pass at boutique reception counter.
+                    </p>
+                  )}
                 </div>
-                {order.giftMessage && (
-                  <p className="mt-1 font-serif italic text-neutral-800 bg-white p-2 rounded border border-[#ecdac1]">
-                    &ldquo;{order.giftMessage}&rdquo;
+                {order.qrDataUrl && (
+                  <div className="shrink-0 flex flex-col items-center">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={order.qrDataUrl}
+                      alt="Pickup Verification QR"
+                      className="w-20 h-20 border border-neutral-300 rounded p-1 bg-white"
+                    />
+                    <span className="text-[8px] font-mono text-neutral-400 mt-0.5">SCAN PIN</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div>
+              <span className="text-[10px] font-extrabold uppercase tracking-wider text-neutral-400 block mb-2">
+                Shipping & Dispatch Details
+              </span>
+              <div className="text-xs text-neutral-600 space-y-1">
+                <p>
+                  <span className="text-neutral-500">Destination: </span>
+                  <strong className="text-neutral-800">{order.city || "Doha"}, {order.country}</strong>
+                </p>
+                <p>
+                  <span className="text-neutral-500">Courier / Carrier: </span>
+                  <strong className="text-neutral-800">{order.carrierName || "Boutique Express Delivery"}</strong>
+                </p>
+                {order.trackingNumber && (
+                  <p className="font-mono text-xs text-blue-900 bg-blue-50/80 p-1.5 rounded border border-blue-200 inline-block">
+                    Waybill: <strong>{order.trackingNumber}</strong>
+                  </p>
+                )}
+                {order.deliveryNotes && (
+                  <p className="mt-1.5 text-[11px] text-amber-900 bg-amber-50 p-2 rounded border border-amber-200 italic">
+                    Client instructions: &ldquo;{order.deliveryNotes}&rdquo;
                   </p>
                 )}
               </div>
-            )}
-          </div>
+            </div>
+          )}
+
+          {order.isGift && (
+            <div className="mt-2 p-2.5 rounded bg-[#faedcd]/40 border border-[#ecdac1] text-[11px]">
+              <div className="font-bold text-[#b6713e] flex items-center justify-between">
+                <span>🎁 Gift Order Service</span>
+                <span>{order.giftWrapName || (order.hasGiftWrap ? "Signature Gift Wrapping Included" : "Complimentary Card Included")}</span>
+              </div>
+              {order.giftMessage && (
+                <p className="mt-1 font-serif italic text-neutral-800 bg-white p-2 rounded border border-[#ecdac1]">
+                  &ldquo;{order.giftMessage}&rdquo;
+                </p>
+              )}
+            </div>
+          )}
         </div>
       </div>
 

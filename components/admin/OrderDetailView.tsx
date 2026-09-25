@@ -25,6 +25,9 @@ import {
   ChevronDown,
   Gift,
   Sparkles,
+  Store,
+  QrCode,
+  Calendar,
 } from "lucide-react";
 import { formatPrice } from "@/lib/utils";
 import { InvoiceOrderData, generateWhatsAppInvoiceUrl } from "@/lib/admin/invoiceUtils";
@@ -51,6 +54,7 @@ export function OrderDetailView({ initialOrder }: OrderDetailViewProps) {
   const [trackingNumber, setTrackingNumber] = useState(order.trackingNumber || "");
   const [trackingUrl, setTrackingUrl] = useState(order.trackingUrl || "");
   const [isSavingTracking, setIsSavingTracking] = useState(false);
+  const [isMarkingPickup, setIsMarkingPickup] = useState(false);
 
   const statuses = [
     "PENDING",
@@ -82,6 +86,39 @@ export function OrderDetailView({ initialOrder }: OrderDetailViewProps) {
       alert("Network error while saving notes.");
     } finally {
       setIsSavingNotes(false);
+    }
+  };
+
+  const handleMarkAsPickedUp = async () => {
+    setIsMarkingPickup(true);
+    try {
+      const nowIso = new Date().toISOString();
+      const res = await fetch(`/api/admin/orders/${order.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          pickedUpAt: nowIso,
+          status: "DELIVERED",
+          fulfillmentStatus: "FULFILLED",
+        }),
+      });
+
+      if (res.ok) {
+        setOrder({
+          ...order,
+          pickedUpAt: nowIso,
+          status: "DELIVERED",
+          fulfillmentStatus: "FULFILLED",
+        });
+        setStatus("DELIVERED");
+      } else {
+        alert("Failed to record pickup collection.");
+      }
+    } catch (err) {
+      console.error("Pickup update failed:", err);
+      alert("Network error updating pickup status.");
+    } finally {
+      setIsMarkingPickup(false);
     }
   };
 
@@ -182,6 +219,25 @@ export function OrderDetailView({ initialOrder }: OrderDetailViewProps) {
             </h1>
             <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#faedcd] border border-[#ecdec1] text-[#b6713e]">
               {order.country} Market
+            </span>
+            <span
+              className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold ${
+                order.orderType === "PICKUP"
+                  ? "bg-amber-100 text-amber-900 border border-amber-300"
+                  : "bg-blue-100 text-blue-900 border border-blue-200"
+              }`}
+            >
+              {order.orderType === "PICKUP" ? (
+                <>
+                  <Store size={12} />
+                  <span>Store Pickup</span>
+                </>
+              ) : (
+                <>
+                  <Truck size={12} />
+                  <span>Doorstep Delivery</span>
+                </>
+              )}
             </span>
           </div>
           <p className="text-xs text-neutral-500 mt-1">
@@ -421,52 +477,134 @@ export function OrderDetailView({ initialOrder }: OrderDetailViewProps) {
               </div>
             </div>
 
-            {/* Shipment Tracking Details Box */}
-            <div className="pt-2 border-t border-neutral-100 space-y-2 text-xs">
-              <div className="flex items-center justify-between">
-                <span className="font-bold text-neutral-700 flex items-center gap-1.5">
-                  <Truck size={14} className="text-blue-600" />
-                  <span>Logistics & Courier</span>
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setIsTrackingModalOpen(true)}
-                  className="text-[11px] font-bold text-blue-700 hover:underline flex items-center gap-1 cursor-pointer"
-                >
-                  <Edit2 size={11} />
-                  <span>{order.trackingNumber ? "Edit" : "+ Add Tracking"}</span>
-                </button>
-              </div>
-
-              <div className="p-3 bg-neutral-50 rounded-[6px] border border-neutral-200 space-y-1">
-                <p className="text-neutral-600">
-                  <span className="text-neutral-400">Carrier: </span>
-                  <strong>{order.carrierName || "Pending Carrier Assignment"}</strong>
-                </p>
-                <p className="text-neutral-600">
-                  <span className="text-neutral-400">Tracking #: </span>
-                  <span className="font-mono font-bold text-[#1c1c1c]">
-                    {order.trackingNumber || "Not assigned yet"}
+            {/* Fulfillment Section: Store Pickup vs Courier Logistics */}
+            {order.orderType === "PICKUP" ? (
+              <div className="pt-3 border-t border-neutral-100 space-y-3 text-xs">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-amber-900 flex items-center gap-1.5">
+                    <Store size={14} className="text-[#b6713e]" />
+                    <span>Boutique Store Collection</span>
                   </span>
-                </p>
-                {order.trackingUrl && (
-                  <a
-                    href={order.trackingUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-blue-700 hover:underline font-bold text-[11px] inline-flex items-center gap-1 pt-1"
-                  >
-                    <span>Track on Carrier Website</span>
-                    <ExternalLink size={11} />
-                  </a>
-                )}
-                {order.shippedAt && (
-                  <p className="text-[10px] text-neutral-400 pt-1">
-                    Dispatched: {new Date(order.shippedAt).toLocaleString()}
-                  </p>
-                )}
+                  {order.pickupCode && (
+                    <span className="px-2 py-0.5 rounded font-mono font-bold text-[10px] bg-neutral-900 text-[#faedcd] tracking-wider">
+                      PIN: {order.pickupCode}
+                    </span>
+                  )}
+                </div>
+
+                <div className="p-3.5 bg-[#fbf9f5] rounded-[8px] border border-[#ecdac1] space-y-2.5">
+                  <div>
+                    <span className="text-[10px] text-neutral-400 uppercase font-bold block">Selected Boutique</span>
+                    <p className="font-bold text-neutral-900 text-xs mt-0.5">
+                      {order.pickupStoreName || "Ramillette Boutique"}
+                    </p>
+                    {order.pickupStoreAddress && (
+                      <p className="text-[11px] text-neutral-600 mt-0.5">{order.pickupStoreAddress}</p>
+                    )}
+                    {order.pickupStorePhone && (
+                      <p className="text-[11px] text-neutral-500 mt-0.5">📞 {order.pickupStorePhone}</p>
+                    )}
+                  </div>
+
+                  <div className="pt-2 border-t border-[#f0ece1] flex flex-wrap gap-2 text-[11px]">
+                    <span className="bg-white px-2 py-0.5 rounded border border-[#e5e5e5] text-neutral-700">
+                      📅 <strong>Date:</strong> {order.pickupDate || "Standard Store Hours"}
+                    </span>
+                    {order.pickupTimeSlot && (
+                      <span className="bg-white px-2 py-0.5 rounded border border-[#e5e5e5] text-neutral-700">
+                        ⏰ <strong>Window:</strong> {order.pickupTimeSlot}
+                      </span>
+                    )}
+                  </div>
+
+                  {order.qrDataUrl && (
+                    <div className="pt-2 border-t border-[#f0ece1] flex items-center gap-3 bg-white p-2.5 rounded border border-[#e5e5e5]">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={order.qrDataUrl}
+                        alt="Pickup QR Code"
+                        className="w-16 h-16 border border-neutral-200 rounded p-1 bg-white shrink-0"
+                      />
+                      <div className="text-[11px] text-neutral-600">
+                        <p className="font-bold text-[#1c1c1c]">Digital Collection Pass</p>
+                        <p className="text-[10px] text-neutral-500 mt-0.5">
+                          Verification code: <strong className="font-mono text-[#b6713e]">{order.pickupCode}</strong>
+                        </p>
+                        <p className="text-[10px] text-neutral-400">Scan at store POS to verify.</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {order.pickedUpAt ? (
+                    <div className="p-2.5 bg-emerald-50 border border-emerald-200 text-emerald-800 font-bold rounded-[6px] text-[11px] flex items-center gap-2">
+                      <CheckCircle2 size={15} className="text-emerald-600 shrink-0" />
+                      <span>Collected on {new Date(order.pickedUpAt).toLocaleString()}</span>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleMarkAsPickedUp}
+                      disabled={isMarkingPickup}
+                      className="w-full mt-1 py-2.5 px-3 bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-[6px] text-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                    >
+                      {isMarkingPickup ? (
+                        <Loader2 size={13} className="animate-spin" />
+                      ) : (
+                        <CheckCircle2 size={13} />
+                      )}
+                      <span>{isMarkingPickup ? "Confirming Collection..." : "Mark as Picked Up / Collected"}</span>
+                    </button>
+                  )}
+                </div>
               </div>
-            </div>
+            ) : (
+              /* Shipment Tracking Details Box for Delivery Orders */
+              <div className="pt-2 border-t border-neutral-100 space-y-2 text-xs">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-neutral-700 flex items-center gap-1.5">
+                    <Truck size={14} className="text-blue-600" />
+                    <span>Logistics & Courier</span>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setIsTrackingModalOpen(true)}
+                    className="text-[11px] font-bold text-blue-700 hover:underline flex items-center gap-1 cursor-pointer"
+                  >
+                    <Edit2 size={11} />
+                    <span>{order.trackingNumber ? "Edit" : "+ Add Tracking"}</span>
+                  </button>
+                </div>
+
+                <div className="p-3 bg-neutral-50 rounded-[6px] border border-neutral-200 space-y-1">
+                  <p className="text-neutral-600">
+                    <span className="text-neutral-400">Carrier: </span>
+                    <strong>{order.carrierName || "Pending Carrier Assignment"}</strong>
+                  </p>
+                  <p className="text-neutral-600">
+                    <span className="text-neutral-400">Tracking #: </span>
+                    <span className="font-mono font-bold text-[#1c1c1c]">
+                      {order.trackingNumber || "Not assigned yet"}
+                    </span>
+                  </p>
+                  {order.trackingUrl && (
+                    <a
+                      href={order.trackingUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-700 hover:underline font-bold text-[11px] inline-flex items-center gap-1 pt-1"
+                    >
+                      <span>Track on Carrier Website</span>
+                      <ExternalLink size={11} />
+                    </a>
+                  )}
+                  {order.shippedAt && (
+                    <p className="text-[10px] text-neutral-400 pt-1">
+                      Dispatched: {new Date(order.shippedAt).toLocaleString()}
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Customer Details Card */}
@@ -498,19 +636,36 @@ export function OrderDetailView({ initialOrder }: OrderDetailViewProps) {
               </p>
             </div>
 
-            {/* Delivery Destination */}
+            {/* Destination or Store Collection Point */}
             <div className="pt-3 border-t border-neutral-100">
-              <span className="text-[10px] uppercase font-bold text-neutral-400 block mb-1">
-                Delivery Address
-              </span>
-              <p className="text-neutral-700 flex items-start gap-1.5 leading-relaxed">
-                <MapPin size={13} className="shrink-0 mt-0.5 text-[#b6713e]" />
-                <span>{fullAddress || "No address details provided"}</span>
-              </p>
-              {order.deliveryNotes && (
-                <div className="mt-2 text-[11px] text-amber-900 bg-amber-50 p-2 rounded-[6px] border border-amber-200">
-                  <span className="font-bold block">Delivery Instructions:</span>
-                  <span>{order.deliveryNotes}</span>
+              {order.orderType === "PICKUP" ? (
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-neutral-400 block mb-1">
+                    Fulfillment Method
+                  </span>
+                  <p className="text-neutral-800 flex items-start gap-1.5 leading-relaxed font-semibold">
+                    <Store size={13} className="shrink-0 mt-0.5 text-[#b6713e]" />
+                    <span>Boutique Pickup ({order.pickupStoreName || "Selected Boutique"})</span>
+                  </p>
+                  <p className="text-neutral-500 text-[11px] pl-5 mt-0.5">
+                    Customer selected in-person store collection. No courier delivery required.
+                  </p>
+                </div>
+              ) : (
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-neutral-400 block mb-1">
+                    Delivery Address
+                  </span>
+                  <p className="text-neutral-700 flex items-start gap-1.5 leading-relaxed">
+                    <MapPin size={13} className="shrink-0 mt-0.5 text-[#b6713e]" />
+                    <span>{fullAddress || "No address details provided"}</span>
+                  </p>
+                  {order.deliveryNotes && (
+                    <div className="mt-2 text-[11px] text-amber-900 bg-amber-50 p-2 rounded-[6px] border border-amber-200">
+                      <span className="font-bold block">Delivery Instructions:</span>
+                      <span>{order.deliveryNotes}</span>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

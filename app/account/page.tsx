@@ -11,6 +11,8 @@ import {
   ShoppingBag,
   ExternalLink,
   Truck,
+  Store,
+  QrCode,
 } from "lucide-react";
 import { LogoutButton } from "@/components/account/LogoutButton";
 import { SavedAddressesManager } from "@/components/account/SavedAddressesManager";
@@ -28,7 +30,7 @@ export default async function AccountPage() {
       addresses: { orderBy: { isDefault: "desc" } },
       orders: {
         orderBy: { createdAt: "desc" },
-        include: { items: true },
+        include: { items: true, pickupStore: true },
         take: 10,
       },
     },
@@ -122,6 +124,25 @@ export default async function AccountPage() {
                           >
                             {order.status}
                           </span>
+                          <span
+                            className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded inline-flex items-center gap-1 ${
+                              order.orderType === "PICKUP"
+                                ? "bg-amber-100 text-amber-900 border border-amber-300"
+                                : "bg-neutral-100 text-neutral-600"
+                            }`}
+                          >
+                            {order.orderType === "PICKUP" ? (
+                              <>
+                                <Store size={10} />
+                                <span>Store Pickup</span>
+                              </>
+                            ) : (
+                              <>
+                                <Truck size={10} />
+                                <span>Delivery</span>
+                              </>
+                            )}
+                          </span>
                         </div>
                         <span className="text-[11px] text-neutral-400 mt-0.5 block">
                           Placed on{" "}
@@ -163,8 +184,52 @@ export default async function AccountPage() {
                       ))}
                     </div>
 
-                    {/* Shipment & Live Tracking Card */}
-                    {(order.status === "SHIPPED" || order.trackingNumber) && (
+                    {/* Boutique Collection Pass Card (for Pickup Orders) */}
+                    {order.orderType === "PICKUP" && (
+                      <div className="my-3 p-3.5 bg-[#fbf9f5] border border-[#ecdec1] rounded-[6px] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <Store size={15} className="text-[#b6713e]" />
+                            <span className="text-xs font-bold text-[#1c1c1c]">
+                              Boutique Collection Pass
+                            </span>
+                            {order.pickupCode && (
+                              <span className="font-mono text-[10px] font-bold px-1.5 py-0.5 rounded bg-neutral-900 text-[#faedcd]">
+                                PIN: {order.pickupCode}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs text-neutral-700">
+                            <strong>{order.pickupStore?.name || "Ramillette Boutique"}</strong>
+                            {order.pickupStore?.address && ` • ${order.pickupStore.address}`}
+                          </p>
+                          <p className="text-[11px] text-neutral-500">
+                            📅 Visit Date: <strong>{order.pickupDate ? new Date(order.pickupDate).toLocaleDateString() : "Standard store hours"}</strong>
+                            {order.pickupTimeSlot && ` (${order.pickupTimeSlot})`}
+                          </p>
+                          {order.pickedUpAt ? (
+                            <p className="text-[10px] text-emerald-700 font-bold">
+                              ✓ Collected on {new Date(order.pickedUpAt).toLocaleDateString()}
+                            </p>
+                          ) : (
+                            <p className="text-[10px] text-amber-800">
+                              Ready for pickup. Show digital QR code or PIN at store counter.
+                            </p>
+                          )}
+                        </div>
+
+                        <Link
+                          href={`/checkout/success?orderNumber=${order.orderNumber}`}
+                          className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-[5px] bg-[#1c1c1c] text-[#faedcd] text-xs font-bold hover:bg-neutral-800 transition-all shadow-xs shrink-0"
+                        >
+                          <QrCode size={12} />
+                          <span>View Digital Pass</span>
+                        </Link>
+                      </div>
+                    )}
+
+                    {/* Shipment & Live Tracking Card (for Delivery Orders) */}
+                    {order.orderType !== "PICKUP" && (order.status === "SHIPPED" || order.trackingNumber) && (
                       <div className="my-3 p-3.5 bg-[#fbf9f5] border border-[#ecdec1] rounded-[6px] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                         <div className="space-y-1">
                           <div className="flex items-center gap-2">
@@ -223,7 +288,7 @@ export default async function AccountPage() {
                         href={`/checkout/success?orderNumber=${order.orderNumber}`}
                         className="text-xs font-semibold text-[#b6713e] hover:underline inline-flex items-center gap-1"
                       >
-                        <span>View Order Receipt</span>
+                        <span>{order.orderType === "PICKUP" ? "View Pickup Pass & Receipt" : "View Order Receipt"}</span>
                         <ExternalLink size={12} />
                       </Link>
                     </div>

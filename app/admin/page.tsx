@@ -257,7 +257,14 @@ export default async function AdminDashboardPage() {
                     return (
                       <tr key={order.id} className="hover:bg-[#fbf9f5]">
                         <td className="py-3 font-mono font-bold text-[#1c1c1c]">
-                          {order.orderNumber}
+                          <div className="flex items-center gap-1.5">
+                            <span>{order.orderNumber}</span>
+                            {order.orderType === "PICKUP" && (
+                              <span className="px-1.5 py-0.2 bg-amber-100 text-amber-900 border border-amber-300 rounded text-[9px] font-bold uppercase tracking-wider">
+                                Pickup
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td className="py-3">
                           <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-neutral-100 rounded text-[11px] font-semibold">

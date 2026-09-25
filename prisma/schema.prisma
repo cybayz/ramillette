@@ -30,6 +30,11 @@ enum OrderStatus {
   REFUNDED
 }
 
+enum OrderType {
+  DELIVERY
+  PICKUP
+}
+
 enum PaymentStatus {
   PENDING
   PAID
@@ -345,12 +350,19 @@ model Order {
   userId            String?
   user              User?             @relation(fields: [userId], references: [id], onDelete: SetNull)
   orderNumber       String            @unique
+  orderType         OrderType         @default(DELIVERY)
   status            OrderStatus       @default(PENDING)
   paymentStatus     PaymentStatus     @default(PENDING)
   fulfillmentStatus FulfillmentStatus @default(UNFULFILLED)
   channel           String            @default("ONLINE") // "ONLINE" or "POS"
   assignedStoreId   String?
   assignedStore     Store?            @relation("StoreOrders", fields: [assignedStoreId], references: [id], onDelete: SetNull)
+  pickupStoreId     String?
+  pickupStore       Store?            @relation("PickupStoreOrders", fields: [pickupStoreId], references: [id], onDelete: SetNull)
+  pickupDate        DateTime?
+  pickupTimeSlot    String?
+  pickupCode        String?
+  pickedUpAt        DateTime?
   idempotencyKey    String?           @unique
   acceptedAt        DateTime?
   pickedAt          DateTime?
@@ -392,6 +404,9 @@ model Order {
   @@index([country])
   @@index([assignedStoreId])
   @@index([channel])
+  @@index([orderType])
+  @@index([pickupStoreId])
+  @@index([pickupCode])
 }
 
 model OrderItem {
@@ -541,6 +556,7 @@ model Store {
   inventory           StoreInventory[]
   transactions        InventoryTransaction[]
   orders              Order[]                @relation("StoreOrders")
+  pickupOrders        Order[]                @relation("PickupStoreOrders")
   assignedUsers       User[]                 @relation("UserAssignedStore")
   userStores          UserStore[]
   transfersFrom       StockTransfer[]        @relation("SourceStore")

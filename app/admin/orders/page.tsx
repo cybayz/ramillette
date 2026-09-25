@@ -8,7 +8,12 @@ export default async function AdminOrdersPage() {
   const [ordersRaw, dbCountries] = await Promise.all([
     prisma.order.findMany({
       orderBy: { createdAt: "desc" },
-      include: { items: true },
+      include: {
+        items: true,
+        pickupStore: {
+          include: { region: true },
+        },
+      },
     }),
     prisma.country.findMany({
       select: { code: true, name: true, flag: true },
@@ -21,6 +26,15 @@ export default async function AdminOrdersPage() {
     return {
       id: o.id,
       orderNumber: o.orderNumber,
+      orderType: o.orderType,
+      pickupStoreId: o.pickupStoreId,
+      pickupStoreName: o.pickupStore?.name || shipping.storeName || null,
+      pickupStoreAddress: o.pickupStore?.address || shipping.addressLine1 || null,
+      pickupStoreCode: o.pickupStore?.code || shipping.storeCode || null,
+      pickupDate: o.pickupDate ? o.pickupDate.toISOString() : null,
+      pickupTimeSlot: o.pickupTimeSlot,
+      pickupCode: o.pickupCode,
+      pickedUpAt: o.pickedUpAt ? o.pickedUpAt.toISOString() : null,
       customerName: o.customerName,
       customerPhone: o.customerPhone,
       customerEmail: o.customerEmail,
