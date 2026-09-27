@@ -248,8 +248,8 @@ function LoginForm() {
                   ? "تسجيل دخول سريع"
                   : "Fast Mobile Sign In"
                 : isAr
-                ? "بوابة العملاء"
-                : "Customer Portal"}
+                  ? "بوابة العملاء"
+                  : "Customer Portal"}
             </span>
           </span>
           <h1 className="text-3xl font-extrabold text-[#1c1c1c] mt-1">
@@ -261,8 +261,8 @@ function LoginForm() {
                 ? "أدخل رقم هاتفك لتأكيد الدخول الفوري عبر رمز التحقق (OTP)."
                 : "Enter your mobile number to sign in instantly via OTP."
               : isAr
-              ? "الوصول إلى طلباتك، عناوين التوصيل، وقائمة الرغبات."
-              : "Access your orders, saved addresses, and wishlist."}
+                ? "الوصول إلى طلباتك، عناوين التوصيل، وقائمة الرغبات."
+                : "Access your orders, saved addresses, and wishlist."}
           </p>
         </div>
 
@@ -336,7 +336,7 @@ function LoginForm() {
                           required
                           value={phoneNumber}
                           onChange={(e) => setPhoneNumber(e.target.value)}
-                          placeholder="5512 3456"
+                          placeholder="XXXX XXXX"
                           autoFocus
                           className="w-full bg-white text-xs pl-9 pr-3 py-3 focus:outline-none font-medium"
                         />
@@ -581,9 +581,8 @@ function LoginForm() {
               <div className="mt-4 text-center text-xs text-neutral-600">
                 <span>{isAr ? "ليس لديك حساب بعد؟ " : "Don't have an account yet? "}</span>
                 <Link
-                  href={`${isAr ? "/ar" : ""}/account/register${
-                    redirect ? `?redirect=${encodeURIComponent(redirect)}` : ""
-                  }`}
+                  href={`${isAr ? "/ar" : ""}/account/register${redirect ? `?redirect=${encodeURIComponent(redirect)}` : ""
+                    }`}
                   className="font-bold text-[#b6713e] hover:underline"
                 >
                   {isAr ? "إنشاء حساب" : "Create Account"}
