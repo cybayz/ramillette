@@ -270,6 +270,25 @@ export async function adjustStock(
     },
   });
 
+  await tx.auditLog.create({
+    data: {
+      userId: performedById || null,
+      action: "STOCK_ADJUSTMENT",
+      entity: "STORE_INVENTORY",
+      entityId: inv.id,
+      storeId,
+      oldValue: { quantity: inv.quantity, available: inv.availableQuantity },
+      newValue: {
+        summary: `Adjusted inventory by ${quantityDelta > 0 ? `+${quantityDelta}` : quantityDelta} units (${type}: ${reason})`,
+        quantityDelta,
+        previousQuantity: inv.quantity,
+        newQuantity: newPhysical,
+        type,
+        reason,
+      },
+    },
+  });
+
   return updated;
 }
 

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
 import { getSession, isAdminRole } from "@/lib/auth/session";
+import { recordAuditLog } from "@/lib/audit/auditLogger";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -88,6 +89,25 @@ export async function PATCH(request: Request, { params }: Props) {
       updated = await prisma.order.findUnique({
         where: { id },
         include: { items: true },
+      });
+    }
+
+    if (updated) {
+      await recordAuditLog({
+        userId: session.userId,
+        userEmail: session.email,
+        userName: session.name || session.email,
+        action: "ORDER_STATUS_UPDATE",
+        entity: "ORDER",
+        entityId: updated.id,
+        summary: `Updated order #${updated.orderNumber} status to "${updated.status}" (Fulfillment: ${updated.fulfillmentStatus})`,
+        newValue: {
+          orderNumber: updated.orderNumber,
+          status: updated.status,
+          fulfillmentStatus: updated.fulfillmentStatus,
+          carrierName: updated.carrierName,
+          trackingNumber: updated.trackingNumber,
+        },
       });
     }
 

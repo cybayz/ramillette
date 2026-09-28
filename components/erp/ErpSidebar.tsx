@@ -18,6 +18,7 @@ import {
   ShieldCheck,
   LogOut,
   Receipt,
+  History,
 } from "lucide-react";
 import { LogoutButton } from "@/components/account/LogoutButton";
 
@@ -125,6 +126,12 @@ export function ErpSidebar({
           href: "/erp/roles",
           icon: ShieldCheck,
           permission: "roles:manage",
+        },
+        {
+          label: "Audit Trail & Logs",
+          href: "/erp/audit-logs",
+          icon: History,
+          permission: "reports:view",
         },
         {
           label: "Branch Provisioning",

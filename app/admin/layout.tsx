@@ -14,6 +14,7 @@ import {
   ShieldAlert,
   Globe,
   Gift,
+  History,
 } from "lucide-react";
 import { LogoutButton } from "@/components/account/LogoutButton";
 import { AdminSidebarMobile } from "@/components/admin/AdminSidebarMobile";
@@ -42,6 +43,7 @@ export default async function AdminLayout({
     { label: "Gift Packaging", href: "/admin/gift-wrap", icon: Gift },
     { label: "Coupons & Promos", href: "/admin/coupons", icon: Tag },
     { label: "Roles & Permissions", href: "/admin/roles", icon: Users },
+    { label: "Audit Trail & Logs", href: "/admin/audit-logs", icon: History },
     { label: "Store & Tax Settings", href: "/admin/settings", icon: Settings },
   ];
 

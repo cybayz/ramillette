@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
 import { getErpUser, getActiveErpStore, canAccessPos } from "@/lib/erp/context";
 import { recordPosSale } from "@/lib/inventory/inventoryService";
+import { recordAuditLog } from "@/lib/audit/auditLogger";
 
 export async function POST(request: Request) {
   try {
@@ -172,6 +173,27 @@ export async function POST(request: Request) {
         timeout: 30000,
       }
     );
+
+    await recordAuditLog({
+      userId: user.id,
+      userEmail: user.email,
+      userName: `${user.firstName || ""} ${user.lastName || ""}`.trim() || user.email,
+      action: "POS_SALE",
+      entity: "ORDER",
+      entityId: result.id,
+      storeId: store.id,
+      summary: `Completed POS Sale ${orderNumber} (${result.customerName}) for ${store.currency} ${finalTotal.toFixed(2)} via ${result.paymentMethod}`,
+      newValue: {
+        orderNumber,
+        total: finalTotal,
+        currency: store.currency,
+        paymentMethod: result.paymentMethod,
+        customerName: result.customerName,
+        customerPhone: result.customerPhone,
+        itemsCount: items.length,
+        payments,
+      },
+    });
 
     return NextResponse.json({
       success: true,

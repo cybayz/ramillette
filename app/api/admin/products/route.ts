@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
 import { getSession } from "@/lib/auth/session";
+import { recordAuditLog } from "@/lib/audit/auditLogger";
 
 function slugify(text: string): string {
   return text
@@ -203,6 +204,25 @@ export async function POST(request: Request) {
       }
 
       return p;
+    });
+
+    await recordAuditLog({
+      userId: session.userId,
+      userEmail: session.email,
+      userName: session.name || session.email,
+      action: "PRODUCT_CREATE",
+      entity: "PRODUCT",
+      entityId: createdProduct.id,
+      summary: `Created new fragrance "${createdProduct.name}" (SKU: ${createdProduct.sku || "N/A"}) with price QAR ${createdProduct.basePrice}`,
+      newValue: {
+        id: createdProduct.id,
+        name: createdProduct.name,
+        slug: createdProduct.slug,
+        sku: createdProduct.sku,
+        basePrice: createdProduct.basePrice,
+        stock: createdProduct.stock,
+        brand: createdProduct.brand,
+      },
     });
 
     return NextResponse.json({

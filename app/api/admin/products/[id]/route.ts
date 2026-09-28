@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
 import { getSession } from "@/lib/auth/session";
+import { recordAuditLog } from "@/lib/audit/auditLogger";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -276,6 +277,33 @@ export async function PATCH(request: Request, { params }: Props) {
       return p;
     });
 
+    await recordAuditLog({
+      userId: session.userId,
+      userEmail: session.email,
+      userName: session.name || session.email,
+      action: "PRODUCT_UPDATE",
+      entity: "PRODUCT",
+      entityId: id,
+      summary: `Updated fragrance "${existing.name}" (SKU: ${existing.sku || "N/A"})`,
+      oldValue: {
+        name: existing.name,
+        slug: existing.slug,
+        basePrice: existing.basePrice,
+        stock: existing.stock,
+        active: existing.active,
+        brand: existing.brand,
+      },
+      newValue: {
+        id: updated.id,
+        name: updated.name,
+        slug: updated.slug,
+        basePrice: updated.basePrice,
+        stock: updated.stock,
+        active: updated.active,
+        brand: updated.brand,
+      },
+    });
+
     return NextResponse.json({
       success: true,
       message: "Fragrance updated successfully",
@@ -333,6 +361,17 @@ export async function DELETE(request: Request, { params }: Props) {
         });
       });
 
+      await recordAuditLog({
+        userId: session.userId,
+        userEmail: session.email,
+        userName: session.name || session.email,
+        action: "PRODUCT_DELETE",
+        entity: "PRODUCT",
+        entityId: id,
+        summary: `Deactivated / archived fragrance "${existing.name}" (referenced by ${ordersCount} historical order(s))`,
+        oldValue: { id: existing.id, name: existing.name },
+      });
+
       return NextResponse.json({
         success: true,
         message: `Fragrance "${existing.name}" is referenced by ${ordersCount} historical order(s) and has been deactivated/archived safely.`,
@@ -361,6 +400,17 @@ export async function DELETE(request: Request, { params }: Props) {
         });
       }
       await tx.product.delete({ where: { id } });
+    });
+
+    await recordAuditLog({
+      userId: session.userId,
+      userEmail: session.email,
+      userName: session.name || session.email,
+      action: "PRODUCT_DELETE",
+      entity: "PRODUCT",
+      entityId: id,
+      summary: `Permanently deleted fragrance "${existing.name}"`,
+      oldValue: { id: existing.id, name: existing.name },
     });
 
     return NextResponse.json({

@@ -3,6 +3,7 @@ import prisma from "@/lib/db/prisma";
 import { getErpUser, getActiveErpStore, canManageReturns } from "@/lib/erp/context";
 import { getOrCreateStoreInventory } from "@/lib/inventory/inventoryService";
 import { InventoryTransactionType } from "@prisma/client";
+import { recordAuditLog } from "@/lib/audit/auditLogger";
 
 export async function GET() {
   try {
@@ -258,6 +259,28 @@ export async function POST(request: Request) {
       }
 
       return createdReturn;
+    });
+
+    await recordAuditLog({
+      userId: user.id,
+      userEmail: user.email,
+      userName: `${user.firstName || ""} ${user.lastName || ""}`.trim() || user.email,
+      action: "RETURN_PROCESSED",
+      entity: "RETURN",
+      entityId: result.id,
+      storeId,
+      summary:
+        resolutionType === "REPLACEMENT"
+          ? `Processed Exchange #${returnNumber} for order ${order.orderNumber}`
+          : `Processed Return #${returnNumber} with refund (${effectiveMethod}) of ${calculatedRefund.toFixed(2)} for order ${order.orderNumber}`,
+      newValue: {
+        returnNumber,
+        orderNumber: order.orderNumber,
+        resolutionType,
+        refundAmount: calculatedRefund,
+        refundMethod: effectiveMethod,
+        itemsCount: items.length,
+      },
     });
 
     return NextResponse.json({
