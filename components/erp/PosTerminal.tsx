@@ -12,6 +12,7 @@ import {
   CreditCard,
   Banknote,
   Smartphone,
+  Split,
   User,
   CheckCircle2,
   Printer,
@@ -23,6 +24,14 @@ import {
 } from "lucide-react";
 import { ErpInvoiceTemplate } from "@/components/erp/ErpInvoiceTemplate";
 import { PosSalesHistoryView } from "@/components/erp/PosSalesHistoryView";
+
+interface SplitSubPayment {
+  id: string;
+  method: "CASH" | "CARD" | "BENEFIT_PAY";
+  amount: number;
+  reference?: string;
+  timestamp: string;
+}
 
 interface PosItem {
   id: string;
@@ -80,6 +89,14 @@ export function PosTerminal({ storeContext, cashierName }: PosTerminalProps) {
   const [primaryPaymentMethod, setPrimaryPaymentMethod] = useState<"CASH" | "CARD" | "BENEFIT_PAY">("CASH");
   const [cardRef, setCardRef] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
+
+  // Split / Multiple Means payment state
+  const [isSplitPaymentModalOpen, setIsSplitPaymentModalOpen] = useState(false);
+  const [splitPayments, setSplitPayments] = useState<SplitSubPayment[]>([]);
+  const [partialAmount, setPartialAmount] = useState<string>("");
+  const [partialMethod, setPartialMethod] = useState<"CASH" | "CARD" | "BENEFIT_PAY">("CASH");
+  const [partialRef, setPartialRef] = useState<string>("");
+  const [splitFeedback, setSplitFeedback] = useState<string | null>(null);
 
   // Receipt state
   const [completedReceipt, setCompletedReceipt] = useState<any>(null);
@@ -154,6 +171,7 @@ export function PosTerminal({ storeContext, cashierName }: PosTerminalProps) {
       // Hotkey Escape: Close active modals
       if (e.key === "Escape") {
         setIsPaymentModalOpen(false);
+        setIsSplitPaymentModalOpen(false);
         setIsHistoryModalOpen(false);
         setIsCustomerModalOpen(false);
         if (completedReceipt) setCompletedReceipt(null);
@@ -284,6 +302,25 @@ export function PosTerminal({ storeContext, cashierName }: PosTerminalProps) {
     return 0;
   }, [primaryPaymentMethod, cashTendered, totalAmount]);
 
+  // Split / Multiple Means calculations
+  const totalSplitPaid = useMemo(() => {
+    return splitPayments.reduce((sum, p) => sum + p.amount, 0);
+  }, [splitPayments]);
+
+  const splitRemainingBalance = useMemo(() => {
+    const rem = totalAmount - totalSplitPaid;
+    return rem > 0.001 ? Number(rem.toFixed(2)) : 0;
+  }, [totalAmount, totalSplitPaid]);
+
+  const splitChangeDue = useMemo(() => {
+    const over = totalSplitPaid - totalAmount;
+    return over > 0.001 ? Number(over.toFixed(2)) : 0;
+  }, [totalAmount, totalSplitPaid]);
+
+  const isSplitFullyPaid = useMemo(() => {
+    return totalAmount > 0 && totalSplitPaid >= totalAmount - 0.02;
+  }, [totalSplitPaid, totalAmount]);
+
   // Categories list
   const categories = useMemo(() => {
     const set = new Set<string>();
@@ -366,6 +403,145 @@ export function PosTerminal({ storeContext, cashierName }: PosTerminalProps) {
       loadCatalog(searchQuery);
     } catch (err: any) {
       alert(`POS Transaction Error: ${err.message}`);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // Open Pay by Multiple Means modal
+  const openSplitPaymentModal = () => {
+    setIsPaymentModalOpen(false);
+    setIsSplitPaymentModalOpen(true);
+    if (splitPayments.length === 0) {
+      setPartialAmount(totalAmount > 0 ? totalAmount.toFixed(2) : "");
+      setPartialMethod("CASH");
+    } else if (splitRemainingBalance > 0) {
+      setPartialAmount(splitRemainingBalance.toFixed(2));
+    }
+  };
+
+  // Record a partial subtransaction
+  const handleAddSplitPayment = () => {
+    const amt = Number(partialAmount);
+    if (isNaN(amt) || amt <= 0) {
+      alert("Please enter a valid partial amount greater than 0");
+      return;
+    }
+
+    const newSubPayment: SplitSubPayment = {
+      id: `split-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      method: partialMethod,
+      amount: Number(amt.toFixed(2)),
+      reference: partialRef.trim() || undefined,
+      timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+    };
+
+    const updatedPayments = [...splitPayments, newSubPayment];
+    setSplitPayments(updatedPayments);
+
+    const updatedTotalPaid = updatedPayments.reduce((s, p) => s + p.amount, 0);
+    const updatedRemaining = Math.max(0, Number((totalAmount - updatedTotalPaid).toFixed(2)));
+
+    setSplitFeedback(`✓ Recorded ${storeContext.currency} ${amt.toFixed(2)} via ${partialMethod}`);
+    setTimeout(() => setSplitFeedback(null), 3500);
+
+    if (updatedRemaining > 0) {
+      setPartialAmount(updatedRemaining.toFixed(2));
+      if (partialMethod === "CASH") {
+        setPartialMethod("CARD");
+      }
+    } else {
+      setPartialAmount("");
+    }
+    setPartialRef("");
+  };
+
+  // Remove a recorded subtransaction
+  const handleRemoveSplitPayment = (id: string) => {
+    const updated = splitPayments.filter((p) => p.id !== id);
+    setSplitPayments(updated);
+    const updatedTotalPaid = updated.reduce((s, p) => s + p.amount, 0);
+    const updatedRemaining = Math.max(0, Number((totalAmount - updatedTotalPaid).toFixed(2)));
+    if (updatedRemaining > 0) {
+      setPartialAmount(updatedRemaining.toFixed(2));
+    }
+  };
+
+  // Reset all recorded split payments
+  const handleResetSplitPayments = () => {
+    if (splitPayments.length === 0) return;
+    if (confirm("Reset all partial payments recorded for this order?")) {
+      setSplitPayments([]);
+      setPartialAmount(totalAmount > 0 ? totalAmount.toFixed(2) : "");
+      setPartialRef("");
+      setSplitFeedback(null);
+    }
+  };
+
+  // Finalize Split POS Sale & Print Receipt
+  const handleCompleteSplitSale = async () => {
+    if (cart.length === 0) {
+      alert("Cart is empty");
+      return;
+    }
+    if (!isSplitFullyPaid) {
+      alert(
+        `Please complete payment before finalizing. Remaining balance: ${storeContext.currency} ${splitRemainingBalance.toFixed(2)}`
+      );
+      return;
+    }
+
+    try {
+      setIsProcessing(true);
+      const idempotencyKey = `POS-SPLIT-${storeContext.storeCode}-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+
+      const paymentsPayload = splitPayments.map((p) => ({
+        method: p.method,
+        amount: p.amount,
+        reference: p.reference || null,
+      }));
+
+      const payload = {
+        idempotencyKey,
+        items: cart.map((line) => ({
+          productId: line.item.productId,
+          variantId: line.item.variantId,
+          name: line.item.name,
+          variantName: line.item.variantName,
+          sku: line.item.sku,
+          quantity: line.quantity,
+          unitPrice: line.unitPrice,
+        })),
+        customerName,
+        customerPhone: customerPhone || null,
+        payments: paymentsPayload,
+        discount: discountAmount,
+      };
+
+      const res = await fetch("/api/erp/pos/sales", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to complete split sale");
+      }
+
+      // Success: show receipt modal, reset cart & split states
+      setCompletedReceipt(data.receipt);
+      setCart([]);
+      setDiscountAmount(0);
+      setSplitPayments([]);
+      setPartialAmount("");
+      setPartialRef("");
+      setIsSplitPaymentModalOpen(false);
+
+      // Refresh catalog stock
+      loadCatalog(searchQuery);
+    } catch (err: any) {
+      alert(`POS Split Transaction Error: ${err.message}`);
     } finally {
       setIsProcessing(false);
     }
@@ -661,22 +837,38 @@ export function PosTerminal({ storeContext, cashierName }: PosTerminalProps) {
           </div>
 
           {/* Action Buttons */}
-          <div className="grid grid-cols-4 gap-2 pt-1">
-            <button
-              onClick={clearCart}
-              disabled={cart.length === 0}
-              className="px-2 py-2.5 rounded-[6px] bg-[#292929] hover:bg-[#333333] text-neutral-400 hover:text-white text-xs font-bold transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              Clear
-            </button>
+          <div className="space-y-1.5 pt-1">
+            <div className="grid grid-cols-4 gap-2">
+              <button
+                onClick={clearCart}
+                disabled={cart.length === 0}
+                className="px-2 py-2.5 rounded-[6px] bg-[#292929] hover:bg-[#333333] text-neutral-400 hover:text-white text-xs font-bold transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Clear
+              </button>
+
+              <button
+                onClick={() => setIsPaymentModalOpen(true)}
+                disabled={cart.length === 0}
+                className="col-span-3 py-2.5 rounded-[6px] bg-[#faedcd] hover:bg-[#ebd59f] text-[#1c1c1c] font-black text-xs flex items-center justify-center gap-2 shadow-sm transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <CreditCard size={15} />
+                <span>Charge {storeContext.currency} {totalAmount.toFixed(2)} (F8)</span>
+              </button>
+            </div>
 
             <button
-              onClick={() => setIsPaymentModalOpen(true)}
+              onClick={openSplitPaymentModal}
               disabled={cart.length === 0}
-              className="col-span-3 py-2.5 rounded-[6px] bg-[#faedcd] hover:bg-[#ebd59f] text-[#1c1c1c] font-black text-xs flex items-center justify-center gap-2 shadow-sm transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+              className="w-full py-2 px-3 rounded-[6px] bg-[#222222] hover:bg-[#2a2a2a] border border-[#383838] hover:border-[#faedcd]/60 text-white font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              <CreditCard size={15} />
-              <span>Charge {storeContext.currency} {totalAmount.toFixed(2)} (F8)</span>
+              <Split size={14} className="text-[#faedcd]" />
+              <span>Pay by Multiple Means (Split Cash & Card)</span>
+              {splitPayments.length > 0 && (
+                <span className="ml-1 px-1.5 py-0.5 rounded-full bg-[#faedcd] text-[#1c1c1c] text-[10px] font-mono font-black">
+                  {splitPayments.length} paid
+                </span>
+              )}
             </button>
           </div>
         </div>
@@ -767,6 +959,21 @@ export function PosTerminal({ storeContext, cashierName }: PosTerminalProps) {
                 <span>Items: {cart.reduce((s, l) => s + l.quantity, 0)} bottles</span>
                 <div className="text-white font-bold">{customerName}</div>
               </div>
+            </div>
+
+            {/* Split Tender Banner Option */}
+            <div className="bg-[#181818] border border-dashed border-[#444444] rounded-[8px] p-2.5 flex items-center justify-between">
+              <div className="text-[11px] text-neutral-300 flex items-center gap-2">
+                <Split size={15} className="text-[#faedcd]" />
+                <span>Split payment across cash &amp; card?</span>
+              </div>
+              <button
+                type="button"
+                onClick={openSplitPaymentModal}
+                className="px-2.5 py-1 rounded bg-[#2e2e2e] hover:bg-[#383838] text-[11px] font-bold text-[#faedcd] border border-[#444] hover:border-[#faedcd] transition-all cursor-pointer whitespace-nowrap"
+              >
+                Pay by Multiple Means →
+              </button>
             </div>
 
             {/* Payment Method Selector */}
@@ -885,6 +1092,415 @@ export function PosTerminal({ storeContext, cashierName }: PosTerminalProps) {
                     <CheckCircle2 size={16} />
                     <span>Confirm Sale & Print Receipt</span>
                   </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: Pay by Multiple Means (Split Tender) */}
+      {isSplitPaymentModalOpen && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+          <div className="bg-[#202020] border border-[#383838] rounded-[12px] w-full max-w-2xl p-6 shadow-2xl space-y-5 max-h-[92vh] overflow-y-auto">
+            {/* Modal Header */}
+            <div className="flex justify-between items-center border-b border-[#2d2d2d] pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-lg bg-[#faedcd]/10 text-[#faedcd] border border-[#faedcd]/20">
+                  <Split size={20} />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-base font-black text-white">Pay by Multiple Means</h3>
+                    <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-[#faedcd]/20 text-[#faedcd] border border-[#faedcd]/30">
+                      Split Tender
+                    </span>
+                  </div>
+                  <p className="text-xs text-neutral-400">
+                    Settle order across cash, card, or multiple partial subtransactions
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsSplitPaymentModalOpen(false)}
+                className="text-neutral-400 hover:text-white p-1 rounded hover:bg-neutral-800 transition-colors"
+                title="Close"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Financial Overview Metrics */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+              <div className="bg-[#181818] border border-[#2e2e2e] rounded-[8px] p-3">
+                <div className="text-[10px] uppercase font-bold text-neutral-400">Total Payable</div>
+                <div className="text-lg font-black font-mono text-[#faedcd] mt-0.5">
+                  {storeContext.currency} {totalAmount.toFixed(2)}
+                </div>
+                <div className="text-[10px] text-neutral-500 truncate mt-0.5">
+                  {customerName}
+                </div>
+              </div>
+
+              <div className="bg-[#181818] border border-[#2e2e2e] rounded-[8px] p-3">
+                <div className="text-[10px] uppercase font-bold text-neutral-400">Paid So Far</div>
+                <div
+                  className={`text-lg font-black font-mono mt-0.5 ${
+                    totalSplitPaid > 0 ? "text-emerald-400" : "text-neutral-400"
+                  }`}
+                >
+                  {storeContext.currency} {totalSplitPaid.toFixed(2)}
+                </div>
+                <div className="text-[10px] text-neutral-500 mt-0.5">
+                  {splitPayments.length} payment{splitPayments.length === 1 ? "" : "s"}
+                </div>
+              </div>
+
+              <div
+                className={`rounded-[8px] p-3 border ${
+                  splitRemainingBalance > 0
+                    ? "bg-amber-950/20 border-amber-800/40"
+                    : "bg-emerald-950/20 border-emerald-800/40"
+                }`}
+              >
+                <div
+                  className={`text-[10px] uppercase font-bold ${
+                    splitRemainingBalance > 0 ? "text-amber-400" : "text-emerald-400"
+                  }`}
+                >
+                  Remaining
+                </div>
+                <div
+                  className={`text-lg font-black font-mono mt-0.5 ${
+                    splitRemainingBalance > 0 ? "text-amber-300" : "text-emerald-400"
+                  }`}
+                >
+                  {storeContext.currency} {splitRemainingBalance.toFixed(2)}
+                </div>
+                <div
+                  className={`text-[10px] mt-0.5 ${
+                    splitRemainingBalance > 0 ? "text-amber-500/80" : "text-emerald-500/80"
+                  }`}
+                >
+                  {splitRemainingBalance > 0 ? "Needs settlement" : "Fully paid ✓"}
+                </div>
+              </div>
+
+              <div className="bg-[#181818] border border-[#2e2e2e] rounded-[8px] p-3">
+                <div className="text-[10px] uppercase font-bold text-neutral-400">Change Due</div>
+                <div
+                  className={`text-lg font-black font-mono mt-0.5 ${
+                    splitChangeDue > 0 ? "text-cyan-400" : "text-neutral-500"
+                  }`}
+                >
+                  {storeContext.currency} {splitChangeDue.toFixed(2)}
+                </div>
+                <div className="text-[10px] text-neutral-500 mt-0.5">
+                  {splitChangeDue > 0 ? "Return cash" : "Exact"}
+                </div>
+              </div>
+            </div>
+
+            {/* Progress Bar */}
+            <div className="space-y-1">
+              <div className="flex justify-between text-[11px] text-neutral-400 font-mono">
+                <span>Settlement Progress</span>
+                <span>
+                  {Math.min(
+                    100,
+                    Math.round((totalSplitPaid / Math.max(1, totalAmount)) * 100)
+                  )}
+                  %
+                </span>
+              </div>
+              <div className="w-full bg-[#181818] rounded-full h-2 overflow-hidden border border-[#2a2a2a]">
+                <div
+                  className={`h-full transition-all duration-300 ${
+                    isSplitFullyPaid ? "bg-emerald-500" : "bg-[#faedcd]"
+                  }`}
+                  style={{
+                    width: `${Math.min(
+                      100,
+                      (totalSplitPaid / Math.max(1, totalAmount)) * 100
+                    )}%`,
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Recorded Subtransactions List */}
+            <div className="space-y-2">
+              <div className="flex justify-between items-center text-xs">
+                <span className="font-bold text-neutral-300">
+                  Recorded Subtransactions ({splitPayments.length})
+                </span>
+                {splitPayments.length > 0 && (
+                  <button
+                    onClick={handleResetSplitPayments}
+                    className="text-[11px] text-red-400 hover:text-red-300 cursor-pointer"
+                  >
+                    Clear All
+                  </button>
+                )}
+              </div>
+
+              {splitPayments.length === 0 ? (
+                <div className="bg-[#181818] border border-dashed border-[#333333] rounded-[8px] p-4 text-center text-xs text-neutral-400">
+                  No partial payments recorded yet. Enter an amount below and select payment mode.
+                </div>
+              ) : (
+                <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
+                  {splitPayments.map((p, idx) => (
+                    <div
+                      key={p.id}
+                      className="flex items-center justify-between bg-[#181818] border border-[#2c2c2c] hover:border-[#383838] px-3 py-2 rounded-[6px] text-xs transition-colors"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <span className="font-mono text-neutral-500 text-[11px]">#{idx + 1}</span>
+                        <div className="p-1 rounded bg-[#252525] text-neutral-300">
+                          {p.method === "CASH" && <Banknote size={15} className="text-emerald-400" />}
+                          {p.method === "CARD" && <CreditCard size={15} className="text-sky-400" />}
+                          {p.method === "BENEFIT_PAY" && <Smartphone size={15} className="text-amber-400" />}
+                        </div>
+                        <div>
+                          <span className="font-bold text-white uppercase">{p.method}</span>
+                          {p.reference && (
+                            <span className="ml-1.5 text-[11px] text-neutral-400 font-mono">
+                              (Ref: {p.reference})
+                            </span>
+                          )}
+                          <span className="ml-2 text-[10px] text-neutral-500">
+                            {p.timestamp}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-3">
+                        <span className="font-mono font-bold text-white text-sm">
+                          {storeContext.currency} {p.amount.toFixed(2)}
+                        </span>
+                        <button
+                          onClick={() => handleRemoveSplitPayment(p.id)}
+                          title="Remove subpayment"
+                          className="text-neutral-500 hover:text-red-400 p-1 rounded hover:bg-neutral-800 transition-colors"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Success feedback notice */}
+            {splitFeedback && (
+              <div className="bg-emerald-950/50 border border-emerald-800/60 rounded-[6px] px-3 py-2 text-xs text-emerald-300 flex items-center gap-2 animate-in fade-in">
+                <CheckCircle2 size={15} />
+                <span>{splitFeedback}</span>
+              </div>
+            )}
+
+            {/* Interactive Entry Panel */}
+            {isSplitFullyPaid ? (
+              <div className="bg-emerald-950/30 border border-emerald-800/50 rounded-[8px] p-4 text-center space-y-2">
+                <div className="inline-flex p-2 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                  <CheckCircle2 size={24} />
+                </div>
+                <h4 className="text-sm font-black text-emerald-300">
+                  Total Amount Covered! Order is Ready to be Placed
+                </h4>
+                <p className="text-xs text-neutral-300 max-w-md mx-auto">
+                  All subtransactions have been recorded successfully. Click &quot;Confirm Sale &amp; Print Receipt&quot; below to finalize the transaction and deduct inventory.
+                </p>
+                {splitChangeDue > 0 && (
+                  <div className="inline-block mt-1 px-3 py-1.5 rounded bg-emerald-900/60 border border-emerald-700 text-xs font-mono font-bold text-emerald-200">
+                    Return Change in Cash: {storeContext.currency} {splitChangeDue.toFixed(2)}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="bg-[#181818] border border-[#2b2b2b] rounded-[8px] p-4 space-y-3.5">
+                <div className="flex justify-between items-center">
+                  <span className="text-xs font-bold text-white uppercase tracking-wider">
+                    Add Subtransaction
+                  </span>
+                  <span className="text-[11px] text-amber-400 font-mono">
+                    Remaining: {storeContext.currency} {splitRemainingBalance.toFixed(2)}
+                  </span>
+                </div>
+
+                {/* Mode Selector */}
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setPartialMethod("CASH")}
+                    className={`p-2.5 rounded-[6px] border flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                      partialMethod === "CASH"
+                        ? "bg-[#faedcd]/15 border-[#faedcd] text-white"
+                        : "bg-[#202020] border-[#303030] text-neutral-400 hover:text-white"
+                    }`}
+                  >
+                    <Banknote size={16} className={partialMethod === "CASH" ? "text-[#faedcd]" : ""} />
+                    <span className="text-xs font-bold">Cash</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setPartialMethod("CARD")}
+                    className={`p-2.5 rounded-[6px] border flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                      partialMethod === "CARD"
+                        ? "bg-[#faedcd]/15 border-[#faedcd] text-white"
+                        : "bg-[#202020] border-[#303030] text-neutral-400 hover:text-white"
+                    }`}
+                  >
+                    <CreditCard size={16} className={partialMethod === "CARD" ? "text-[#faedcd]" : ""} />
+                    <span className="text-xs font-bold">Card / Terminal</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setPartialMethod("BENEFIT_PAY")}
+                    className={`p-2.5 rounded-[6px] border flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                      partialMethod === "BENEFIT_PAY"
+                        ? "bg-[#faedcd]/15 border-[#faedcd] text-white"
+                        : "bg-[#202020] border-[#303030] text-neutral-400 hover:text-white"
+                    }`}
+                  >
+                    <Smartphone size={16} className={partialMethod === "BENEFIT_PAY" ? "text-[#faedcd]" : ""} />
+                    <span className="text-xs font-bold">QR / App</span>
+                  </button>
+                </div>
+
+                {/* Amount input & Quick Chips */}
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-bold text-neutral-400 block">
+                    Amount to Tender ({storeContext.currency}):
+                  </label>
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500 font-mono text-xs font-bold">
+                        {storeContext.currency}
+                      </span>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={partialAmount}
+                        onChange={(e) => setPartialAmount(e.target.value)}
+                        placeholder={splitRemainingBalance.toFixed(2)}
+                        className="w-full bg-[#222222] border border-[#333333] rounded-[6px] pl-14 pr-3 py-2 text-sm text-white font-mono font-bold focus:border-[#faedcd] outline-none"
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            handleAddSplitPayment();
+                          }
+                        }}
+                      />
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={handleAddSplitPayment}
+                      disabled={!partialAmount || Number(partialAmount) <= 0}
+                      className="px-4 py-2 bg-[#faedcd] hover:bg-[#ebd59f] text-[#1c1c1c] font-black text-xs rounded-[6px] transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5 whitespace-nowrap shadow-sm"
+                    >
+                      <Plus size={15} />
+                      <span>Add Payment</span>
+                    </button>
+                  </div>
+
+                  {/* Quick Tender Suggestions */}
+                  <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                    <span className="text-[10px] text-neutral-500 font-bold uppercase">Quick:</span>
+                    <button
+                      type="button"
+                      onClick={() => setPartialAmount(splitRemainingBalance.toFixed(2))}
+                      className="px-2 py-0.5 rounded bg-[#242424] hover:bg-[#2e2e2e] text-[11px] font-mono text-[#faedcd] border border-[#333] transition-colors cursor-pointer"
+                    >
+                      Exact ({splitRemainingBalance.toFixed(2)})
+                    </button>
+                    {splitRemainingBalance > 50 && (
+                      <button
+                        type="button"
+                        onClick={() => setPartialAmount("50.00")}
+                        className="px-2 py-0.5 rounded bg-[#242424] hover:bg-[#2e2e2e] text-[11px] font-mono text-neutral-300 border border-[#333] transition-colors cursor-pointer"
+                      >
+                        50.00
+                      </button>
+                    )}
+                    {splitRemainingBalance > 100 && (
+                      <button
+                        type="button"
+                        onClick={() => setPartialAmount("100.00")}
+                        className="px-2 py-0.5 rounded bg-[#242424] hover:bg-[#2e2e2e] text-[11px] font-mono text-neutral-300 border border-[#333] transition-colors cursor-pointer"
+                      >
+                        100.00
+                      </button>
+                    )}
+                    {splitRemainingBalance > 200 && (
+                      <button
+                        type="button"
+                        onClick={() => setPartialAmount("200.00")}
+                        className="px-2 py-0.5 rounded bg-[#242424] hover:bg-[#2e2e2e] text-[11px] font-mono text-neutral-300 border border-[#333] transition-colors cursor-pointer"
+                      >
+                        200.00
+                      </button>
+                    )}
+                    {splitRemainingBalance > 10 && (
+                      <button
+                        type="button"
+                        onClick={() => setPartialAmount((splitRemainingBalance / 2).toFixed(2))}
+                        className="px-2 py-0.5 rounded bg-[#242424] hover:bg-[#2e2e2e] text-[11px] font-mono text-neutral-300 border border-[#333] transition-colors cursor-pointer"
+                      >
+                        50% ({(splitRemainingBalance / 2).toFixed(2)})
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Reference input for Card / QR */}
+                {partialMethod !== "CASH" && (
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-bold text-neutral-400 block">
+                      Auth / Approval Reference (Optional):
+                    </label>
+                    <input
+                      type="text"
+                      value={partialRef}
+                      onChange={(e) => setPartialRef(e.target.value)}
+                      placeholder="e.g. QNB-AUTH-8821"
+                      className="w-full bg-[#222222] border border-[#333333] rounded-[6px] px-3 py-1.5 text-xs text-white placeholder-neutral-500 font-mono"
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Modal Actions */}
+            <div className="flex gap-2 pt-2 border-t border-[#2d2d2d]">
+              <button
+                onClick={() => setIsSplitPaymentModalOpen(false)}
+                className="py-2.5 px-4 rounded bg-[#2a2a2a] hover:bg-[#333333] text-xs font-bold text-neutral-300 cursor-pointer"
+              >
+                Close
+              </button>
+
+              <button
+                onClick={handleCompleteSplitSale}
+                disabled={!isSplitFullyPaid || isProcessing}
+                className="flex-1 py-2.5 rounded bg-[#faedcd] hover:bg-[#ebd59f] text-[#1c1c1c] text-xs font-black flex items-center justify-center gap-2 transition-all cursor-pointer shadow-sm disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {isProcessing ? (
+                  <span>Authorizing & Deducting Stock...</span>
+                ) : isSplitFullyPaid ? (
+                  <>
+                    <CheckCircle2 size={16} />
+                    <span>Confirm Sale & Print Receipt</span>
+                  </>
+                ) : (
+                  <span>
+                    Remaining Balance: {storeContext.currency} {splitRemainingBalance.toFixed(2)}
+                  </span>
                 )}
               </button>
             </div>

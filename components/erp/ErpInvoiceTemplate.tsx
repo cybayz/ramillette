@@ -30,6 +30,7 @@ export interface ErpInvoiceData {
   total: number;
   currency?: string;
   paymentMethod?: string | null;
+  payments?: Array<{ method: string; amount: number; reference?: string | null }> | null;
   paidAmount?: number;
   balance?: number;
   qrPayload?: string;
@@ -357,8 +358,29 @@ export function ErpInvoiceTemplate({
         <div className="space-y-1 text-[11.5px] sm:text-[12px] font-medium uppercase text-black py-0.5">
           <div className="flex justify-between items-center">
             <span>PAYMENT METHOD</span>
-            <span>{paymentMethod}</span>
+            <span>
+              {receipt.payments && receipt.payments.length > 1
+                ? "SPLIT / MULTIPLE"
+                : paymentMethod}
+            </span>
           </div>
+
+          {/* Itemized Subtransactions if multiple means used */}
+          {receipt.payments && receipt.payments.length > 1 && (
+            <div className="border-l-2 border-black pl-2.5 my-1 space-y-0.5 text-[10.5px] text-neutral-900">
+              {receipt.payments.map((p, idx) => (
+                <div key={idx} className="flex justify-between items-center">
+                  <span>
+                    • {p.method}
+                    {p.reference ? ` (${p.reference})` : ""}:
+                  </span>
+                  <span className="tabular-nums">
+                    {currency} {Number(p.amount).toFixed(2)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
           <div className="flex justify-between items-center">
             <span>PAID AMOUNT</span>
             <span>

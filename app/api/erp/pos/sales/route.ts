@@ -258,6 +258,7 @@ export async function GET(request: Request) {
       where: whereClause,
       include: {
         items: true,
+        posPayments: true,
       },
       orderBy: { createdAt: "desc" },
       take: 60,
@@ -295,6 +296,11 @@ export async function GET(request: Request) {
           total: Number(it.total),
         })),
         createdAt: o.createdAt,
+        payments: o.posPayments?.map((p) => ({
+          method: p.paymentMethod,
+          amount: Number(p.amount),
+          reference: p.reference,
+        })) || [],
         receiptData: {
           orderNumber: o.orderNumber,
           invoiceNumber: o.orderNumber,
@@ -319,6 +325,11 @@ export async function GET(request: Request) {
           total: Number(o.total),
           currency: o.currency || store.currency,
           paymentMethod: o.paymentMethod || "CARD",
+          payments: o.posPayments?.map((p) => ({
+            method: p.paymentMethod,
+            amount: Number(p.amount),
+            reference: p.reference,
+          })) || [],
           paidAmount: Number(o.total),
           balance: 0,
           qrPayload: `https://www.ramillette.com/?invoice=${encodeURIComponent(o.orderNumber)}`,
