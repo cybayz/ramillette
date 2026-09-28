@@ -18,6 +18,7 @@ import {
   Search,
   Gift,
   Sparkles,
+  Printer,
 } from "lucide-react";
 
 interface OrderItem {
@@ -497,6 +498,18 @@ export function OrderFulfillmentHub({ storeContext }: OrderFulfillmentHubProps) 
                         <span>Fulfilled from {storeContext.storeName}</span>
                       </span>
                     )}
+
+                    {/* Quick Print Official Invoice */}
+                    <a
+                      href={`/erp/orders/${ord.id}/invoice`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-3 py-2 rounded-[5px] bg-[#222222] hover:bg-[#2c2c2c] text-neutral-300 hover:text-white font-semibold text-xs flex items-center gap-1.5 transition-all border border-[#333333]"
+                      title="Print Customer Invoice"
+                    >
+                      <Printer size={13} />
+                      <span>Invoice</span>
+                    </a>
                   </div>
                 </div>
               </div>

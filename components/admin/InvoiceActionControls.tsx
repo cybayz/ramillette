@@ -9,6 +9,7 @@ import {
   ArrowLeft,
   Check,
   ExternalLink,
+  Receipt,
 } from "lucide-react";
 import { InvoiceOrderData, generateWhatsAppInvoiceUrl } from "@/lib/admin/invoiceUtils";
 
@@ -83,6 +84,18 @@ export function InvoiceActionControls({ order }: { order: InvoiceOrderData }) {
           <Printer size={14} />
           <span>Print Invoice</span>
         </button>
+
+        {/* Thermal Slip Receipt Format */}
+        <a
+          href={`/erp/orders/${order.id}/invoice`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="h-9 px-3.5 text-xs font-bold inline-flex items-center gap-2 rounded-[6px] bg-neutral-100 hover:bg-neutral-200 text-neutral-800 border border-neutral-300 transition-colors shadow-xs"
+          title="Print Thermal Receipt / Store Slip format"
+        >
+          <Receipt size={14} />
+          <span>Thermal Receipt</span>
+        </a>
 
         {/* Copy Link */}
         <button

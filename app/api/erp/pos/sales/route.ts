@@ -77,10 +77,10 @@ export async function POST(request: Request) {
       );
     }
 
-    // Generate POS Receipt Number (e.g. POS-DOH-001-2609-5821)
+    // Generate POS Invoice / Receipt Number (e.g. RP-2026-0021)
+    const currentYear = new Date().getFullYear();
     const randomSuffix = Math.floor(1000 + Math.random() * 9000);
-    const dateStr = new Date().toISOString().slice(2, 7).replace("-", "");
-    const orderNumber = `POS-${store.code}-${dateStr}-${randomSuffix}`;
+    const orderNumber = `RP-${currentYear}-${String(randomSuffix).padStart(4, "0")}`;
 
     // 4. Atomic Transaction: Create Order, Deduct Store Stock, Write Ledger, Save Split Payments
     const result = await prisma.$transaction(
@@ -179,6 +179,7 @@ export async function POST(request: Request) {
       order: result,
       receipt: {
         orderNumber: result.orderNumber,
+        invoiceNumber: result.orderNumber,
         storeName: store.name,
         storeCode: store.code,
         storeAddress: store.address,
@@ -187,7 +188,9 @@ export async function POST(request: Request) {
         customerName: result.customerName,
         customerPhone: result.customerPhone,
         items: items.map((it: any) => ({
-          name: it.variantName ? `${it.name} (${it.variantName})` : it.name,
+          name: it.name,
+          subtitle: it.subtitle || "Extrait De Parfum",
+          variantName: it.variantName || (it.name?.match(/\((.*?)\)/)?.[1] ?? null),
           sku: it.sku,
           quantity: it.quantity,
           unitPrice: Number(it.unitPrice),
@@ -200,6 +203,9 @@ export async function POST(request: Request) {
         total: finalTotal,
         currency: store.currency,
         payments,
+        paymentMethod: result.paymentMethod || "CARD",
+        paidAmount: paidTotal,
+        balance: Math.max(0, paidTotal - finalTotal),
         createdAt: result.createdAt,
       },
     });
@@ -209,5 +215,134 @@ export async function POST(request: Request) {
       { error: error?.message || "Failed to process POS sale" },
       { status: 500 }
     );
+  }
+}
+
+export async function GET(request: Request) {
+  try {
+    const user = await getErpUser();
+    if (!user || !canAccessPos(user.role)) {
+      return NextResponse.json({ error: "Unauthorized: Insufficient POS permissions" }, { status: 403 });
+    }
+
+    const storeContext = await getActiveErpStore();
+    if (!storeContext) {
+      return NextResponse.json({ error: "No active store context found" }, { status: 400 });
+    }
+
+    const { searchParams } = new URL(request.url);
+    const query = searchParams.get("q")?.trim() || "";
+    const period = searchParams.get("period") || "all"; // "today" or "all"
+    const store = storeContext.store;
+
+    const whereClause: any = {
+      channel: "POS",
+      assignedStoreId: store.id,
+    };
+
+    if (period === "today") {
+      const startOfDay = new Date();
+      startOfDay.setHours(0, 0, 0, 0);
+      whereClause.createdAt = { gte: startOfDay };
+    }
+
+    if (query) {
+      whereClause.OR = [
+        { orderNumber: { contains: query, mode: "insensitive" } },
+        { customerName: { contains: query, mode: "insensitive" } },
+        { customerPhone: { contains: query, mode: "insensitive" } },
+      ];
+    }
+
+    const rawOrders = await prisma.order.findMany({
+      where: whereClause,
+      include: {
+        items: true,
+      },
+      orderBy: { createdAt: "desc" },
+      take: 60,
+    });
+
+    const sales = rawOrders.map((o) => {
+      const subtotal = Number(o.subtotal);
+      const discount = Number(o.discount);
+      let discountPercent: string | null = null;
+      if (discount > 0 && subtotal > 0) {
+        discountPercent = `${Math.round((discount / subtotal) * 100)}%`;
+      }
+
+      return {
+        id: o.id,
+        orderNumber: o.orderNumber,
+        invoiceNumber: o.orderNumber,
+        customerName: o.customerName,
+        customerPhone: o.customerPhone,
+        paymentMethod: o.paymentMethod,
+        subtotal,
+        discount,
+        discountPercent,
+        tax: Number(o.tax),
+        total: Number(o.total),
+        currency: o.currency || store.currency,
+        itemCount: o.items.reduce((sum, it) => sum + it.quantity, 0),
+        items: o.items.map((it) => ({
+          id: it.id,
+          name: it.productName,
+          subtitle: "Extrait De Parfum",
+          variantName: it.variantName || (it.productName.match(/\((.*?)\)/)?.[1] ?? null),
+          quantity: it.quantity,
+          unitPrice: Number(it.unitPrice),
+          total: Number(it.total),
+        })),
+        createdAt: o.createdAt,
+        receiptData: {
+          orderNumber: o.orderNumber,
+          invoiceNumber: o.orderNumber,
+          storeName: store.name,
+          storePhone: store.phone,
+          cashierName: `${user.firstName || ""} ${user.lastName || ""}`.trim() || user.email,
+          customerName: o.customerName,
+          createdAt: o.createdAt,
+          items: o.items.map((it) => ({
+            id: it.id,
+            name: it.productName,
+            subtitle: "Extrait De Parfum",
+            variantName: it.variantName || (it.productName.match(/\((.*?)\)/)?.[1] ?? null),
+            quantity: it.quantity,
+            unitPrice: Number(it.unitPrice),
+            total: Number(it.total),
+          })),
+          subtotal,
+          discount,
+          discountPercent,
+          tax: Number(o.tax),
+          total: Number(o.total),
+          currency: o.currency || store.currency,
+          paymentMethod: o.paymentMethod || "CARD",
+          paidAmount: Number(o.total),
+          balance: 0,
+          qrPayload: `https://www.ramillette.com/?invoice=${encodeURIComponent(o.orderNumber)}`,
+          websiteUrl: "WWW.RAMILLETTE.COM",
+        },
+      };
+    });
+
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    const todaySales = sales.filter((s) => new Date(s.createdAt) >= startOfToday);
+    const todayTotal = todaySales.reduce((acc, s) => acc + s.total, 0);
+
+    return NextResponse.json({
+      success: true,
+      sales,
+      summary: {
+        todayCount: todaySales.length,
+        todayTotal,
+        currency: store.currency,
+      },
+    });
+  } catch (error: any) {
+    console.error("Failed to load POS sales history:", error);
+    return NextResponse.json({ error: error?.message || "Failed to load sales history" }, { status: 500 });
   }
 }

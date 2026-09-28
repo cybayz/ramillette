@@ -15,11 +15,14 @@ import {
   User,
   CheckCircle2,
   Printer,
-  Share2,
-  X,
   RotateCcw,
+  X,
   Sparkles,
+  History,
+  Receipt,
 } from "lucide-react";
+import { ErpInvoiceTemplate } from "@/components/erp/ErpInvoiceTemplate";
+import { PosSalesHistoryView } from "@/components/erp/PosSalesHistoryView";
 
 interface PosItem {
   id: string;
@@ -80,10 +83,19 @@ export function PosTerminal({ storeContext, cashierName }: PosTerminalProps) {
 
   // Receipt state
   const [completedReceipt, setCompletedReceipt] = useState<any>(null);
+  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
 
   const searchInputRef = useRef<HTMLInputElement>(null);
   const barcodeBufferRef = useRef<string>("");
   const barcodeTimerRef = useRef<any>(null);
+
+  const handlePrintReceipt = () => {
+    document.body.classList.add("printing-erp-invoice");
+    window.print();
+    setTimeout(() => {
+      document.body.classList.remove("printing-erp-invoice");
+    }, 1000);
+  };
 
   // Fetch store catalog
   const loadCatalog = async (q = "") => {
@@ -132,9 +144,17 @@ export function PosTerminal({ storeContext, cashierName }: PosTerminalProps) {
         return;
       }
 
+      // Hotkey F9: Order History & Invoices
+      if (e.key === "F9") {
+        e.preventDefault();
+        setIsHistoryModalOpen((prev) => !prev);
+        return;
+      }
+
       // Hotkey Escape: Close active modals
       if (e.key === "Escape") {
         setIsPaymentModalOpen(false);
+        setIsHistoryModalOpen(false);
         setIsCustomerModalOpen(false);
         if (completedReceipt) setCompletedReceipt(null);
         return;
@@ -385,6 +405,17 @@ export function PosTerminal({ storeContext, cashierName }: PosTerminalProps) {
             title="Refresh Stock"
           >
             <RotateCcw size={14} />
+          </button>
+
+          {/* POS Order History & Reprint Invoices Button */}
+          <button
+            onClick={() => setIsHistoryModalOpen(true)}
+            className="px-3.5 py-2.5 bg-[#222222] hover:bg-[#2c2c2c] border border-[#3a3a3a] hover:border-[#faedcd]/50 rounded-[6px] text-xs text-white font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs whitespace-nowrap"
+            title="View In-Store Sales History & Reprint Customer Invoices (F9)"
+          >
+            <History size={14} className="text-[#faedcd]" />
+            <span>Order History</span>
+            <span className="hidden md:inline px-1 py-0.2 rounded bg-[#333333] text-[9px] text-[#faedcd] font-mono">F9</span>
           </button>
 
           <a
@@ -861,113 +892,58 @@ export function PosTerminal({ storeContext, cashierName }: PosTerminalProps) {
         </div>
       )}
 
-      {/* MODAL: Completed Sale Thermal Receipt View */}
+      {/* MODAL: Completed Sale Invoice / Receipt View */}
       {completedReceipt && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-xs flex items-center justify-center z-50 p-4">
-          <div className="bg-[#1c1c1c] border border-[#383838] rounded-[10px] w-full max-w-sm p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/85 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+          <div className="bg-[#181818] border border-[#333333] rounded-[12px] w-full max-w-md p-5 shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto">
             {/* Header with Print Buttons */}
             <div className="flex justify-between items-center border-b border-[#2e2e2e] pb-3 print:hidden">
               <div className="flex items-center gap-1.5 text-emerald-400 font-bold text-xs">
                 <CheckCircle2 size={16} />
                 <span>Sale Completed Successfully</span>
               </div>
-              <button onClick={() => setCompletedReceipt(null)} className="text-neutral-400 hover:text-white">
+              <button
+                onClick={() => setCompletedReceipt(null)}
+                className="text-neutral-400 hover:text-white p-1 rounded-sm hover:bg-neutral-800 transition-colors"
+                title="Close receipt"
+              >
                 <X size={18} />
               </button>
             </div>
 
             {/* Printable Receipt Canvas */}
-            <div className="bg-white text-black p-4 rounded-[4px] font-mono text-[11px] leading-tight space-y-3">
-              <div className="text-center border-b border-dashed border-neutral-400 pb-2.5">
-                <div className="font-black text-sm tracking-wider uppercase">RAMILLETTE</div>
-                <div className="text-[10px] text-neutral-600 font-sans">Haute Parfumerie</div>
-                <div className="text-[10px] mt-1">{completedReceipt.storeName}</div>
-                <div className="text-[9px] text-neutral-600">{completedReceipt.storeAddress}</div>
-                <div className="text-[9px] text-neutral-600">{completedReceipt.storePhone}</div>
-              </div>
-
-              <div className="border-b border-dashed border-neutral-400 pb-2 text-[10px] space-y-0.5">
-                <div className="flex justify-between">
-                  <span>Receipt #:</span>
-                  <span className="font-bold">{completedReceipt.orderNumber}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Date:</span>
-                  <span>{new Date(completedReceipt.createdAt).toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Cashier:</span>
-                  <span>{completedReceipt.cashierName}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Customer:</span>
-                  <span>{completedReceipt.customerName}</span>
-                </div>
-              </div>
-
-              {/* Items */}
-              <div className="border-b border-dashed border-neutral-400 pb-2 space-y-1.5 text-[10px]">
-                {completedReceipt.items.map((it: any, idx: number) => (
-                  <div key={idx} className="flex justify-between">
-                    <div className="pr-2">
-                      <div className="font-bold">{it.name}</div>
-                      <div className="text-[9px] text-neutral-600">
-                        {it.quantity} &times; {completedReceipt.currency} {it.unitPrice.toFixed(2)}
-                      </div>
-                    </div>
-                    <span className="font-bold shrink-0">
-                      {completedReceipt.currency} {it.total.toFixed(2)}
-                    </span>
-                  </div>
-                ))}
-              </div>
-
-              {/* Totals */}
-              <div className="space-y-1 pt-1 text-[11px]">
-                <div className="flex justify-between">
-                  <span>Subtotal:</span>
-                  <span>{completedReceipt.currency} {completedReceipt.subtotal.toFixed(2)}</span>
-                </div>
-                {completedReceipt.discount > 0 && (
-                  <div className="flex justify-between text-neutral-600">
-                    <span>Discount:</span>
-                    <span>-{completedReceipt.currency} {completedReceipt.discount.toFixed(2)}</span>
-                  </div>
-                )}
-                {completedReceipt.tax > 0 && (
-                  <div className="flex justify-between text-neutral-600">
-                    <span>VAT ({completedReceipt.taxRate}%):</span>
-                    <span>{completedReceipt.currency} {completedReceipt.tax.toFixed(2)}</span>
-                  </div>
-                )}
-                <div className="flex justify-between font-black text-xs pt-1 border-t border-black">
-                  <span>TOTAL:</span>
-                  <span>{completedReceipt.currency} {completedReceipt.total.toFixed(2)}</span>
-                </div>
-              </div>
-
-              <div className="text-center pt-2 text-[9px] text-neutral-600 border-t border-dashed border-neutral-400">
-                <div>Thank you for choosing Ramillette!</div>
-                <div>Please retain this receipt for returns within 14 days.</div>
-              </div>
+            <div className="overflow-x-auto flex justify-center py-1">
+              <ErpInvoiceTemplate receipt={completedReceipt} />
             </div>
 
             {/* Modal Actions */}
-            <div className="flex gap-2 pt-2">
+            <div className="flex gap-2 pt-2 border-t border-[#2e2e2e] print:hidden">
               <button
-                onClick={() => window.print()}
-                className="flex-1 py-2.5 rounded bg-[#faedcd] text-[#1c1c1c] font-black text-xs flex items-center justify-center gap-2 cursor-pointer shadow-sm"
+                onClick={handlePrintReceipt}
+                className="flex-1 py-2.5 rounded bg-[#faedcd] hover:bg-[#ebd59f] text-[#1c1c1c] font-black text-xs flex items-center justify-center gap-2 cursor-pointer shadow-sm transition-all"
               >
                 <Printer size={15} />
-                <span>Print Thermal Receipt</span>
+                <span>Print Invoice</span>
               </button>
               <button
                 onClick={() => setCompletedReceipt(null)}
-                className="py-2.5 px-4 rounded bg-[#2a2a2a] hover:bg-[#333333] text-neutral-300 text-xs font-bold cursor-pointer"
+                className="py-2.5 px-4 rounded bg-[#2a2a2a] hover:bg-[#333333] text-neutral-300 text-xs font-bold cursor-pointer transition-colors"
               >
                 New Sale
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: Order History & Past Invoices */}
+      {isHistoryModalOpen && (
+        <div className="fixed inset-0 bg-black/85 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+          <div className="bg-[#181818] border border-[#333333] rounded-[12px] w-full max-w-4xl p-5 shadow-2xl max-h-[92vh] overflow-y-auto">
+            <PosSalesHistoryView
+              isModal={true}
+              onClose={() => setIsHistoryModalOpen(false)}
+            />
           </div>
         </div>
       )}

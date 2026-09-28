@@ -17,6 +17,7 @@ import {
   Banknote,
   Boxes,
   HelpCircle,
+  Printer,
 } from "lucide-react";
 
 interface ReturnItem {
@@ -492,6 +493,18 @@ export function ReturnsDesk({ storeContext }: ReturnsDeskProps) {
                     <span className="text-neutral-500 block">Fulfilled Branch</span>
                     <strong className="text-white">{foundOrder.assignedStore?.name || "Central"}</strong>
                   </div>
+                </div>
+
+                <div className="flex justify-end">
+                  <a
+                    href={`/erp/orders/${foundOrder.id}/invoice`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[5px] bg-[#222222] hover:bg-[#2b2b2b] text-neutral-300 hover:text-white text-xs font-semibold border border-[#333333] transition-colors"
+                  >
+                    <Printer size={13} />
+                    <span>View / Print Original Invoice</span>
+                  </a>
                 </div>
 
                 {/* Resolution Choice: Refund vs Replacement */}

@@ -17,6 +17,7 @@ import {
   Store,
   ShieldCheck,
   LogOut,
+  Receipt,
 } from "lucide-react";
 import { LogoutButton } from "@/components/account/LogoutButton";
 
@@ -54,6 +55,12 @@ export function ErpSidebar({
           href: "/erp/pos",
           icon: ShoppingCart,
           badge: "F2",
+          permission: "pos:access",
+        },
+        {
+          label: "POS Sales & Receipts",
+          href: "/erp/pos/history",
+          icon: Receipt,
           permission: "pos:access",
         },
         {
