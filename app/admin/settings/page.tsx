@@ -45,6 +45,11 @@ export default async function AdminSettingsPage() {
     supportEmail: c.supportEmail || "",
     orderEmail: c.orderEmail || "",
     paymentMethods: c.paymentMethods ? JSON.parse(c.paymentMethods) : ["COD", "ONLINE"],
+    loyaltyEnabled: c.loyaltyEnabled,
+    loyaltyEarnType: c.loyaltyEarnType,
+    loyaltyEarnValue: Number(c.loyaltyEarnValue),
+    loyaltyPointValue: Number(c.loyaltyPointValue),
+    loyaltyMinRedeemPoints: c.loyaltyMinRedeemPoints,
     active: c.active,
     sortOrder: c.sortOrder,
   }));

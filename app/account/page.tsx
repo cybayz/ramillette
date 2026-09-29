@@ -13,6 +13,10 @@ import {
   Truck,
   Store,
   QrCode,
+  Coins,
+  Award,
+  Sparkles,
+  TrendingUp,
 } from "lucide-react";
 import { LogoutButton } from "@/components/account/LogoutButton";
 import { SavedAddressesManager } from "@/components/account/SavedAddressesManager";
@@ -24,17 +28,26 @@ export default async function AccountPage() {
     redirect("/account/login");
   }
 
-  const user = await prisma.user.findUnique({
-    where: { id: session.userId },
-    include: {
-      addresses: { orderBy: { isDefault: "desc" } },
-      orders: {
-        orderBy: { createdAt: "desc" },
-        include: { items: true, pickupStore: true },
-        take: 10,
+  const [user, dbCountry] = await Promise.all([
+    prisma.user.findUnique({
+      where: { id: session.userId },
+      include: {
+        addresses: { orderBy: { isDefault: "desc" } },
+        rewardPointTransactions: {
+          orderBy: { createdAt: "desc" },
+          take: 10,
+        },
+        orders: {
+          orderBy: { createdAt: "desc" },
+          include: { items: true, pickupStore: true },
+          take: 10,
+        },
       },
-    },
-  });
+    }),
+    prisma.country.findUnique({
+      where: { code: "QA" },
+    }),
+  ]);
 
   if (!user) {
     redirect("/account/login");
@@ -69,6 +82,46 @@ export default async function AccountPage() {
           </div>
 
           <LogoutButton />
+        </div>
+
+        {/* Ramillette VIP Loyalty Rewards Club Card */}
+        <div className="mb-10 p-6 sm:p-7 bg-gradient-to-r from-[#fbf9f5] via-[#faedcd]/40 to-[#fbf9f5] border border-[#ecdec1] rounded-[10px] shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="flex items-start gap-4">
+            <div className="w-13 h-13 rounded-full bg-[#faedcd] border border-[#ecdec1] flex items-center justify-center text-[#b6713e] shrink-0 shadow-xs">
+              <Coins size={24} />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-lg font-bold text-[#1c1c1c]">Ramillette Rewards Club</h2>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#b6713e] text-white tracking-wider uppercase">
+                  VIP Member
+                </span>
+              </div>
+              <p className="text-xs text-neutral-600 mt-1 max-w-xl leading-relaxed">
+                Earn reward points on every luxury perfume purchase and redeem them against your future orders directly at checkout after quick SMS verification.
+              </p>
+              <div className="flex flex-wrap items-center gap-3 mt-3 text-xs text-neutral-600">
+                <span className="flex items-center gap-1">
+                  <Sparkles size={12} className="text-amber-500 fill-amber-400" />
+                  <span>Earn <strong>1 Point</strong> per 100 QAR spent</span>
+                </span>
+                <span>•</span>
+                <span><strong>10 Points = 1.00 QAR</strong> direct checkout discount</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white px-7 py-5 rounded-[8px] border border-[#ecdec1] text-center shrink-0 shadow-2xs">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 block">
+              Available Points Balance
+            </span>
+            <span className="text-3xl font-extrabold text-[#b6713e] font-mono block mt-1">
+              {user.rewardPoints} <span className="text-sm font-normal text-neutral-400">pts</span>
+            </span>
+            <span className="text-xs font-bold text-emerald-700 block mt-1.5">
+              ≈ QAR {(user.rewardPoints * (Number(dbCountry?.loyaltyPointValue) || 0.10)).toFixed(2)} Value
+            </span>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
@@ -298,8 +351,55 @@ export default async function AccountPage() {
             )}
           </div>
 
-          {/* Saved Addresses (Right Column) */}
+          {/* Saved Addresses & Points Activity (Right Column) */}
           <div className="lg:col-span-4 space-y-6">
+            {/* Recent Points Ledger */}
+            <div className="bg-white border border-[#e5e5e5] rounded-[8px] p-5 shadow-2xs space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-[#e5e5e5]">
+                <div className="flex items-center gap-2">
+                  <Coins size={16} className="text-[#b6713e]" />
+                  <h3 className="text-sm font-bold text-[#1c1c1c]">Recent Points Activity</h3>
+                </div>
+                <span className="text-xs font-mono font-bold text-[#b6713e]">
+                  {user.rewardPoints} pts
+                </span>
+              </div>
+
+              {user.rewardPointTransactions.length === 0 ? (
+                <p className="text-xs text-neutral-400 py-3 text-center">
+                  No points activity yet. Complete your first order to start accumulating VIP points!
+                </p>
+              ) : (
+                <div className="space-y-2.5">
+                  {user.rewardPointTransactions.slice(0, 5).map((t) => (
+                    <div
+                      key={t.id}
+                      className="p-2.5 rounded-[6px] bg-[#fbf9f5] border border-[#ecdec1]/60 flex items-center justify-between text-xs"
+                    >
+                      <div>
+                        <div className="font-semibold text-[#1c1c1c] text-[11px] truncate max-w-[180px]">
+                          {t.description || (t.type === "EARNED" ? "Order reward" : "Redemption")}
+                        </div>
+                        <div className="text-[10px] text-neutral-400">
+                          {new Date(t.createdAt).toLocaleDateString("en-QA", {
+                            month: "short",
+                            day: "numeric",
+                          })}
+                        </div>
+                      </div>
+                      <span
+                        className={`font-mono font-bold text-xs ${
+                          t.points > 0 ? "text-emerald-600" : "text-rose-600"
+                        }`}
+                      >
+                        {t.points > 0 ? `+${t.points}` : t.points} pts
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
             <SavedAddressesManager
               initialAddresses={user.addresses}
               defaultName={

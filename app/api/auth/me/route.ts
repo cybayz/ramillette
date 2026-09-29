@@ -19,6 +19,7 @@ export async function GET() {
         lastName: true,
         phone: true,
         role: true,
+        rewardPoints: true,
         addresses: {
           orderBy: { isDefault: "desc" },
         },

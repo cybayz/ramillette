@@ -10,6 +10,7 @@ import { resolvePaymentMethods, COUNTRIES, CountryCode, GiftWrapOption } from "@
 import { Button } from "@/components/ui/Button";
 import { formatPrice } from "@/lib/utils";
 import { CheckoutCoupons } from "@/components/checkout/CheckoutCoupons";
+import { CheckoutLoyaltyRewards } from "@/components/checkout/CheckoutLoyaltyRewards";
 import {
   ShieldCheck,
   Truck,
@@ -31,6 +32,7 @@ import {
   Building2,
   PhoneCall,
   Navigation,
+  Coins,
 } from "lucide-react";
 
 interface SavedAddress {
@@ -108,6 +110,11 @@ export default function CheckoutPage() {
   const [area, setArea] = useState(config.defaultCity);
   const [deliveryNotes, setDeliveryNotes] = useState(orderNote || "");
   const [paymentMethod, setPaymentMethod] = useState<string>("COD");
+
+  // Loyalty Rewards Redemption State
+  const [appliedLoyaltyPoints, setAppliedLoyaltyPoints] = useState<number>(0);
+  const [appliedLoyaltyDiscount, setAppliedLoyaltyDiscount] = useState<number>(0);
+  const [loyaltyVerificationToken, setLoyaltyVerificationToken] = useState<string | null>(null);
   const [isGift, setIsGift] = useState(false);
   const [giftMessage, setGiftMessage] = useState("");
   const [selectedGiftWrapOptionId, setSelectedGiftWrapOptionId] = useState<string>("free-card");
@@ -296,10 +303,10 @@ export default function CheckoutPage() {
     ? Number(selectedGiftWrapOption.price || 0)
     : 0;
 
-  const taxableAmount = Math.max(0, subtotal - discount);
+  const taxableAmount = Math.max(0, subtotal - discount - appliedLoyaltyDiscount);
   const taxRate = (config as any).taxRate ?? (country === "AE" ? 5 : country === "BH" ? 10 : 0);
   const taxAmount = Number(((taxableAmount * taxRate) / 100).toFixed(config.currencyDecimals || 2));
-  const finalTotal = Math.max(0, subtotal - discount + shipping + giftWrapAmount + taxAmount);
+  const finalTotal = Math.max(0, subtotal - discount - appliedLoyaltyDiscount + shipping + giftWrapAmount + taxAmount);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -330,6 +337,8 @@ export default function CheckoutPage() {
         deliveryNotes: deliveryNotes.trim() || undefined,
         paymentMethod,
         couponCode: coupon?.code,
+        pointsToRedeem: appliedLoyaltyPoints,
+        loyaltyOtpToken: loyaltyVerificationToken,
         isGift,
         giftMessage: isGift && giftMessage.trim() ? giftMessage.trim() : undefined,
         hasGiftWrap: isGift && hasGiftWrap && allowGiftWrap,
@@ -1293,6 +1302,24 @@ export default function CheckoutPage() {
                 <CheckoutCoupons />
               </div>
 
+              {/* Ramillette Loyalty Rewards Club */}
+              <div className="pt-3 border-t border-[#f0ece1]">
+                <CheckoutLoyaltyRewards
+                  country={country}
+                  isAr={isAr}
+                  subtotal={subtotal}
+                  discountFromCoupon={discount}
+                  customerPhone={customerPhone}
+                  appliedPoints={appliedLoyaltyPoints}
+                  appliedDiscount={appliedLoyaltyDiscount}
+                  onApplyLoyalty={(pts, disc, token) => {
+                    setAppliedLoyaltyPoints(pts);
+                    setAppliedLoyaltyDiscount(disc);
+                    setLoyaltyVerificationToken(token);
+                  }}
+                />
+              </div>
+
               {/* Pricing Breakdown */}
               <div className="pt-3 border-t border-[#f0ece1] space-y-2 text-xs">
                 <div className="flex justify-between text-neutral-600">
@@ -1306,6 +1333,20 @@ export default function CheckoutPage() {
                   <div className="flex justify-between text-emerald-700 font-semibold">
                     <span>Discount ({coupon?.code})</span>
                     <span>-{formatPrice(discount, country)}</span>
+                  </div>
+                )}
+
+                {appliedLoyaltyDiscount > 0 && (
+                  <div className="flex justify-between items-center text-amber-800 font-semibold bg-amber-50/80 px-2 py-1 rounded border border-amber-200">
+                    <span className="flex items-center gap-1">
+                      <Coins size={12} className="text-[#b6713e]" />
+                      <span>
+                        {isAr
+                          ? `نقاط المكافآت (${appliedLoyaltyPoints} نقطة)`
+                          : `Loyalty Points (${appliedLoyaltyPoints} pts)`}
+                      </span>
+                    </span>
+                    <span className="font-bold">-{formatPrice(appliedLoyaltyDiscount, country)}</span>
                   </div>
                 )}
 

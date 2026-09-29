@@ -15,9 +15,10 @@ import {
   Phone,
   Building,
   AlertTriangle,
-  Info,
   Gift,
   ExternalLink,
+  Award,
+  Coins,
 } from "lucide-react";
 import Image from "next/image";
 import { GiftWrapOption } from "@/lib/country/config";
@@ -38,6 +39,11 @@ export interface AdminCountry {
   giftWrapFee?: number;
   allowGiftWrap?: boolean;
   giftWrapOptions?: GiftWrapOption[];
+  loyaltyEnabled?: boolean;
+  loyaltyEarnType?: "SPEND_RATIO" | "PERCENTAGE" | "FLAT" | string;
+  loyaltyEarnValue?: number;
+  loyaltyPointValue?: number;
+  loyaltyMinRedeemPoints?: number;
   taxRate: number;
   taxName: string;
   taxIncludedInPrice: boolean;
@@ -101,6 +107,13 @@ export function CountryManager({ initialCountries }: CountryManagerProps) {
   const [paymentOnline, setPaymentOnline] = useState(true);
   const [paymentTabby, setPaymentTabby] = useState(false);
   const [paymentBenefit, setPaymentBenefit] = useState(false);
+
+  // Loyalty Program State per Country
+  const [loyaltyEnabled, setLoyaltyEnabled] = useState(true);
+  const [loyaltyEarnType, setLoyaltyEarnType] = useState<"SPEND_RATIO" | "PERCENTAGE" | "FLAT">("SPEND_RATIO");
+  const [loyaltyEarnValue, setLoyaltyEarnValue] = useState(100);
+  const [loyaltyPointValue, setLoyaltyPointValue] = useState(0.10);
+  const [loyaltyMinRedeemPoints, setLoyaltyMinRedeemPoints] = useState(10);
 
   // Sub-modal state for editing/adding single wrap option inside Country modal
   const [isWrapOptModalOpen, setIsWrapOptModalOpen] = useState(false);
@@ -258,6 +271,11 @@ export function CountryManager({ initialCountries }: CountryManagerProps) {
     setPaymentOnline(true);
     setPaymentTabby(true);
     setPaymentBenefit(false);
+    setLoyaltyEnabled(true);
+    setLoyaltyEarnType("SPEND_RATIO");
+    setLoyaltyEarnValue(100);
+    setLoyaltyPointValue(0.10);
+    setLoyaltyMinRedeemPoints(10);
     setError("");
     setSuccess("");
     setIsModalOpen(true);
@@ -345,6 +363,11 @@ export function CountryManager({ initialCountries }: CountryManagerProps) {
     setPaymentOnline(c.paymentMethods.includes("ONLINE"));
     setPaymentTabby(c.paymentMethods.includes("TABBY_TAMARA"));
     setPaymentBenefit(c.paymentMethods.includes("BENEFIT_PAY"));
+    setLoyaltyEnabled(c.loyaltyEnabled !== undefined ? c.loyaltyEnabled : true);
+    setLoyaltyEarnType((c.loyaltyEarnType as any) || "SPEND_RATIO");
+    setLoyaltyEarnValue(c.loyaltyEarnValue !== undefined ? Number(c.loyaltyEarnValue) : 100);
+    setLoyaltyPointValue(c.loyaltyPointValue !== undefined ? Number(c.loyaltyPointValue) : 0.10);
+    setLoyaltyMinRedeemPoints(c.loyaltyMinRedeemPoints !== undefined ? Number(c.loyaltyMinRedeemPoints) : 10);
     setError("");
     setSuccess("");
     setIsModalOpen(true);
@@ -443,6 +466,11 @@ export function CountryManager({ initialCountries }: CountryManagerProps) {
         phone: phone.trim(),
         supportEmail: supportEmail.trim(),
         paymentMethods,
+        loyaltyEnabled,
+        loyaltyEarnType,
+        loyaltyEarnValue: Number(loyaltyEarnValue),
+        loyaltyPointValue: Number(loyaltyPointValue),
+        loyaltyMinRedeemPoints: Number(loyaltyMinRedeemPoints),
         active,
         sortOrder: Number(sortOrder),
       };
@@ -626,6 +654,31 @@ export function CountryManager({ initialCountries }: CountryManagerProps) {
                     }`}
                   >
                     {c.allowGiftWrap !== false ? "Active in Checkout" : "Disabled"}
+                  </span>
+                </div>
+
+                <div className="bg-[#fbf9f5] p-2.5 rounded-md border border-[#ecdec1]/50 col-span-2 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Award size={14} className="text-[#b6713e]" />
+                    <div>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 block">
+                        Loyalty & Reward Points
+                      </span>
+                      <span className="font-bold text-[#1c1c1c] text-xs">
+                        {c.loyaltyEnabled !== false
+                          ? `${c.loyaltyEarnType === "FLAT" ? `Flat ${c.loyaltyEarnValue || 10} pts` : c.loyaltyEarnType === "PERCENTAGE" ? `${c.loyaltyEarnValue || 1}% spend back` : `1 pt per ${c.currency} ${c.loyaltyEarnValue || 100}`} • 1 pt = ${c.currency} ${c.loyaltyPointValue || 0.10}`
+                          : "Disabled"}
+                      </span>
+                    </div>
+                  </div>
+                  <span
+                    className={`text-[9px] font-bold px-2 py-0.5 rounded ${
+                      c.loyaltyEnabled !== false
+                        ? "bg-amber-100 text-amber-800"
+                        : "bg-neutral-200 text-neutral-600"
+                    }`}
+                  >
+                    {c.loyaltyEnabled !== false ? "Active" : "Disabled"}
                   </span>
                 </div>
               </div>
@@ -904,6 +957,128 @@ export function CountryManager({ initialCountries }: CountryManagerProps) {
                         onChange={(e) => setTaxName(e.target.value)}
                         className="w-full text-xs px-3 py-2 border border-neutral-300 rounded focus:outline-none focus:border-[#b6713e]"
                       />
+                    </div>
+                  </div>
+
+                  {/* Customer Reward & Loyalty Points System */}
+                  <div className="p-4 bg-amber-50/60 border border-amber-200/80 rounded-[8px] space-y-4 sm:col-span-2">
+                    <div className="flex items-center justify-between pb-2 border-b border-amber-200">
+                      <div className="flex items-center gap-2 text-xs font-bold text-[#1c1c1c]">
+                        <Coins size={16} className="text-[#b6713e]" />
+                        <span>Loyalty & Reward Points Program ({currency || "Regional"})</span>
+                      </div>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={loyaltyEnabled}
+                          onChange={(e) => setLoyaltyEnabled(e.target.checked)}
+                          className="w-4 h-4 text-[#b6713e] rounded focus:ring-[#b6713e]"
+                        />
+                        <span className="text-xs font-semibold text-neutral-700">
+                          Enable Points Program for {currency || "this Country"}
+                        </span>
+                      </label>
+                    </div>
+
+                    <p className="text-[11px] text-neutral-600 leading-relaxed">
+                      Configure the points earning rule and redemption currency value for customers in this country. Customers can earn points automatically when ordering and redeem accumulated points securely at checkout via mobile SMS OTP verification.
+                    </p>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Earning Rule */}
+                      <div className="bg-white p-3.5 rounded border border-amber-200 space-y-3">
+                        <div className="flex items-center gap-1.5 text-xs font-bold text-[#1c1c1c]">
+                          <Award size={14} className="text-[#b6713e]" />
+                          <span>1. Points Earning Rule</span>
+                        </div>
+
+                        <div>
+                          <label className="block text-[11px] font-semibold text-neutral-700 mb-1">
+                            Credit Method
+                          </label>
+                          <select
+                            value={loyaltyEarnType}
+                            onChange={(e) => setLoyaltyEarnType(e.target.value as any)}
+                            className="w-full text-xs px-3 py-2 border border-neutral-300 rounded focus:outline-none focus:border-[#b6713e] bg-white font-medium"
+                          >
+                            <option value="SPEND_RATIO">Spend Ratio (e.g. 1 point per X {currency})</option>
+                            <option value="PERCENTAGE">Percentage of Order Subtotal (%)</option>
+                            <option value="FLAT">Flat Points per Order</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block text-[11px] font-semibold text-neutral-700 mb-1">
+                            {loyaltyEarnType === "SPEND_RATIO"
+                              ? `Spend Amount per 1 Point (${currency}) *`
+                              : loyaltyEarnType === "PERCENTAGE"
+                              ? "Percentage of Order Subtotal (%) *"
+                              : "Flat Points Credited per Order *"}
+                          </label>
+                          <input
+                            type="number"
+                            step={loyaltyEarnType === "PERCENTAGE" ? "0.1" : "1"}
+                            min="1"
+                            value={loyaltyEarnValue}
+                            onChange={(e) => setLoyaltyEarnValue(parseFloat(e.target.value) || 0)}
+                            className="w-full text-xs px-3 py-2 border border-neutral-300 rounded font-mono font-bold focus:outline-none focus:border-[#b6713e]"
+                          />
+                          <div className="mt-2 p-2 bg-[#fbf9f5] border border-[#ecdec1] rounded text-[11px] text-neutral-600">
+                            💡 <strong className="text-[#b6713e]">Preview:</strong>{" "}
+                            {loyaltyEarnType === "SPEND_RATIO" ? (
+                              <>A customer ordering for <strong>1,000 {currency}</strong> will earn <strong>{Math.floor(1000 / Math.max(1, loyaltyEarnValue))} points</strong>.</>
+                            ) : loyaltyEarnType === "PERCENTAGE" ? (
+                              <>A customer ordering for <strong>1,000 {currency}</strong> will earn <strong>{Math.floor((1000 * loyaltyEarnValue) / 100)} points</strong>.</>
+                            ) : (
+                              <>A customer will earn <strong>{loyaltyEarnValue} points</strong> on each completed order regardless of total.</>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Redemption Rule */}
+                      <div className="bg-white p-3.5 rounded border border-amber-200 space-y-3">
+                        <div className="flex items-center gap-1.5 text-xs font-bold text-[#1c1c1c]">
+                          <Coins size={14} className="text-[#b6713e]" />
+                          <span>2. Points Redemption Value</span>
+                        </div>
+
+                        <div>
+                          <label className="block text-[11px] font-semibold text-neutral-700 mb-1">
+                            Worth of 1 Point in Currency ({currency}) *
+                          </label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0.001"
+                            value={loyaltyPointValue}
+                            onChange={(e) => setLoyaltyPointValue(parseFloat(e.target.value) || 0)}
+                            className="w-full text-xs px-3 py-2 border border-neutral-300 rounded font-mono font-bold focus:outline-none focus:border-[#b6713e]"
+                          />
+                          <span className="text-[10px] text-neutral-400 block mt-0.5">
+                            e.g. Set to 0.10 so 10 points = 1.00 {currency} discount (or 0.05 so 20 points = 1.00 {currency}).
+                          </span>
+                        </div>
+
+                        <div>
+                          <label className="block text-[11px] font-semibold text-neutral-700 mb-1">
+                            Minimum Points Required to Redeem *
+                          </label>
+                          <input
+                            type="number"
+                            step="1"
+                            min="1"
+                            value={loyaltyMinRedeemPoints}
+                            onChange={(e) => setLoyaltyMinRedeemPoints(parseInt(e.target.value, 10) || 1)}
+                            className="w-full text-xs px-3 py-2 border border-neutral-300 rounded font-mono font-bold focus:outline-none focus:border-[#b6713e]"
+                          />
+                        </div>
+
+                        <div className="mt-2 p-2 bg-[#fbf9f5] border border-[#ecdec1] rounded text-[11px] text-neutral-600">
+                          💡 <strong className="text-[#b6713e]">Redemption Preview:</strong>{" "}
+                          Redeeming <strong>10 points</strong> gives a <strong>{(10 * loyaltyPointValue).toFixed(2)} {currency}</strong> discount at checkout after OTP confirmation.
+                        </div>
+                      </div>
                     </div>
                   </div>
 

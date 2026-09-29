@@ -1,14 +1,52 @@
 import React from "react";
 import prisma from "@/lib/db/prisma";
-import { CountryManager, AdminCountry } from "@/components/admin/CountryManager";
+import { LoyaltyManager } from "@/components/admin/LoyaltyManager";
+import { AdminCountry } from "@/components/admin/CountryManager";
 import { COUNTRIES, CountryCode } from "@/lib/country/config";
 
 export const revalidate = 0; // Always fresh in admin
 
-export default async function AdminCountriesPage() {
-  const dbCountries = await prisma.country.findMany({
-    orderBy: [{ sortOrder: "asc" }, { code: "asc" }],
-  });
+export default async function AdminLoyaltyPage() {
+  const [dbCountries, dbCustomers, dbTransactions] = await Promise.all([
+    prisma.country.findMany({
+      orderBy: [{ sortOrder: "asc" }, { code: "asc" }],
+    }),
+    prisma.user.findMany({
+      where: { role: "CUSTOMER" },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        phone: true,
+        rewardPoints: true,
+        orders: {
+          select: { id: true },
+        },
+      },
+      orderBy: { rewardPoints: "desc" },
+      take: 100,
+    }),
+    prisma.rewardPointTransaction.findMany({
+      orderBy: { createdAt: "desc" },
+      take: 50,
+      include: {
+        user: {
+          select: {
+            email: true,
+            firstName: true,
+            lastName: true,
+            phone: true,
+          },
+        },
+        order: {
+          select: {
+            orderNumber: true,
+          },
+        },
+      },
+    }),
+  ]);
 
   const countries: AdminCountry[] = dbCountries.map((c) => ({
     code: c.code,
@@ -51,5 +89,33 @@ export default async function AdminCountriesPage() {
     sortOrder: c.sortOrder,
   }));
 
-  return <CountryManager initialCountries={countries} />;
+  const customers = dbCustomers.map((u) => ({
+    id: u.id,
+    email: u.email,
+    firstName: u.firstName,
+    lastName: u.lastName,
+    phone: u.phone,
+    rewardPoints: u.rewardPoints,
+    orderCount: u.orders.length,
+  }));
+
+  const transactions = dbTransactions.map((t) => ({
+    id: t.id,
+    points: t.points,
+    balanceAfter: t.balanceAfter,
+    type: t.type,
+    description: t.description,
+    country: t.country,
+    createdAt: t.createdAt.toISOString(),
+    user: t.user,
+    order: t.order,
+  }));
+
+  return (
+    <LoyaltyManager
+      initialCountries={countries}
+      customers={customers}
+      recentTransactions={transactions}
+    />
+  );
 }

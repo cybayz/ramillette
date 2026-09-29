@@ -28,6 +28,11 @@ export interface CountryConfig {
   giftWrapFee: number;
   allowGiftWrap: boolean;
   giftWrapOptions?: GiftWrapOption[];
+  loyaltyEarnType?: "SPEND_RATIO" | "PERCENTAGE" | "FLAT";
+  loyaltyEarnValue?: number; // e.g. 100 for spend ratio (100 QAR = 1 pt) or 10 for flat
+  loyaltyPointValue?: number; // e.g. 0.10 QAR (so 10 points = 1 QAR discount)
+  loyaltyEnabled?: boolean;
+  loyaltyMinRedeemPoints?: number;
   defaultCity: string;
   cities: string[];
   boutiqueName: string;
@@ -63,6 +68,11 @@ export const COUNTRIES: Record<CountryCode, CountryConfig> = {
     standardShippingFee: 30,
     giftWrapFee: 25,
     allowGiftWrap: true,
+    loyaltyEnabled: true,
+    loyaltyEarnType: "SPEND_RATIO",
+    loyaltyEarnValue: 100, // 100 QAR spend = 1 point
+    loyaltyPointValue: 0.10, // 1 point = 0.10 QAR (10 points = 1 QAR discount)
+    loyaltyMinRedeemPoints: 10,
     defaultCity: "Doha",
     cities: [
       "Doha",
@@ -162,6 +172,11 @@ export const COUNTRIES: Record<CountryCode, CountryConfig> = {
     standardShippingFee: 30,
     giftWrapFee: 25,
     allowGiftWrap: true,
+    loyaltyEnabled: true,
+    loyaltyEarnType: "SPEND_RATIO",
+    loyaltyEarnValue: 100, // 100 AED spend = 1 point
+    loyaltyPointValue: 0.10, // 1 point = 0.10 AED (10 points = 1 AED discount)
+    loyaltyMinRedeemPoints: 10,
     defaultCity: "Dubai",
     cities: [
       "Dubai",
@@ -269,6 +284,11 @@ export const COUNTRIES: Record<CountryCode, CountryConfig> = {
     standardShippingFee: 3,
     giftWrapFee: 3,
     allowGiftWrap: true,
+    loyaltyEnabled: true,
+    loyaltyEarnType: "SPEND_RATIO",
+    loyaltyEarnValue: 10, // 10 BHD spend = 1 point
+    loyaltyPointValue: 0.100, // 1 point = 0.100 BHD (10 points = 1 BHD discount)
+    loyaltyMinRedeemPoints: 10,
     defaultCity: "Manama",
     cities: [
       "Manama",

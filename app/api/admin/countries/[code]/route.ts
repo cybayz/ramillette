@@ -45,8 +45,12 @@ export async function PATCH(request: Request, { params }: Props) {
     if (body.deliveryNoticeAr !== undefined) dataToUpdate.deliveryNoticeAr = body.deliveryNoticeAr.trim();
     if (body.phone !== undefined) dataToUpdate.phone = body.phone.trim();
     if (body.supportEmail !== undefined) dataToUpdate.supportEmail = body.supportEmail.trim();
-    if (body.orderEmail !== undefined) dataToUpdate.orderEmail = body.orderEmail.trim();
     if (body.paymentMethods !== undefined) dataToUpdate.paymentMethods = JSON.stringify(body.paymentMethods);
+    if (body.loyaltyEnabled !== undefined) dataToUpdate.loyaltyEnabled = Boolean(body.loyaltyEnabled);
+    if (body.loyaltyEarnType !== undefined) dataToUpdate.loyaltyEarnType = body.loyaltyEarnType.trim();
+    if (body.loyaltyEarnValue !== undefined) dataToUpdate.loyaltyEarnValue = Number(body.loyaltyEarnValue);
+    if (body.loyaltyPointValue !== undefined) dataToUpdate.loyaltyPointValue = Number(body.loyaltyPointValue);
+    if (body.loyaltyMinRedeemPoints !== undefined) dataToUpdate.loyaltyMinRedeemPoints = Number(body.loyaltyMinRedeemPoints);
     if (body.active !== undefined) dataToUpdate.active = Boolean(body.active);
     if (body.sortOrder !== undefined) dataToUpdate.sortOrder = Number(body.sortOrder);
 

@@ -10,7 +10,7 @@ import { FreeShippingBar } from "@/lib/../components/ui/FreeShippingBar";
 import { QuantityStepper } from "@/lib/../components/ui/QuantityStepper";
 import { Button } from "@/lib/../components/ui/Button";
 import { formatPrice } from "@/lib/utils";
-import { ShoppingBag, Trash2, ArrowRight, Plus } from "lucide-react";
+import { ShoppingBag, Trash2, ArrowRight, Plus, Coins } from "lucide-react";
 import { useCountryStore } from "@/lib/store/useCountryStore";
 
 export function CartDrawer() {
@@ -33,6 +33,22 @@ export function CartDrawer() {
   const [agreedToTerms, setAgreedToTerms] = useState(true);
   const [showNoteInput, setShowNoteInput] = useState(false);
   const [isRedirecting, setIsRedirecting] = useState(false);
+  const [loyaltyInfo, setLoyaltyInfo] = useState<{ points: number; earnedPts: number } | null>(null);
+
+  React.useEffect(() => {
+    if (!isOpen) return;
+    fetch(`/api/loyalty/status?country=${country}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.authenticated) {
+          const ratio = data.config?.loyaltyEarnValue || 100;
+          const sub = getSubtotal();
+          const earned = Math.floor(sub / ratio);
+          setLoyaltyInfo({ points: data.points || 0, earnedPts: earned });
+        }
+      })
+      .catch(() => {});
+  }, [isOpen, country, items]);
 
   const handleProceedToCheckout = async () => {
     setIsRedirecting(true);
@@ -203,6 +219,33 @@ export function CartDrawer() {
                   />
                 )}
               </div>
+
+              {/* Loyalty Rewards Teaser */}
+              {loyaltyInfo && (
+                <div className="p-2.5 bg-amber-50/80 border border-amber-200/90 rounded-[6px] mb-2 flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-1.5 text-amber-900">
+                    <Coins size={14} className="text-[#b6713e]" />
+                    <span>
+                      {loyaltyInfo.points > 0 ? (
+                        <>
+                          {isAr ? "لديك " : "You have "}
+                          <strong>{loyaltyInfo.points} {isAr ? "نقطة" : "pts"}</strong>
+                          {isAr ? " لاستبدالها عند الدفع" : " to redeem at checkout"}
+                        </>
+                      ) : (
+                        <>
+                          {isAr ? "ستحصل على " : "You will earn "}
+                          <strong>+{loyaltyInfo.earnedPts} {isAr ? "نقطة" : "pts"}</strong>
+                          {isAr ? " من هذا الطلب" : " on this order"}
+                        </>
+                      )}
+                    </span>
+                  </div>
+                  <span className="text-[10px] font-bold text-[#b6713e] uppercase">
+                    VIP
+                  </span>
+                </div>
+              )}
 
               {/* Subtotal */}
               <div className="flex items-center justify-between py-2 border-t border-[#e5e5e5]">

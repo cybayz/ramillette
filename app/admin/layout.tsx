@@ -15,6 +15,7 @@ import {
   Globe,
   Gift,
   History,
+  Coins,
 } from "lucide-react";
 import { LogoutButton } from "@/components/account/LogoutButton";
 import { AdminSidebarMobile } from "@/components/admin/AdminSidebarMobile";
@@ -42,6 +43,7 @@ export default async function AdminLayout({
     { label: "Countries & Markets", href: "/admin/countries", icon: Globe },
     { label: "Gift Packaging", href: "/admin/gift-wrap", icon: Gift },
     { label: "Coupons & Promos", href: "/admin/coupons", icon: Tag },
+    { label: "Loyalty & Rewards", href: "/admin/loyalty", icon: Coins },
     { label: "Roles & Permissions", href: "/admin/roles", icon: Users },
     { label: "Audit Trail & Logs", href: "/admin/audit-logs", icon: History },
     { label: "Store & Tax Settings", href: "/admin/settings", icon: Settings },

@@ -8,6 +8,11 @@ import { getSmsProvider } from "@/lib/services/sms";
 import { getEmailProvider } from "@/lib/services/email";
 import { findOptimalFulfillmentStore, reserveStockForOrder } from "@/lib/inventory/inventoryService";
 import { generatePickupCode, generateQrDataUrl } from "@/lib/services/qr";
+import {
+  calculateEarnedPoints,
+  calculatePointsDiscount,
+  verifyLoyaltyToken,
+} from "@/lib/loyalty/loyaltyService";
 
 export async function POST(request: Request) {
   try {
@@ -45,6 +50,8 @@ export async function POST(request: Request) {
       giftWrapOptionId,
       giftWrapName,
       items,
+      pointsToRedeem = 0,
+      loyaltyOtpToken,
     } = body;
 
     const isPickup = orderType === "PICKUP";
@@ -269,9 +276,76 @@ export async function POST(request: Request) {
     const finalGiftWrapOptionId = isGift && selectedWrapOpt ? selectedWrapOpt.id : null;
     const finalGiftWrapName = isGift && selectedWrapOpt ? selectedWrapOpt.name : null;
 
-    const taxableAmount = Math.max(0, calculatedSubtotal - discountAmount);
+    // 4b. Loyalty Program Calculation & OTP Verification
+    const loyaltyEnabled = dbCountry?.loyaltyEnabled ?? countryConfig.loyaltyEnabled ?? true;
+    const loyaltyEarnType = dbCountry?.loyaltyEarnType || countryConfig.loyaltyEarnType || "SPEND_RATIO";
+    const loyaltyEarnValue = dbCountry ? Number(dbCountry.loyaltyEarnValue) : (countryConfig.loyaltyEarnValue ?? 100);
+    const loyaltyPointValue = dbCountry ? Number(dbCountry.loyaltyPointValue) : (countryConfig.loyaltyPointValue ?? 0.10);
+    const loyaltyMinRedeemPoints = dbCountry?.loyaltyMinRedeemPoints ?? countryConfig.loyaltyMinRedeemPoints ?? 10;
+
+    let pointsDiscountAmount = 0;
+    const requestedPoints = parseInt(String(pointsToRedeem || 0), 10);
+    let validatedPointsToRedeem = 0;
+
+    if (requestedPoints > 0) {
+      if (!loyaltyEnabled) {
+        return NextResponse.json(
+          { error: "Loyalty rewards are currently unavailable for this country." },
+          { status: 400 }
+        );
+      }
+
+      if (!loyaltyOtpToken) {
+        return NextResponse.json(
+          { error: "OTP verification is required before redeeming loyalty points." },
+          { status: 400 }
+        );
+      }
+
+      const tokenCheck = await verifyLoyaltyToken(loyaltyOtpToken, session.userId);
+      if (!tokenCheck.valid) {
+        return NextResponse.json(
+          { error: tokenCheck.error || "Loyalty OTP verification expired. Please verify again." },
+          { status: 400 }
+        );
+      }
+
+      const dbUser = await prisma.user.findUnique({
+        where: { id: session.userId },
+        select: { rewardPoints: true },
+      });
+
+      if (!dbUser || dbUser.rewardPoints < requestedPoints) {
+        return NextResponse.json(
+          {
+            error: `Insufficient loyalty points balance. You have ${dbUser?.rewardPoints || 0} points available.`,
+          },
+          { status: 400 }
+        );
+      }
+
+      validatedPointsToRedeem = requestedPoints;
+      const rawDiscount = calculatePointsDiscount(validatedPointsToRedeem, {
+        loyaltyEnabled,
+        loyaltyPointValue,
+        currencyDecimals: countryConfig.currencyDecimals,
+      });
+
+      // Cap discount at remaining subtotal after coupon
+      const remainingAfterCoupon = Math.max(0, calculatedSubtotal - discountAmount);
+      pointsDiscountAmount = Math.min(rawDiscount, remainingAfterCoupon);
+    }
+
+    const netOrderValueForPoints = Math.max(0, calculatedSubtotal - discountAmount - pointsDiscountAmount);
+    const orderPointsEarned = calculateEarnedPoints(netOrderValueForPoints, {
+      loyaltyEnabled,
+      loyaltyEarnType,
+      loyaltyEarnValue,
+    });
+
+    const taxableAmount = Math.max(0, calculatedSubtotal - discountAmount - pointsDiscountAmount);
     const taxAmount = Number(((taxableAmount * taxRate) / 100).toFixed(countryConfig.currencyDecimals || 2));
-    const finalTotal = Math.max(0, calculatedSubtotal - discountAmount + shippingFee + giftWrapAmount + taxAmount);
+    const finalTotal = Math.max(0, calculatedSubtotal - discountAmount - pointsDiscountAmount + shippingFee + giftWrapAmount + taxAmount);
 
     // 5. Generate Human-readable Unique Order Number (e.g. RAM-QA-2609-8472)
     const randomSuffix = Math.floor(1000 + Math.random() * 9000);
@@ -373,6 +447,9 @@ export async function POST(request: Request) {
           giftWrapFee: giftWrapAmount,
           subtotal: calculatedSubtotal,
           discount: discountAmount,
+          pointsUsed: validatedPointsToRedeem,
+          pointsDiscount: pointsDiscountAmount,
+          pointsEarned: orderPointsEarned,
           shipping: shippingFee,
           tax: taxAmount,
           total: finalTotal,
@@ -464,6 +541,50 @@ export async function POST(request: Request) {
               },
             });
           }
+        }
+
+        // Apply Points Deduction if user redeemed points
+        if (validatedPointsToRedeem > 0) {
+          const debitedUser = await tx.user.update({
+            where: { id: session.userId },
+            data: {
+              rewardPoints: { decrement: validatedPointsToRedeem },
+            },
+          });
+
+          await tx.rewardPointTransaction.create({
+            data: {
+              userId: session.userId,
+              orderId: createdOrder.id,
+              points: -validatedPointsToRedeem,
+              balanceAfter: debitedUser.rewardPoints,
+              type: "REDEEMED",
+              description: `Redeemed ${validatedPointsToRedeem} points for discount on order ${orderNumber}`,
+              country: targetCountryCode,
+            },
+          });
+        }
+
+        // Credit Points Earned from this order
+        if (orderPointsEarned > 0) {
+          const creditedUser = await tx.user.update({
+            where: { id: session.userId },
+            data: {
+              rewardPoints: { increment: orderPointsEarned },
+            },
+          });
+
+          await tx.rewardPointTransaction.create({
+            data: {
+              userId: session.userId,
+              orderId: createdOrder.id,
+              points: orderPointsEarned,
+              balanceAfter: creditedUser.rewardPoints,
+              type: "EARNED",
+              description: `Earned ${orderPointsEarned} points from order ${orderNumber}`,
+              country: targetCountryCode,
+            },
+          });
         }
       }
 

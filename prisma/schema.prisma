@@ -121,6 +121,8 @@ model User {
   createdPurchaseOrders PurchaseOrder[]
   inspectedReturns      OrderReturn[]          @relation("ReturnInspectedBy")
   auditLogs             AuditLog[]
+  rewardPoints          Int                    @default(0)
+  rewardPointTransactions RewardPointTransaction[]
 }
 
 model CustomRole {
@@ -393,11 +395,15 @@ model Order {
   trackingNumber    String?
   trackingUrl       String?
   shippedAt         DateTime?
+  pointsUsed        Int               @default(0)
+  pointsDiscount    Decimal           @default(0.00) @db.Decimal(10, 2)
+  pointsEarned      Int               @default(0)
   createdAt         DateTime          @default(now())
   updatedAt         DateTime          @updatedAt
   items             OrderItem[]
   posPayments       PosPayment[]
   returns           OrderReturn[]
+  rewardPointTransactions RewardPointTransaction[]
 
   @@index([orderNumber])
   @@index([customerEmail])
@@ -510,6 +516,11 @@ model Country {
   supportEmail          String?
   orderEmail            String?
   paymentMethods        String?  @db.Text
+  loyaltyEarnType       String   @default("SPEND_RATIO") // "SPEND_RATIO", "PERCENTAGE", "FLAT"
+  loyaltyEarnValue      Decimal  @default(100.0) @db.Decimal(10, 2)
+  loyaltyPointValue     Decimal  @default(0.10) @db.Decimal(10, 4)
+  loyaltyEnabled        Boolean  @default(true)
+  loyaltyMinRedeemPoints Int     @default(10)
   active                Boolean  @default(true)
   sortOrder             Int      @default(0)
   createdAt             DateTime @default(now())
@@ -777,3 +788,22 @@ model OtpVerification {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+
+model RewardPointTransaction {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orderId      String?
+  order        Order?   @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  points       Int      // positive when earned/credited, negative when redeemed/debited
+  balanceAfter Int
+  type         String   // "EARNED", "REDEEMED", "ADJUSTMENT", "REFUNDED"
+  description  String?
+  country      String   @default("QA")
+  createdAt    DateTime @default(now())
+
+  @@index([userId])
+  @@index([orderId])
+  @@index([createdAt])
+}
+
