@@ -1217,7 +1217,13 @@ export default function CheckoutPage() {
                               ) : (
                                 <CreditCard size={16} className="text-[#b6713e]" />
                               )}
-                              <span>{isAr ? method.nameAr : method.name}</span>
+                              <span>
+                                {orderType === "PICKUP"
+                                  ? methodId === "COD"
+                                    ? (isAr ? "الدفع نقداً في البوتيك" : "Pay Cash at Boutique")
+                                    : (isAr ? "الدفع بالبطاقة في البوتيك" : "Pay by Card at Boutique")
+                                  : (isAr ? method.nameAr : method.name)}
+                              </span>
                             </span>
                             {method.badge && (
                               <span className="text-[10px] bg-[#faedcd] text-[#1c1c1c] font-bold px-2 py-0.5 rounded">
@@ -1226,7 +1232,11 @@ export default function CheckoutPage() {
                             )}
                           </div>
                           <p className="text-[11px] text-neutral-500 mt-1">
-                            {isAr ? method.descriptionAr : method.description}
+                            {orderType === "PICKUP"
+                              ? methodId === "COD"
+                                ? (isAr ? "ادفع نقداً عند استلام طلبك من الفرع." : "Settle with cash upon collecting your order at our boutique.")
+                                : (isAr ? "ادفع ببطاقة الصراف أو الائتمان عبر جهاز الدفع في البوتيك." : "Pay via credit or debit card at our boutique terminal.")
+                              : (isAr ? method.descriptionAr : method.description)}
                           </p>
                         </div>
                       </label>

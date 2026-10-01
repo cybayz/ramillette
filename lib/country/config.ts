@@ -95,18 +95,18 @@ export const COUNTRIES: Record<CountryCode, CountryConfig> = {
     paymentMethods: [
       {
         id: "COD",
-        name: "Cash on Delivery",
-        nameAr: "الدفع عند الاستلام",
-        description: "Pay with cash or card upon delivery in Qatar.",
-        descriptionAr: "ادفع نقدًا أو بالبطاقة عند الاستلام في قطر.",
+        name: "Pay on Delivery (Cash)",
+        nameAr: "الدفع نقداً عند الاستلام",
+        description: "Pay with cash upon delivery of your order in Qatar.",
+        descriptionAr: "ادفع نقدًا عند استلام طلبك في قطر.",
       },
       {
-        id: "ONLINE",
-        name: "Debit / Credit Card (Qatar)",
-        nameAr: "بطاقة الخصم / الائتمان (قطر)",
-        description: "Pay securely via SkipCash, QNB SimpliPay & Qatar Card Network.",
-        descriptionAr: "ادفع بأمان عبر سكيب كاش وبوابة بنك قطر الوطني.",
-        badge: "Instant",
+        id: "CARD_ON_DELIVERY",
+        name: "Card on Delivery",
+        nameAr: "الدفع بالبطاقة عند الاستلام",
+        description: "Pay with debit or credit card via courier's portable card machine.",
+        descriptionAr: "ادفع ببطاقة الصراف أو الائتمان عبر جهاز نقاط البيع المحمول مع المندوب في قطر.",
+        badge: "Card Machine",
       },
     ],
     giftWrapOptions: [
@@ -199,26 +199,18 @@ export const COUNTRIES: Record<CountryCode, CountryConfig> = {
     paymentMethods: [
       {
         id: "COD",
-        name: "Cash on Delivery",
-        nameAr: "الدفع عند الاستلام",
-        description: "Pay cash upon arrival anywhere in the UAE.",
-        descriptionAr: "ادفع نقدًا عند الاستلام في أي مكان بالإمارات.",
+        name: "Pay on Delivery (Cash)",
+        nameAr: "الدفع نقداً عند الاستلام",
+        description: "Pay with cash upon arrival anywhere in the UAE.",
+        descriptionAr: "ادفع نقدًا عند استلام طلبك في أي مكان بالإمارات.",
       },
       {
-        id: "ONLINE",
-        name: "Credit / Debit Card (UAE)",
-        nameAr: "بطاقة الائتمان / الخصم (الإمارات)",
-        description: "Visa, Mastercard, Apple Pay via Stripe UAE & Network International.",
-        descriptionAr: "فيزا، ماستركارد، وأبل باي عبر شبكة الدفع الإماراتية.",
-        badge: "Secure",
-      },
-      {
-        id: "TABBY_TAMARA",
-        name: "Tabby & Tamara (Split in 4)",
-        nameAr: "تابي وتمارا (قسمها على 4 دفعات)",
-        description: "Pay 25% today and split the rest over 3 months with 0% interest.",
-        descriptionAr: "ادفع 25% اليوم وقسم الباقي على 3 أشهر بدون فوائد.",
-        badge: "0% Interest",
+        id: "CARD_ON_DELIVERY",
+        name: "Card on Delivery",
+        nameAr: "الدفع بالبطاقة عند الاستلام",
+        description: "Pay with debit or credit card via courier's portable card machine.",
+        descriptionAr: "ادفع ببطاقة الصراف أو الائتمان عبر جهاز نقاط البيع المحمول مع المندوب في الإمارات.",
+        badge: "Card Machine",
       },
     ],
     giftWrapOptions: [
@@ -312,25 +304,18 @@ export const COUNTRIES: Record<CountryCode, CountryConfig> = {
     paymentMethods: [
       {
         id: "COD",
-        name: "Cash on Delivery",
-        nameAr: "الدفع عند الاستلام",
-        description: "Pay upon physical delivery across the Kingdom of Bahrain.",
-        descriptionAr: "الدفع نقدًا عند التسليم في جميع أنحاء مملكة البحرين.",
+        name: "Pay on Delivery (Cash)",
+        nameAr: "الدفع نقداً عند الاستلام",
+        description: "Pay with cash upon physical delivery across the Kingdom of Bahrain.",
+        descriptionAr: "ادفع نقدًا عند استلام طلبك في جميع أنحاء مملكة البحرين.",
       },
       {
-        id: "BENEFIT_PAY",
-        name: "BenefitPay & CrediMax",
-        nameAr: "بنفت باي وكريديمكس",
-        description: "Instant QR & app payment via Bahrain national BenefitPay network.",
-        descriptionAr: "دفع فوري سريع عبر شبكة بنفت باي الوطنية وكريديمكس.",
-        badge: "National Fav",
-      },
-      {
-        id: "ONLINE",
-        name: "Credit / Debit Card",
-        nameAr: "بطاقة الائتمان / الخصم",
-        description: "Visa, Mastercard & GCC cards via Tap Bahrain.",
-        descriptionAr: "فيزا، ماستركارد وبطاقات دول الخليج عبر تاب البحرين.",
+        id: "CARD_ON_DELIVERY",
+        name: "Card on Delivery",
+        nameAr: "الدفع بالبطاقة عند الاستلام",
+        description: "Pay with debit or credit card via courier's portable card machine.",
+        descriptionAr: "ادفع ببطاقة الصراف أو الائتمان عبر جهاز نقاط البيع المحمول مع المندوب في البحرين.",
+        badge: "Card Machine",
       },
     ],
     giftWrapOptions: [
@@ -398,10 +383,18 @@ export interface PaymentMethodInfo {
 export const MASTER_PAYMENT_METHODS: Record<string, PaymentMethodInfo> = {
   COD: {
     id: "COD",
-    name: "Cash on Delivery",
-    nameAr: "الدفع عند الاستلام",
-    description: "Pay with cash or card upon delivery.",
-    descriptionAr: "ادفع نقدًا أو بالبطاقة عند الاستلام.",
+    name: "Pay on Delivery (Cash)",
+    nameAr: "الدفع نقداً عند الاستلام",
+    description: "Pay with cash upon delivery of your order.",
+    descriptionAr: "ادفع نقدًا عند استلام طلبك.",
+  },
+  CARD_ON_DELIVERY: {
+    id: "CARD_ON_DELIVERY",
+    name: "Card on Delivery",
+    nameAr: "الدفع بالبطاقة عند الاستلام",
+    description: "Pay by debit or credit card via courier's portable card machine.",
+    descriptionAr: "ادفع ببطاقة الصراف أو الائتمان عبر جهاز نقاط البيع المحمول مع المندوب.",
+    badge: "Card Machine",
   },
   ONLINE: {
     id: "ONLINE",
@@ -429,6 +422,14 @@ export const MASTER_PAYMENT_METHODS: Record<string, PaymentMethodInfo> = {
   },
 };
 
+/**
+ * Temporary Payment Gateway maintenance status.
+ * While TRUE: hides online gateway payment options (ONLINE, TABBY_TAMARA, BENEFIT_PAY)
+ * and keeps only "Pay on Delivery (Cash)" and "Card on Delivery".
+ * Switch back to FALSE once payment gateway configuration is restored.
+ */
+export const IS_PAYMENT_GATEWAY_TEMPORARILY_DISABLED = true;
+
 export function resolvePaymentMethods(
   countryCode: string = "QA",
   methods?: (string | PaymentMethodInfo)[]
@@ -436,25 +437,52 @@ export function resolvePaymentMethods(
   const upper = (countryCode || DEFAULT_COUNTRY).toUpperCase() as CountryCode;
   const staticConfig = COUNTRIES[upper] || COUNTRIES[DEFAULT_COUNTRY];
 
+  let resolved: PaymentMethodInfo[] = [];
+
   if (!methods || methods.length === 0) {
-    return staticConfig.paymentMethods;
+    resolved = staticConfig.paymentMethods;
+  } else {
+    resolved = methods.map((m) => {
+      if (typeof m === "string") {
+        const found = staticConfig.paymentMethods.find((pm) => pm.id === m);
+        if (found) return found;
+        if (MASTER_PAYMENT_METHODS[m]) return MASTER_PAYMENT_METHODS[m];
+        return {
+          id: m,
+          name: m,
+          nameAr: m,
+          description: `Pay securely using ${m}`,
+          descriptionAr: `الدفع بأمان عبر ${m}`,
+        };
+      }
+      return m;
+    });
   }
 
-  return methods.map((m) => {
-    if (typeof m === "string") {
-      const found = staticConfig.paymentMethods.find((pm) => pm.id === m);
-      if (found) return found;
-      if (MASTER_PAYMENT_METHODS[m]) return MASTER_PAYMENT_METHODS[m];
-      return {
-        id: m,
-        name: m,
-        nameAr: m,
-        description: `Pay securely using ${m}`,
-        descriptionAr: `الدفع بأمان عبر ${m}`,
-      };
+  // When payment gateway is temporarily disabled, hide online gateways
+  // and ensure only Pay on Delivery (Cash) and Card on Delivery are available.
+  if (IS_PAYMENT_GATEWAY_TEMPORARILY_DISABLED) {
+    const onlineGatewayIds = new Set(["ONLINE", "TABBY_TAMARA", "BENEFIT_PAY"]);
+    const deliveryMethods = resolved.filter((m) => !onlineGatewayIds.has(m.id));
+
+    // Ensure COD is present
+    if (!deliveryMethods.some((m) => m.id === "COD")) {
+      deliveryMethods.unshift(
+        staticConfig.paymentMethods.find((m) => m.id === "COD") || MASTER_PAYMENT_METHODS.COD
+      );
     }
-    return m;
-  });
+
+    // Ensure CARD_ON_DELIVERY is present
+    if (!deliveryMethods.some((m) => m.id === "CARD_ON_DELIVERY")) {
+      deliveryMethods.push(
+        staticConfig.paymentMethods.find((m) => m.id === "CARD_ON_DELIVERY") || MASTER_PAYMENT_METHODS.CARD_ON_DELIVERY
+      );
+    }
+
+    return deliveryMethods;
+  }
+
+  return resolved;
 }
 
 export function getCountryConfig(code?: string | null): CountryConfig {

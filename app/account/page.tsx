@@ -213,8 +213,10 @@ export default async function AccountPage() {
                         </span>
                         <span className="block text-[11px] text-neutral-500">
                           {order.paymentMethod === "COD"
-                            ? "Cash on Delivery"
-                            : "Online Card"}
+                            ? "Pay on Delivery"
+                            : order.paymentMethod === "CARD_ON_DELIVERY"
+                            ? "Card on Delivery"
+                            : "Online Payment"}
                         </span>
                       </div>
                     </div>

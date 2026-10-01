@@ -44,13 +44,40 @@ export class CashOnDeliveryProvider implements PaymentProvider {
       success: true,
       status: "PENDING",
       transactionRef: `COD-${this.country}-${payload.orderNumber}`,
-      message: `Order placed for Cash on Delivery in ${config.name} (${config.currency} ${payload.amount.toFixed(config.currencyDecimals)}).`,
+      message: `Order placed for Pay on Delivery in ${config.name} (${config.currency} ${payload.amount.toFixed(config.currencyDecimals)}).`,
       providerName: `COD_${this.country}`,
     };
   }
 
   async verifyPayment(transactionRef: string) {
     return { isPaid: false, metadata: { method: "COD", country: this.country } };
+  }
+}
+
+/**
+ * Universal Card on Delivery Provider (Portable POS / Card Terminal on Delivery)
+ */
+export class CardOnDeliveryProvider implements PaymentProvider {
+  name = "CARD_ON_DELIVERY";
+  country: CountryCode;
+
+  constructor(country: CountryCode = "QA") {
+    this.country = country;
+  }
+
+  async initiatePayment(payload: PaymentOrderPayload): Promise<PaymentResult> {
+    const config = getCountryConfig(this.country);
+    return {
+      success: true,
+      status: "PENDING",
+      transactionRef: `CARD-DELIVERY-${this.country}-${payload.orderNumber}`,
+      message: `Order placed for Card on Delivery in ${config.name} (${config.currency} ${payload.amount.toFixed(config.currencyDecimals)}). Courier will bring portable card terminal.`,
+      providerName: `CARD_ON_DELIVERY_${this.country}`,
+    };
+  }
+
+  async verifyPayment(transactionRef: string) {
+    return { isPaid: false, metadata: { method: "CARD_ON_DELIVERY", country: this.country } };
   }
 }
 
@@ -156,7 +183,11 @@ export function getPaymentProvider(
 ): PaymentProvider {
   const normMethod = (method || "").toUpperCase();
 
-  if (normMethod === "COD") {
+  if (normMethod === "CARD_ON_DELIVERY") {
+    return new CardOnDeliveryProvider(country);
+  }
+
+  if (normMethod === "COD" || normMethod === "POD") {
     return new CashOnDeliveryProvider(country);
   }
 

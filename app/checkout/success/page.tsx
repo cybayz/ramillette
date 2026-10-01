@@ -359,7 +359,9 @@ export default async function OrderSuccessPage({ searchParams, isAr = false }: P
                 Payment Method:{" "}
                 <strong className="text-[#1c1c1c]">
                   {order.paymentMethod === "COD"
-                    ? (isPickup ? "Pay at Boutique Counter" : "Cash on Delivery")
+                    ? (isPickup ? (isAr ? "الدفع في البوتيك (نقداً)" : "Pay at Boutique Counter (Cash)") : (isAr ? "الدفع عند الاستلام (نقداً)" : "Pay on Delivery (Cash)"))
+                    : order.paymentMethod === "CARD_ON_DELIVERY"
+                    ? (isPickup ? (isAr ? "الدفع في البوتيك (بطاقة)" : "Pay at Boutique Counter (Card)") : (isAr ? "الدفع بالبطاقة عند الاستلام" : "Card on Delivery (POS)"))
                     : "Online Payment"}
                 </strong>
               </p>
