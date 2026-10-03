@@ -119,7 +119,18 @@ export default function CheckoutPage() {
   const [giftMessage, setGiftMessage] = useState("");
   const [selectedGiftWrapOptionId, setSelectedGiftWrapOptionId] = useState<string>("free-card");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isOrderCompleted, setIsOrderCompleted] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
+  const clearFieldError = (key: string) => {
+    setFieldErrors((prev) => {
+      if (!prev[key]) return prev;
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  };
 
   const availablePaymentMethods = resolvePaymentMethods(country, config.paymentMethods);
 
@@ -234,6 +245,7 @@ export default function CheckoutPage() {
 
   const handleSelectAddress = (addr: SavedAddress) => {
     setSelectedAddressId(addr.id);
+    setFieldErrors({});
     if (addr.name) setCustomerName(addr.name);
     if (addr.phone) setCustomerPhone(addr.phone);
     setAddressLine1(addr.addressLine1 || "");
@@ -263,7 +275,18 @@ export default function CheckoutPage() {
     );
   }
 
-  if (items.length === 0) {
+  if (isOrderCompleted) {
+    return (
+      <div className="min-h-[70vh] flex flex-col items-center justify-center py-16 bg-[#ffffff] gap-3">
+        <Loader2 className="w-8 h-8 text-[#b6713e] animate-spin" />
+        <p className="text-xs font-semibold text-neutral-700">
+          {isAr ? "تم تسجيل طلبك بنجاح! جاري تحويلك إلى صفحة التأكيد..." : "Order placed successfully! Redirecting to confirmation..."}
+        </p>
+      </div>
+    );
+  }
+
+  if (items.length === 0 && !isSubmitting && !isOrderCompleted) {
     return (
       <div className="min-h-[70vh] flex items-center justify-center py-16 bg-[#ffffff]">
         <div className="text-center max-w-md px-4">
@@ -311,13 +334,54 @@ export default function CheckoutPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage("");
-    setIsSubmitting(true);
+
+    const errors: Record<string, string> = {};
+
+    if (!customerName.trim()) {
+      errors.customerName = isAr ? "يرجى إدخال الاسم الكامل" : "Please enter your full name";
+    }
+
+    if (!customerPhone.trim()) {
+      errors.customerPhone = isAr ? "يرجى إدخال رقم الهاتف" : "Please enter your phone number";
+    }
+
+    if (!customerEmail.trim()) {
+      errors.customerEmail = isAr ? "يرجى إدخال البريد الإلكتروني" : "Please enter your email address";
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerEmail.trim())) {
+      errors.customerEmail = isAr ? "يرجى إدخال بريد إلكتروني صحيح" : "Please enter a valid email address";
+    }
+
+    if (orderType === "DELIVERY") {
+      if (!addressLine1.trim()) {
+        errors.addressLine1 = isAr ? "يرجى إدخال اسم الشارع ورقم المبنى" : "Please enter street & building details";
+      }
+      if (!area || !area.trim()) {
+        errors.area = isAr ? "يرجى اختيار المدينة / المنطقة" : "Please select your city / zone";
+      }
+    }
 
     if (orderType === "PICKUP" && !selectedStoreId && pickupStores.length > 0) {
-      setErrorMessage(isAr ? "يرجى تحديد فرع للاستلام من القائمة." : "Please select a boutique location for store pickup.");
-      setIsSubmitting(false);
+      errors.selectedStoreId = isAr ? "يرجى تحديد فرع للاستلام من القائمة." : "Please select a boutique location for store pickup.";
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      setErrorMessage(
+        isAr
+          ? "يرجى تعبئة الحقول الإلزامية المميزة باللون الأحمر."
+          : "Please fill in the required fields marked with a red line."
+      );
+      const firstErrorKey = Object.keys(errors)[0];
+      const el = document.getElementById(firstErrorKey);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        el.focus();
+      }
       return;
     }
+
+    setFieldErrors({});
+    setIsSubmitting(true);
 
     try {
       const payload = {
@@ -364,6 +428,7 @@ export default function CheckoutPage() {
         setErrorMessage(data.error || "Failed to place order.");
         setIsSubmitting(false);
       } else {
+        setIsOrderCompleted(true);
         clearCart();
         const successUrl = `${isAr ? "/ar" : ""}/checkout/success?orderNumber=${data.orderNumber}`;
         router.push(successUrl);
@@ -413,45 +478,78 @@ export default function CheckoutPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-bold uppercase tracking-wider text-neutral-700 mb-1.5">
-                      Full Name *
+                      {isAr ? "الاسم الكامل *" : "Full Name *"}
                     </label>
                     <input
+                      id="customerName"
                       type="text"
                       required
                       value={customerName}
-                      onChange={(e) => setCustomerName(e.target.value)}
-                      placeholder="e.g. Tariq Al-Kuwari"
-                      className="w-full text-xs p-3 border border-[#e5e5e5] rounded-[5px] focus:outline-none focus:border-[#b6713e]"
+                      onChange={(e) => {
+                        setCustomerName(e.target.value);
+                        if (e.target.value.trim()) clearFieldError("customerName");
+                      }}
+                      placeholder={isAr ? "مثال: طارق الكواري" : "e.g. Tariq Al-Kuwari"}
+                      className={`w-full text-xs p-3 border rounded-[5px] transition-all focus:outline-none ${
+                        fieldErrors.customerName
+                          ? "border-red-500 ring-1 ring-red-500 focus:border-red-500 focus:ring-red-500 bg-red-50/20"
+                          : "border-[#e5e5e5] focus:border-[#b6713e]"
+                      }`}
                     />
+                    {fieldErrors.customerName && (
+                      <p className="text-[11px] text-red-500 mt-1 font-medium">{fieldErrors.customerName}</p>
+                    )}
                   </div>
 
                   <div>
                     <label className="block text-xs font-bold uppercase tracking-wider text-neutral-700 mb-1.5">
-                      Phone Number *
+                      {isAr ? "رقم الهاتف *" : "Phone Number *"}
                     </label>
                     <input
+                      id="customerPhone"
                       type="tel"
                       required
                       value={customerPhone}
-                      onChange={(e) => setCustomerPhone(e.target.value)}
+                      onChange={(e) => {
+                        setCustomerPhone(e.target.value);
+                        if (e.target.value.trim()) clearFieldError("customerPhone");
+                      }}
                       placeholder={`${config.phonePrefix} 5555 1234`}
-                      className="w-full text-xs p-3 border border-[#e5e5e5] rounded-[5px] focus:outline-none focus:border-[#b6713e]"
+                      className={`w-full text-xs p-3 border rounded-[5px] transition-all focus:outline-none ${
+                        fieldErrors.customerPhone
+                          ? "border-red-500 ring-1 ring-red-500 focus:border-red-500 focus:ring-red-500 bg-red-50/20"
+                          : "border-[#e5e5e5] focus:border-[#b6713e]"
+                      }`}
                     />
+                    {fieldErrors.customerPhone && (
+                      <p className="text-[11px] text-red-500 mt-1 font-medium">{fieldErrors.customerPhone}</p>
+                    )}
                   </div>
                 </div>
 
                 <div>
                   <label className="block text-xs font-bold uppercase tracking-wider text-neutral-700 mb-1.5">
-                    Email Address *
+                    {isAr ? "البريد الإلكتروني *" : "Email Address *"}
                   </label>
                   <input
+                    id="customerEmail"
                     type="email"
                     required
                     value={customerEmail}
-                    onChange={(e) => setCustomerEmail(e.target.value)}
+                    onChange={(e) => {
+                      setCustomerEmail(e.target.value);
+                      if (e.target.value.trim()) clearFieldError("customerEmail");
+                    }}
                     placeholder="customer@example.com"
-                    className="w-full text-xs p-3 border border-[#e5e5e5] rounded-[5px] focus:outline-none focus:border-[#b6713e]"
+                    className={`w-full text-xs p-3 border rounded-[5px] transition-all focus:outline-none ${
+                      fieldErrors.customerEmail
+                        ? "border-red-500 ring-1 ring-red-500 focus:border-red-500 focus:ring-red-500 bg-red-50/20"
+                        : "border-[#e5e5e5] focus:border-[#b6713e]"
+                    }`}
                   />
+                  {fieldErrors.customerEmail && (
+                    <p className="text-[11px] text-red-500 mt-1 font-medium">{fieldErrors.customerEmail}</p>
+                  )}
                 </div>
               </div>
 
@@ -686,9 +784,17 @@ export default function CheckoutPage() {
                           {isAr ? `المدينة / المنطقة في ${config.name} *` : `City / Zone in ${config.name} *`}
                         </label>
                         <select
+                          id="area"
                           value={area}
-                          onChange={(e) => setArea(e.target.value)}
-                          className="w-full text-xs p-3 border border-[#e5e5e5] rounded-[5px] focus:outline-none focus:border-[#b6713e] bg-white font-medium cursor-pointer"
+                          onChange={(e) => {
+                            setArea(e.target.value);
+                            if (e.target.value) clearFieldError("area");
+                          }}
+                          className={`w-full text-xs p-3 border rounded-[5px] transition-all focus:outline-none bg-white font-medium cursor-pointer ${
+                            fieldErrors.area
+                              ? "border-red-500 ring-1 ring-red-500 focus:border-red-500 bg-red-50/20"
+                              : "border-[#e5e5e5] focus:border-[#b6713e]"
+                          }`}
                         >
                           {config.cities.map((cityOption, idx) => (
                             <option key={`${cityOption}-${idx}`} value={cityOption}>
@@ -696,6 +802,9 @@ export default function CheckoutPage() {
                             </option>
                           ))}
                         </select>
+                        {fieldErrors.area && (
+                          <p className="text-[11px] text-red-500 mt-1 font-medium">{fieldErrors.area}</p>
+                        )}
                       </div>
 
                       <div>
@@ -703,13 +812,24 @@ export default function CheckoutPage() {
                           {isAr ? "اسم الشارع ورقم الفيلا / المبنى *" : "Street & Villa / Building Number *"}
                         </label>
                         <input
+                          id="addressLine1"
                           type="text"
                           required={orderType === "DELIVERY"}
                           value={addressLine1}
-                          onChange={(e) => setAddressLine1(e.target.value)}
+                          onChange={(e) => {
+                            setAddressLine1(e.target.value);
+                            if (e.target.value.trim()) clearFieldError("addressLine1");
+                          }}
                           placeholder={isAr ? "مثال: فيلا 14، شارع 920، الخليج الغربي" : "e.g. Villa 14, Street 920, West Bay"}
-                          className="w-full text-xs p-3 border border-[#e5e5e5] rounded-[5px] focus:outline-none focus:border-[#b6713e]"
+                          className={`w-full text-xs p-3 border rounded-[5px] transition-all focus:outline-none ${
+                            fieldErrors.addressLine1
+                              ? "border-red-500 ring-1 ring-red-500 focus:border-red-500 focus:ring-red-500 bg-red-50/20"
+                              : "border-[#e5e5e5] focus:border-[#b6713e]"
+                          }`}
                         />
+                        {fieldErrors.addressLine1 && (
+                          <p className="text-[11px] text-red-500 mt-1 font-medium">{fieldErrors.addressLine1}</p>
+                        )}
                       </div>
 
                       <div>
@@ -788,7 +908,10 @@ export default function CheckoutPage() {
                             return (
                               <div
                                 key={store.id}
-                                onClick={() => setSelectedStoreId(store.id)}
+                                onClick={() => {
+                                  setSelectedStoreId(store.id);
+                                  clearFieldError("selectedStoreId");
+                                }}
                                 className={`p-4 rounded-[10px] border transition-all cursor-pointer text-left ${
                                   isSelected
                                     ? "bg-[#faedcd]/25 border-[#b6713e] ring-2 ring-[#b6713e]/70 shadow-xs"

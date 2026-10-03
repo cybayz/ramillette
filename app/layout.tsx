@@ -1,9 +1,15 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Outfit, Urbanist, Cairo } from "next/font/google";
 import "./globals.css";
 import { RouteProgressBar } from "@/components/layout/RouteProgressBar";
 import { ScrollToTopOnNavigation } from "@/components/layout/ScrollToTopOnNavigation";
 import { StorefrontChrome } from "@/components/layout/StorefrontChrome";
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+};
 
 const outfit = Outfit({
   variable: "--font-heading",

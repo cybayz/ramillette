@@ -24,9 +24,10 @@ export async function createSession(payload: SessionPayload) {
     .sign(SECRET_KEY);
 
   const cookieStore = await cookies();
+  const isHttps = Boolean(process.env.NEXTAUTH_URL?.startsWith("https://"));
   cookieStore.set(SESSION_COOKIE_NAME, token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: isHttps,
     sameSite: "lax",
     path: "/",
     maxAge: 60 * 60 * 24 * 30, // 30 days

@@ -896,3 +896,21 @@
   }
 }
 
+/* Form inputs validation feedback */
+input:user-invalid,
+select:user-invalid,
+textarea:user-invalid {
+  border-color: #ef4444 !important;
+  box-shadow: 0 0 0 1px #ef4444 !important;
+  background-color: rgba(254, 242, 242, 0.25);
+}
+
+/* Prevent iOS Safari auto-zoom on input focus */
+@media screen and (max-width: 768px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
