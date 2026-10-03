@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { generateQrDataUrl } from "@/lib/services/qr";
+import { ClearCartOnSuccess } from "@/components/checkout/ClearCartOnSuccess";
 
 interface PageProps {
   searchParams: Promise<{ orderNumber?: string }>;
@@ -103,6 +104,7 @@ export default async function OrderSuccessPage({ searchParams, isAr = false }: P
 
   return (
     <div className="bg-[#fbf9f5] min-h-screen py-12">
+      <ClearCartOnSuccess />
       <div className="ramillette-container max-w-3xl">
         <div className="bg-white rounded-[10px] border border-[#e5e5e5] p-6 sm:p-10 shadow-sm space-y-8">
           {/* Header */}

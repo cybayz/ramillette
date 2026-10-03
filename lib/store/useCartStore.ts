@@ -133,7 +133,7 @@ export const useCartStore = create<CartStore>()(
       },
 
       clearCart: () => {
-        set({ items: [], coupon: null, orderNote: "" });
+        set({ items: [], coupon: null, orderNote: "", isOpen: false });
       },
 
       openCart: () => set({ isOpen: true }),

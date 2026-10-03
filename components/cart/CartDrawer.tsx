@@ -15,6 +15,10 @@ import { useCountryStore } from "@/lib/store/useCountryStore";
 
 export function CartDrawer() {
   const pathname = usePathname();
+  if (pathname?.includes("/checkout")) {
+    return null;
+  }
+
   const isAr = Boolean(pathname?.startsWith("/ar"));
   const { country, config } = useCountryStore();
 

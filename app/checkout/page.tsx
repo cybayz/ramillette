@@ -429,9 +429,8 @@ export default function CheckoutPage() {
         setIsSubmitting(false);
       } else {
         setIsOrderCompleted(true);
-        clearCart();
         const successUrl = `${isAr ? "/ar" : ""}/checkout/success?orderNumber=${data.orderNumber}`;
-        router.push(successUrl);
+        window.location.href = successUrl;
       }
     } catch {
       setErrorMessage("Network error processing order. Please try again.");
@@ -440,7 +439,18 @@ export default function CheckoutPage() {
   };
 
   return (
-    <div className="bg-[#fbf9f5] min-h-screen py-8 md:py-12 border-t border-[#e5e5e5]">
+    <div className="bg-[#fbf9f5] min-h-screen py-8 md:py-12 border-t border-[#e5e5e5] relative">
+      {/* Full-screen smooth order placement overlay */}
+      {(isSubmitting || isOrderCompleted) && (
+        <div className="fixed inset-0 bg-white/90 backdrop-blur-xs z-50 flex flex-col items-center justify-center gap-3">
+          <Loader2 className="w-10 h-10 text-[#b6713e] animate-spin" />
+          <p className="text-sm font-bold text-[#1c1c1c]">
+            {isAr
+              ? "جاري تأكيد وتسجيل طلبك..."
+              : "Confirming your order and preparing your receipt..."}
+          </p>
+        </div>
+      )}
       <div className="ramillette-container">
         {/* Navigation Breadcrumb */}
         <div className="mb-6 flex items-center justify-between">
