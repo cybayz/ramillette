@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { useCartStore } from "@/lib/store/useCartStore";
+import { useCountryStore } from "@/lib/store/useCountryStore";
 import { QuantityStepper } from "@/components/ui/QuantityStepper";
 import { FreeShippingBar } from "@/components/ui/FreeShippingBar";
 import { Button } from "@/components/ui/Button";
@@ -20,6 +21,7 @@ import {
   CheckCircle2,
   X,
   Loader2,
+  Plus,
 } from "lucide-react";
 
 export default function CartPage() {
@@ -62,12 +64,13 @@ export default function CartPage() {
     }
   };
 
+  const { country, config } = useCountryStore();
   const subtotal = getSubtotal();
   const discount = getDiscountTotal();
-  const shipping = subtotal >= 900 || subtotal === 0 ? 0 : 30.0;
+  const shippingThreshold = config?.freeShippingThreshold ?? 900;
+  const standardShippingFee = config?.standardShippingFee ?? 30.0;
+  const shipping = subtotal >= shippingThreshold || subtotal === 0 ? 0 : standardShippingFee;
   const finalTotal = Math.max(0, subtotal - discount + shipping);
-
-
 
   if (items.length === 0) {
     return (
@@ -77,14 +80,16 @@ export default function CartPage() {
             <ShoppingBag size={36} />
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-[#1c1c1c] mb-2">
-            Your Cart is Empty
+            {isAr ? "سلة التسوق فارغة" : "Your Cart is Empty"}
           </h1>
           <p className="text-xs sm:text-sm text-neutral-500 mb-8 leading-relaxed">
-            You haven't added any luxury fragrances to your shopping bag yet. Explore our bestsellers and signature oud creations.
+            {isAr
+              ? "لم تقم بإضافة أي عطور فاخرة إلى حقيبة التسوق الخاصة بك بعد. استكشف مجموعتنا الفاخرة."
+              : "You haven't added any luxury fragrances to your shopping bag yet. Explore our bestsellers and signature creations."}
           </p>
-          <Link href="/shop">
+          <Link href={isAr ? "/ar/shop" : "/shop"}>
             <Button variant="primary" size="lg" className="px-8 text-sm">
-              Discover Fragrances
+              {isAr ? "اكتشف العطور" : "Discover Fragrances"}
             </Button>
           </Link>
         </div>
@@ -97,20 +102,32 @@ export default function CartPage() {
       <div className="ramillette-container">
         {/* Breadcrumb */}
         <nav className="text-xs text-neutral-500 mb-6 flex items-center gap-2">
-          <Link href="/" className="hover:text-[#b6713e]">
-            Home
+          <Link href={isAr ? "/ar" : "/"} className="hover:text-[#b6713e]">
+            {isAr ? "الرئيسية" : "Home"}
           </Link>
           <span>/</span>
-          <span className="text-[#1c1c1c] font-semibold">Shopping Bag</span>
+          <span className="text-[#1c1c1c] font-semibold">{isAr ? "حقيبة التسوق" : "Shopping Bag"}</span>
         </nav>
 
-        <h1 className="text-3xl font-extrabold text-[#1c1c1c] mb-8">
-          Shopping Cart ({items.reduce((sum, i) => sum + i.quantity, 0)} items)
-        </h1>
+        <div className="flex items-center justify-between mb-8 flex-wrap gap-4">
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-[#1c1c1c]">
+            {isAr
+              ? `حقيبة التسوق (${items.reduce((sum, i) => sum + i.quantity, 0)} منتجات)`
+              : `Shopping Cart (${items.reduce((sum, i) => sum + i.quantity, 0)} items)`}
+          </h1>
+
+          <Link
+            href={isAr ? "/ar/shop" : "/shop"}
+            className="inline-flex items-center gap-1.5 text-xs font-bold text-[#b6713e] hover:text-[#8f4f22] bg-[#faedcd]/20 hover:bg-[#faedcd]/40 px-3.5 py-2 rounded-[5px] border border-[#ecdac1] transition-all"
+          >
+            <Plus size={14} />
+            <span>{isAr ? "إضافة المزيد من المنتجات" : "Add More Items"}</span>
+          </Link>
+        </div>
 
         {/* Free Shipping Progress Meter */}
         <div className="mb-8">
-          <FreeShippingBar currentAmount={subtotal} threshold={900} />
+          <FreeShippingBar currentAmount={subtotal} threshold={shippingThreshold} />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
@@ -195,26 +212,39 @@ export default function CartPage() {
                       <span className="sm:hidden text-neutral-500 text-xs mr-2">
                         Subtotal:
                       </span>
-                      {formatPrice(item.price * item.quantity)}
+                      {formatPrice(item.price * item.quantity, country)}
                     </div>
                   </div>
                 ))}
               </div>
             </div>
 
+            {/* Continue Shopping / Add More Items Action */}
+            <div className="flex items-center justify-between pt-1">
+              <Link
+                href={isAr ? "/ar/shop" : "/shop"}
+                className="inline-flex items-center gap-2 text-xs font-bold text-[#b6713e] hover:text-[#8f4f22] transition-colors"
+              >
+                <Plus size={15} />
+                <span>{isAr ? "إضافة المزيد من المنتجات إلى السلة" : "Continue Shopping / Add More Items"}</span>
+              </Link>
+            </div>
+
             {/* Delivery / Order Note */}
             <div className="p-6 border border-[#e5e5e5] rounded-[8px] bg-[#fbf9f5]">
               <h3 className="text-xs font-bold uppercase tracking-wider text-[#1c1c1c] mb-2">
-                Order Notes & Gift Instructions
+                {isAr ? "ملاحظات الطلب وتعليمات الإهداء" : "Order Notes & Gift Instructions"}
               </h3>
               <p className="text-xs text-neutral-500 mb-3">
-                Include special delivery instructions, villa gate codes, or customized gift card wording.
+                {isAr
+                  ? "أضف أي تعليمات خاصة بالتسليم، أو نص بطاقة الإهداء الخاصة بك."
+                  : "Include special delivery instructions, villa gate codes, or customized gift card wording."}
               </p>
               <textarea
                 rows={3}
                 value={orderNote}
                 onChange={(e) => setOrderNote(e.target.value)}
-                placeholder="e.g. Please ring the villa bell twice, or Happy Birthday from Tariq..."
+                placeholder={isAr ? "مثال: يرجى الاتصال عند الوصول..." : "e.g. Please ring the villa bell twice, or Happy Birthday from Tariq..."}
                 className="w-full text-xs p-3 border border-[#e5e5e5] bg-white rounded-[5px] focus:outline-none focus:border-[#b6713e]"
               />
             </div>
@@ -224,7 +254,7 @@ export default function CartPage() {
           <div className="lg:col-span-4 space-y-6">
             <div className="border border-[#e5e5e5] rounded-[8px] p-6 bg-[#fbf9f5] space-y-4">
               <h2 className="text-lg font-bold text-[#1c1c1c] pb-3 border-b border-[#e5e5e5]">
-                Order Summary
+                {isAr ? "ملخص الطلب" : "Order Summary"}
               </h2>
 
               {/* Coupons & Available Offers */}
@@ -235,66 +265,80 @@ export default function CartPage() {
               {/* Cost Breakdown */}
               <div className="space-y-2 text-xs">
                 <div className="flex justify-between text-neutral-600">
-                  <span>Subtotal</span>
+                  <span>{isAr ? "المجموع الفرعي" : "Subtotal"}</span>
                   <span className="font-semibold text-[#1c1c1c]">
-                    {formatPrice(subtotal)}
+                    {formatPrice(subtotal, country)}
                   </span>
                 </div>
 
                 {discount > 0 && (
                   <div className="flex justify-between text-emerald-700 font-semibold">
-                    <span>Discount ({coupon?.code})</span>
-                    <span>-{formatPrice(discount)}</span>
+                    <span>{isAr ? `الخصم (${coupon?.code})` : `Discount (${coupon?.code})`}</span>
+                    <span>-{formatPrice(discount, country)}</span>
                   </div>
                 )}
 
                 <div className="flex justify-between text-neutral-600">
-                  <span>Qatar Express Delivery</span>
+                  <span>{isAr ? `الشحن السريع (${config?.name || "Qatar"})` : `${config?.name || "Qatar"} Express Delivery`}</span>
                   <span className="font-semibold text-[#1c1c1c]">
                     {shipping === 0 ? (
                       <span className="text-[#0d9d00] font-bold uppercase">
-                        FREE
+                        {isAr ? "مجاناً" : "FREE"}
                       </span>
                     ) : (
-                      formatPrice(shipping)
+                      formatPrice(shipping, country)
                     )}
                   </span>
                 </div>
 
                 <div className="flex justify-between text-base font-extrabold text-[#1c1c1c] pt-3 border-t border-[#e5e5e5]">
-                  <span>Total</span>
-                  <span className="text-[#b6713e]">{formatPrice(finalTotal)}</span>
+                  <span>{isAr ? "المجموع الكلي" : "Total"}</span>
+                  <span className="text-[#b6713e]">{formatPrice(finalTotal, country)}</span>
                 </div>
               </div>
 
-              {/* Checkout Button */}
-              <div className="pt-2">
+              {/* Checkout & Add More Items Actions */}
+              <div className="pt-2 space-y-2.5">
                 <Button
                   type="button"
                   variant="primary"
                   size="lg"
                   onClick={handleProceedToCheckout}
                   isLoading={isRedirecting}
-                  className="w-full h-13 text-sm font-semibold flex items-center justify-center gap-2 cursor-pointer"
+                  className="w-full h-13 text-sm font-semibold flex items-center justify-center gap-2 cursor-pointer shadow-sm"
                 >
                   <span>{isAr ? "المتابعة إلى الدفع" : "Proceed to Checkout"}</span>
-                  <ArrowRight size={16} />
+                  <ArrowRight size={16} className="rtl:rotate-180" />
                 </Button>
+
+                <Link href={isAr ? "/ar/shop" : "/shop"} className="block w-full">
+                  <button
+                    type="button"
+                    className="w-full h-12 text-xs font-bold rounded-[5px] border-2 border-[#b6713e] text-[#b6713e] bg-white hover:bg-[#faedcd]/40 active:scale-[0.99] transition-all flex items-center justify-center gap-2 cursor-pointer shadow-2xs"
+                  >
+                    <Plus size={16} />
+                    <span>{isAr ? "إضافة المزيد من المنتجات" : "Add More Items"}</span>
+                  </button>
+                </Link>
               </div>
 
               {/* Trust Badges */}
               <div className="pt-4 border-t border-[#e5e5e5] space-y-2 text-[11px] text-neutral-500">
                 <div className="flex items-center gap-2">
                   <CheckCircle2 size={14} className="text-[#0d9d00] shrink-0" />
-                  <span>2-Hour Express Delivery in Doha</span>
+                  <span>{isAr ? config?.deliveryNoticeAr || "توصيل سريع مباشر" : config?.deliveryNotice || "2-Hour Express Delivery in Doha"}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Truck size={14} className="text-[#b6713e] shrink-0" />
-                  <span>Free Qatar shipping on orders ≥ QAR 900</span>
+                  <span>
+                    {isAr
+                      ? `شحن مجاني على الطلبات الأكثر من ${formatPrice(shippingThreshold, country)}`
+                      : `Free shipping on orders ≥ ${formatPrice(shippingThreshold, country)}`}
+                  </span>
                 </div>
                 <div className="flex items-center gap-2">
                   <ShieldCheck size={14} className="text-[#b6713e] shrink-0" />
-                  <span>Cash on Delivery (COD) & NAPS debit accepted</span>
+                  <span>{isAr ? "دفع آمن عند الاستلام وبالبطاقة" : "Cash on Delivery & Secure Online Payment"}</span>
                 </div>
               </div>
             </div>

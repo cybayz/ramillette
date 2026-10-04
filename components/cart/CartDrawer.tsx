@@ -299,17 +299,18 @@ export function CartDrawer() {
                   <ArrowRight size={16} />
                 </Button>
 
-                {/* Add More Items Button (Closes cart so user can add more items) */}
-                <button
-                  type="button"
-                  onClick={closeCart}
-                  className="w-full h-11 text-xs font-bold rounded-[5px] border-2 border-[#b6713e] text-[#b6713e] bg-white hover:bg-[#faedcd]/40 active:scale-[0.99] transition-all flex items-center justify-center gap-2 cursor-pointer shadow-2xs"
-                >
-                  <Plus size={16} />
-                  <span>{isAr ? "إضافة المزيد من المنتجات" : "Add More Items"}</span>
-                </button>
+                {/* Add More Items Button (Takes user to /shop) */}
+                <Link href={isAr ? "/ar/shop" : "/shop"} onClick={closeCart} className="block w-full">
+                  <button
+                    type="button"
+                    className="w-full h-11 text-xs font-bold rounded-[5px] border-2 border-[#b6713e] text-[#b6713e] bg-white hover:bg-[#faedcd]/40 active:scale-[0.99] transition-all flex items-center justify-center gap-2 cursor-pointer shadow-2xs"
+                  >
+                    <Plus size={16} />
+                    <span>{isAr ? "إضافة المزيد من المنتجات" : "Add More Items"}</span>
+                  </button>
+                </Link>
 
-                <Link href="/cart" onClick={closeCart} className="block w-full">
+                <Link href={isAr ? "/ar/cart" : "/cart"} onClick={closeCart} className="block w-full">
                   <Button variant="secondary" className="w-full h-10 text-xs font-semibold">
                     {isAr ? "عرض السلة بالتفصيل" : "View Full Bag"}
                   </Button>

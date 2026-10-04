@@ -33,6 +33,7 @@ import {
   PhoneCall,
   Navigation,
   Coins,
+  AlertCircle,
 } from "lucide-react";
 
 interface SavedAddress {
@@ -134,6 +135,27 @@ export default function CheckoutPage() {
 
   const availablePaymentMethods = resolvePaymentMethods(country, config.paymentMethods);
 
+  // Helper to reliably resolve city or area against supported country config
+  const resolveCityOrArea = (cityVal?: string | null, areaVal?: string | null) => {
+    const rawArea = (areaVal || "").trim();
+    const rawCity = (cityVal || "").trim();
+
+    if (rawArea && config.cities.includes(rawArea)) return rawArea;
+    if (rawCity && config.cities.includes(rawCity)) return rawCity;
+
+    // Check case-insensitive match against config.cities
+    const found = config.cities.find((c) => {
+      const cLower = c.toLowerCase();
+      return (
+        (rawArea && (cLower === rawArea.toLowerCase() || rawArea.toLowerCase().includes(cLower) || cLower.includes(rawArea.toLowerCase()))) ||
+        (rawCity && (cLower === rawCity.toLowerCase() || rawCity.toLowerCase().includes(cLower) || cLower.includes(rawCity.toLowerCase())))
+      );
+    });
+    if (found) return found;
+
+    return config.defaultCity || config.cities[0] || rawArea || rawCity || "";
+  };
+
   // Fetch pickup stores with inventory evaluation for active cart items
   const fetchPickupStores = async () => {
     setIsLoadingStores(true);
@@ -224,13 +246,10 @@ export default function CheckoutPage() {
           setSelectedAddressId(defAddr.id);
           if (defAddr.name) setCustomerName(defAddr.name);
           if (defAddr.phone) setCustomerPhone(defAddr.phone);
-          setAddressLine1(defAddr.addressLine1 || "");
+          if (defAddr.addressLine1) setAddressLine1(defAddr.addressLine1);
           setAddressLine2(defAddr.addressLine2 || "");
-          if (defAddr.area && config.cities.includes(defAddr.area)) {
-            setArea(defAddr.area);
-          } else if (defAddr.city && config.cities.includes(defAddr.city)) {
-            setArea(defAddr.city);
-          }
+          const resolvedArea = resolveCityOrArea(defAddr.city, defAddr.area);
+          if (resolvedArea) setArea(resolvedArea);
         } else {
           setSelectedAddressId("new");
         }
@@ -245,16 +264,27 @@ export default function CheckoutPage() {
 
   const handleSelectAddress = (addr: SavedAddress) => {
     setSelectedAddressId(addr.id);
-    setFieldErrors({});
-    if (addr.name) setCustomerName(addr.name);
-    if (addr.phone) setCustomerPhone(addr.phone);
-    setAddressLine1(addr.addressLine1 || "");
-    setAddressLine2(addr.addressLine2 || "");
-    if (addr.area && config.cities.includes(addr.area)) {
-      setArea(addr.area);
-    } else if (addr.city && config.cities.includes(addr.city)) {
-      setArea(addr.city);
+    if (addr.name) {
+      setCustomerName(addr.name);
+      clearFieldError("customerName");
     }
+    if (addr.phone) {
+      setCustomerPhone(addr.phone);
+      clearFieldError("customerPhone");
+    }
+    const resolvedLine1 = addr.addressLine1 || "";
+    setAddressLine1(resolvedLine1);
+    if (resolvedLine1.trim()) clearFieldError("addressLine1");
+
+    setAddressLine2(addr.addressLine2 || "");
+
+    const resolvedArea = resolveCityOrArea(addr.city, addr.area);
+    if (resolvedArea) {
+      setArea(resolvedArea);
+      clearFieldError("area");
+    }
+
+    setErrorMessage("");
   };
 
   const handleSelectNewAddress = () => {
@@ -337,11 +367,26 @@ export default function CheckoutPage() {
 
     const errors: Record<string, string> = {};
 
-    if (!customerName.trim()) {
+    const selectedSaved = selectedAddressId !== "new"
+      ? savedAddresses.find((a) => a.id === selectedAddressId)
+      : null;
+
+    const effectiveName = customerName.trim() || selectedSaved?.name?.trim() || "";
+    const effectivePhone = customerPhone.trim() || selectedSaved?.phone?.trim() || "";
+    const effectiveAddressLine1 = addressLine1.trim() || selectedSaved?.addressLine1?.trim() || "";
+    const effectiveArea = area?.trim() || resolveCityOrArea(selectedSaved?.city, selectedSaved?.area);
+
+    // Sync any empty state fields from selected saved address
+    if (!customerName.trim() && effectiveName) setCustomerName(effectiveName);
+    if (!customerPhone.trim() && effectivePhone) setCustomerPhone(effectivePhone);
+    if (!addressLine1.trim() && effectiveAddressLine1) setAddressLine1(effectiveAddressLine1);
+    if ((!area || !area.trim()) && effectiveArea) setArea(effectiveArea);
+
+    if (!effectiveName) {
       errors.customerName = isAr ? "يرجى إدخال الاسم الكامل" : "Please enter your full name";
     }
 
-    if (!customerPhone.trim()) {
+    if (!effectivePhone) {
       errors.customerPhone = isAr ? "يرجى إدخال رقم الهاتف" : "Please enter your phone number";
     }
 
@@ -352,10 +397,10 @@ export default function CheckoutPage() {
     }
 
     if (orderType === "DELIVERY") {
-      if (!addressLine1.trim()) {
+      if (!effectiveAddressLine1) {
         errors.addressLine1 = isAr ? "يرجى إدخال اسم الشارع ورقم المبنى" : "Please enter street & building details";
       }
-      if (!area || !area.trim()) {
+      if (!effectiveArea) {
         errors.area = isAr ? "يرجى اختيار المدينة / المنطقة" : "Please select your city / zone";
       }
     }
@@ -366,17 +411,63 @@ export default function CheckoutPage() {
 
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors);
-      setErrorMessage(
-        isAr
-          ? "يرجى تعبئة الحقول الإلزامية المميزة باللون الأحمر."
-          : "Please fill in the required fields marked with a red line."
-      );
+      const errMsg = isAr
+        ? "يرجى تعبئة الحقول الإلزامية المميزة باللون الأحمر."
+        : "Please fill in the required fields marked with a red line.";
+      setErrorMessage(errMsg);
+
       const firstErrorKey = Object.keys(errors)[0];
-      const el = document.getElementById(firstErrorKey);
-      if (el) {
-        el.scrollIntoView({ behavior: "smooth", block: "center" });
-        el.focus();
-      }
+
+      // Smoothly scroll back up to the first error field or error banner
+      setTimeout(() => {
+        let targetEl: HTMLElement | null = null;
+
+        if (firstErrorKey) {
+          targetEl = document.getElementById(firstErrorKey);
+        }
+
+        // If field was address related and saved addresses section exists
+        if (!targetEl && (firstErrorKey === "addressLine1" || firstErrorKey === "area")) {
+          targetEl = document.getElementById("addressLine1") ||
+                     document.getElementById("area") ||
+                     document.getElementById("savedAddressesSection");
+        }
+
+        if (!targetEl && firstErrorKey === "selectedStoreId") {
+          targetEl = document.getElementById("selectedStoreId");
+        }
+
+        if (!targetEl) {
+          targetEl = document.getElementById("checkout-error-banner") ||
+                     (document.querySelector(".border-red-500") as HTMLElement) ||
+                     (document.querySelector("[data-error='true']") as HTMLElement);
+        }
+
+        if (targetEl) {
+          const headerOffset = 110; // Sticky header offset
+          const elementPosition = targetEl.getBoundingClientRect().top;
+          const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+
+          window.scrollTo({
+            top: Math.max(0, offsetPosition),
+            behavior: "smooth",
+          });
+
+          // Focus text input after smooth scroll has started, preventing scroll disruption
+          if (targetEl.tagName === "INPUT" || targetEl.tagName === "TEXTAREA") {
+            setTimeout(() => {
+              try {
+                targetEl?.focus({ preventScroll: true });
+              } catch (_) {
+                targetEl?.focus();
+              }
+            }, 350);
+          }
+        } else {
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        }
+      }, 60);
+
       return;
     }
 
@@ -385,17 +476,17 @@ export default function CheckoutPage() {
 
     try {
       const payload = {
-        customerName: customerName.trim(),
+        customerName: effectiveName,
         customerEmail: customerEmail.trim(),
-        customerPhone: customerPhone.trim(),
+        customerPhone: effectivePhone,
         orderType,
         pickupStoreId: orderType === "PICKUP" ? (selectedStoreId || selectedStore?.id) : undefined,
         pickupDate: orderType === "PICKUP" ? pickupDate : undefined,
         pickupTimeSlot: orderType === "PICKUP" ? pickupTimeSlot : undefined,
-        addressLine1: orderType === "PICKUP" ? (selectedStore?.address || "Boutique Pickup") : addressLine1.trim(),
-        addressLine2: orderType === "DELIVERY" ? (addressLine2.trim() || undefined) : undefined,
-        area: orderType === "DELIVERY" ? area : (selectedStore?.regionName || config.defaultCity),
-        city: orderType === "DELIVERY" ? (area || config.defaultCity) : (selectedStore?.regionName || config.defaultCity),
+        addressLine1: orderType === "PICKUP" ? (selectedStore?.address || "Boutique Pickup") : effectiveAddressLine1,
+        addressLine2: orderType === "DELIVERY" ? (addressLine2.trim() || selectedSaved?.addressLine2?.trim() || undefined) : undefined,
+        area: orderType === "DELIVERY" ? effectiveArea : (selectedStore?.regionName || config.defaultCity),
+        city: orderType === "DELIVERY" ? (effectiveArea || config.defaultCity) : (selectedStore?.regionName || config.defaultCity),
         country: config.name,
         countryCode: country,
         deliveryNotes: deliveryNotes.trim() || undefined,
@@ -471,12 +562,16 @@ export default function CheckoutPage() {
           {/* Left Column: Form Steps */}
           <div className="lg:col-span-7 space-y-6">
             {errorMessage && (
-              <div className="p-3.5 bg-red-50 border border-red-200 text-red-700 text-xs rounded-[6px] font-medium">
-                {errorMessage}
+              <div
+                id="checkout-error-banner"
+                className="p-3.5 bg-red-50 border border-red-200 text-red-700 text-xs rounded-[6px] font-medium flex items-center gap-2"
+              >
+                <AlertCircle size={16} className="text-red-500 shrink-0" />
+                <span>{errorMessage}</span>
               </div>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handleSubmit} noValidate className="space-y-6">
               {/* Step 1: Customer Contact */}
               <div className="bg-white p-6 rounded-[8px] border border-[#e5e5e5] shadow-xs space-y-4">
                 <div className="flex items-center justify-between pb-3 border-b border-[#f0ece1]">
@@ -689,7 +784,7 @@ export default function CheckoutPage() {
 
                     {/* Saved Addresses Selection */}
                     {savedAddresses.length > 0 && (
-                      <div className="space-y-3">
+                      <div id="savedAddressesSection" className="space-y-3">
                         <label className="block text-xs font-bold uppercase tracking-wider text-neutral-700">
                           {isAr ? "اختر من العناوين المحفوظة" : "Select from Saved Addresses"}
                         </label>
@@ -909,7 +1004,13 @@ export default function CheckoutPage() {
                         </p>
                       </div>
                     ) : (
-                      <div className="space-y-3">
+                      <div id="selectedStoreId" className="space-y-3">
+                        {fieldErrors.selectedStoreId && (
+                          <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-[6px] font-medium flex items-center gap-2">
+                            <AlertCircle size={15} className="text-red-500 shrink-0" />
+                            <span>{fieldErrors.selectedStoreId}</span>
+                          </div>
+                        )}
                         <div className="grid grid-cols-1 gap-3">
                           {pickupStores.map((store) => {
                             const isSelected = selectedStoreId === store.id;
@@ -1377,6 +1478,14 @@ export default function CheckoutPage() {
                   })}
                 </div>
               </div>
+
+              {/* Submit Error Summary */}
+              {errorMessage && (
+                <div className="p-3.5 bg-red-50 border border-red-200 text-red-700 text-xs rounded-[6px] font-medium flex items-center gap-2">
+                  <AlertCircle size={16} className="text-red-500 shrink-0" />
+                  <span>{errorMessage}</span>
+                </div>
+              )}
 
               {/* Submit Action */}
               <Button
