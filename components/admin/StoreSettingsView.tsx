@@ -16,6 +16,10 @@ import {
   Megaphone,
   MapPin,
   ExternalLink,
+  Gift,
+  Heart,
+  Sparkles,
+  Send,
 } from "lucide-react";
 import { AdminCountry } from "./CountryManager";
 
@@ -37,6 +41,24 @@ export function StoreSettingsView({ countries: initialCountries, settings }: Sto
   );
   const [globalSaving, setGlobalSaving] = useState(false);
   const [globalSaved, setGlobalSaved] = useState(false);
+
+  // Celebration Offers Settings state (Birthday & Anniversary)
+  const [birthdayOfferEnabled, setBirthdayOfferEnabled] = useState(settings.birthdayOfferEnabled !== "false");
+  const [birthdayOfferType, setBirthdayOfferType] = useState(settings.birthdayOfferType || "PERCENTAGE");
+  const [birthdayOfferValue, setBirthdayOfferValue] = useState(settings.birthdayOfferValue || "15");
+  const [birthdayOfferDaysBefore, setBirthdayOfferDaysBefore] = useState(settings.birthdayOfferDaysBefore || "7");
+  const [birthdayOfferMinSpend, setBirthdayOfferMinSpend] = useState(settings.birthdayOfferMinSpend || "0");
+
+  const [anniversaryOfferEnabled, setAnniversaryOfferEnabled] = useState(settings.anniversaryOfferEnabled !== "false");
+  const [anniversaryOfferType, setAnniversaryOfferType] = useState(settings.anniversaryOfferType || "PERCENTAGE");
+  const [anniversaryOfferValue, setAnniversaryOfferValue] = useState(settings.anniversaryOfferValue || "20");
+  const [anniversaryOfferDaysBefore, setAnniversaryOfferDaysBefore] = useState(settings.anniversaryOfferDaysBefore || "7");
+  const [anniversaryOfferMinSpend, setAnniversaryOfferMinSpend] = useState(settings.anniversaryOfferMinSpend || "0");
+
+  const [celebrationSaving, setCelebrationSaving] = useState(false);
+  const [celebrationSaved, setCelebrationSaved] = useState(false);
+  const [celebrationTesting, setCelebrationTesting] = useState(false);
+  const [celebrationTestResult, setCelebrationTestResult] = useState<string | null>(null);
 
   // Regional country settings form state
   const activeCountry = countriesList.find((c) => c.code === selectedTarget);
@@ -141,6 +163,61 @@ export function StoreSettingsView({ countries: initialCountries, settings }: Sto
       console.error("Failed to save regional settings:", err);
     } finally {
       setRegionalSaving(false);
+    }
+  };
+
+  const handleSaveCelebrationOffers = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCelebrationSaving(true);
+    setCelebrationSaved(false);
+
+    try {
+      const res = await fetch("/api/admin/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          birthdayOfferEnabled: String(birthdayOfferEnabled),
+          birthdayOfferType,
+          birthdayOfferValue,
+          birthdayOfferDaysBefore,
+          birthdayOfferMinSpend,
+          anniversaryOfferEnabled: String(anniversaryOfferEnabled),
+          anniversaryOfferType,
+          anniversaryOfferValue,
+          anniversaryOfferDaysBefore,
+          anniversaryOfferMinSpend,
+        }),
+      });
+
+      if (res.ok) {
+        setCelebrationSaved(true);
+        setTimeout(() => setCelebrationSaved(false), 2500);
+      }
+    } catch (err) {
+      console.error("Failed to save celebration settings:", err);
+    } finally {
+      setCelebrationSaving(false);
+    }
+  };
+
+  const handleTestCelebrationDispatch = async () => {
+    setCelebrationTesting(true);
+    setCelebrationTestResult(null);
+
+    try {
+      const res = await fetch("/api/cron/celebration-offers", { method: "POST" });
+      const data = await res.json();
+      if (res.ok) {
+        setCelebrationTestResult(
+          `Triggered successfully: ${data.birthdayDispatched} birthday email(s), ${data.anniversaryDispatched} anniversary email(s) sent.`
+        );
+      } else {
+        setCelebrationTestResult(`Error: ${data.error || "Failed to trigger dispatch"}`);
+      }
+    } catch (err: any) {
+      setCelebrationTestResult(`Error: ${err.message}`);
+    } finally {
+      setCelebrationTesting(false);
     }
   };
 
@@ -580,6 +657,303 @@ export function StoreSettingsView({ countries: initialCountries, settings }: Sto
             </form>
           ) : null}
         </div>
+      </div>
+
+      {/* Celebration & Milestone Offers Configuration */}
+      <div id="celebration-offers-section" className="bg-white rounded-[10px] border border-[#e5e5e5] shadow-xs overflow-hidden">
+        <div className="px-6 py-4 border-b border-[#e5e5e5] bg-[#fbf9f5] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <Gift size={18} className="text-[#b6713e]" />
+            <div>
+              <h2 className="text-sm font-bold text-[#1c1c1c] flex items-center gap-2">
+                <span>Celebration & Milestone Offers</span>
+                <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">
+                  Automated Privileges
+                </span>
+              </h2>
+              <p className="text-[11px] text-neutral-500">
+                Reward VIP customers with automatic discount vouchers and tailored congratulatory emails for their Birthday and Wedding Anniversary.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleTestCelebrationDispatch}
+              disabled={celebrationTesting}
+              className="h-8 px-3 text-[11px] font-semibold text-neutral-700 bg-white border border-neutral-300 rounded-lg hover:bg-neutral-50 inline-flex items-center gap-1.5 transition-colors cursor-pointer"
+              title="Immediately check upcoming birthdays/anniversaries and dispatch pending emails"
+            >
+              {celebrationTesting ? (
+                <Loader2 size={12} className="animate-spin text-[#b6713e]" />
+              ) : (
+                <Send size={12} className="text-[#b6713e]" />
+              )}
+              <span>{celebrationTesting ? "Testing Dispatch..." : "Trigger Dispatch Check"}</span>
+            </button>
+          </div>
+        </div>
+
+        {celebrationTestResult && (
+          <div className="mx-6 mt-4 p-3 bg-amber-50/80 border border-amber-200 rounded-lg text-xs text-amber-900 flex items-center justify-between">
+            <span>{celebrationTestResult}</span>
+            <button
+              type="button"
+              onClick={() => setCelebrationTestResult(null)}
+              className="text-amber-700 hover:text-amber-900 font-bold ml-2"
+            >
+              ×
+            </button>
+          </div>
+        )}
+
+        <form onSubmit={handleSaveCelebrationOffers} className="p-6 space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Birthday Privileges Card */}
+            <div
+              className={`rounded-xl border p-5 transition-all ${
+                birthdayOfferEnabled ? "border-[#b6713e]/30 bg-amber-50/20" : "border-neutral-200 bg-neutral-50/50 opacity-75"
+              }`}
+            >
+              <div className="flex items-center justify-between pb-4 border-b border-neutral-200/80 mb-4">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-full bg-[#b6713e]/10 flex items-center justify-center text-[#b6713e]">
+                    <Gift size={16} />
+                  </div>
+                  <div>
+                    <h3 className="text-xs font-bold text-[#1c1c1c]">Birthday Privilege Offer</h3>
+                    <p className="text-[11px] text-neutral-500">Sent before the customer&apos;s birthday</p>
+                  </div>
+                </div>
+
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={birthdayOfferEnabled}
+                    onChange={(e) => setBirthdayOfferEnabled(e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-9 h-5 bg-neutral-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#b6713e]"></div>
+                </label>
+              </div>
+
+              <div className="space-y-4 text-xs">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-semibold text-neutral-700 mb-1">
+                      Discount Type
+                    </label>
+                    <select
+                      value={birthdayOfferType}
+                      onChange={(e) => setBirthdayOfferType(e.target.value)}
+                      disabled={!birthdayOfferEnabled}
+                      className="w-full text-xs px-3 py-2 border border-neutral-300 rounded bg-white focus:outline-none focus:border-[#b6713e]"
+                    >
+                      <option value="PERCENTAGE">Percentage (% Off)</option>
+                      <option value="FIXED_AMOUNT">Flat Amount (e.g. QAR)</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-semibold text-neutral-700 mb-1">
+                      {birthdayOfferType === "PERCENTAGE" ? "Discount Percentage (%)" : "Flat Discount Value"}
+                    </label>
+                    <input
+                      type="number"
+                      step={birthdayOfferType === "PERCENTAGE" ? "1" : "5"}
+                      min="1"
+                      max={birthdayOfferType === "PERCENTAGE" ? "100" : undefined}
+                      value={birthdayOfferValue}
+                      onChange={(e) => setBirthdayOfferValue(e.target.value)}
+                      disabled={!birthdayOfferEnabled}
+                      placeholder={birthdayOfferType === "PERCENTAGE" ? "15" : "50"}
+                      className="w-full text-xs px-3 py-2 border border-neutral-300 rounded focus:outline-none focus:border-[#b6713e]"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-semibold text-neutral-700 mb-1">
+                      Send Email (Days in Advance)
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        min="0"
+                        max="60"
+                        value={birthdayOfferDaysBefore}
+                        onChange={(e) => setBirthdayOfferDaysBefore(e.target.value)}
+                        disabled={!birthdayOfferEnabled}
+                        placeholder="7"
+                        className="w-full text-xs px-3 py-2 border border-neutral-300 rounded focus:outline-none focus:border-[#b6713e]"
+                      />
+                      <span className="absolute right-3 top-2 text-[11px] text-neutral-400 pointer-events-none">
+                        days before
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-neutral-400 mt-1">
+                      0 = send on birthday, 7 = send 1 week prior
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-semibold text-neutral-700 mb-1">
+                      Minimum Order Spend (0 for none)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={birthdayOfferMinSpend}
+                      onChange={(e) => setBirthdayOfferMinSpend(e.target.value)}
+                      disabled={!birthdayOfferEnabled}
+                      placeholder="0"
+                      className="w-full text-xs px-3 py-2 border border-neutral-300 rounded focus:outline-none focus:border-[#b6713e]"
+                    />
+                    <p className="text-[10px] text-neutral-400 mt-1">
+                      Coupon will require this basket total
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Anniversary Privileges Card */}
+            <div
+              className={`rounded-xl border p-5 transition-all ${
+                anniversaryOfferEnabled ? "border-[#b6713e]/30 bg-amber-50/20" : "border-neutral-200 bg-neutral-50/50 opacity-75"
+              }`}
+            >
+              <div className="flex items-center justify-between pb-4 border-b border-neutral-200/80 mb-4">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-full bg-rose-100 flex items-center justify-center text-rose-600">
+                    <Heart size={16} />
+                  </div>
+                  <div>
+                    <h3 className="text-xs font-bold text-[#1c1c1c]">Anniversary Privilege Offer</h3>
+                    <p className="text-[11px] text-neutral-500">Sent before the wedding/milestone anniversary</p>
+                  </div>
+                </div>
+
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={anniversaryOfferEnabled}
+                    onChange={(e) => setAnniversaryOfferEnabled(e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-9 h-5 bg-neutral-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#b6713e]"></div>
+                </label>
+              </div>
+
+              <div className="space-y-4 text-xs">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-semibold text-neutral-700 mb-1">
+                      Discount Type
+                    </label>
+                    <select
+                      value={anniversaryOfferType}
+                      onChange={(e) => setAnniversaryOfferType(e.target.value)}
+                      disabled={!anniversaryOfferEnabled}
+                      className="w-full text-xs px-3 py-2 border border-neutral-300 rounded bg-white focus:outline-none focus:border-[#b6713e]"
+                    >
+                      <option value="PERCENTAGE">Percentage (% Off)</option>
+                      <option value="FIXED_AMOUNT">Flat Amount (e.g. QAR)</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-semibold text-neutral-700 mb-1">
+                      {anniversaryOfferType === "PERCENTAGE" ? "Discount Percentage (%)" : "Flat Discount Value"}
+                    </label>
+                    <input
+                      type="number"
+                      step={anniversaryOfferType === "PERCENTAGE" ? "1" : "5"}
+                      min="1"
+                      max={anniversaryOfferType === "PERCENTAGE" ? "100" : undefined}
+                      value={anniversaryOfferValue}
+                      onChange={(e) => setAnniversaryOfferValue(e.target.value)}
+                      disabled={!anniversaryOfferEnabled}
+                      placeholder={anniversaryOfferType === "PERCENTAGE" ? "20" : "100"}
+                      className="w-full text-xs px-3 py-2 border border-neutral-300 rounded focus:outline-none focus:border-[#b6713e]"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-semibold text-neutral-700 mb-1">
+                      Send Email (Days in Advance)
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        min="0"
+                        max="60"
+                        value={anniversaryOfferDaysBefore}
+                        onChange={(e) => setAnniversaryOfferDaysBefore(e.target.value)}
+                        disabled={!anniversaryOfferEnabled}
+                        placeholder="7"
+                        className="w-full text-xs px-3 py-2 border border-neutral-300 rounded focus:outline-none focus:border-[#b6713e]"
+                      />
+                      <span className="absolute right-3 top-2 text-[11px] text-neutral-400 pointer-events-none">
+                        days before
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-neutral-400 mt-1">
+                      0 = send on anniversary, 7 = send 1 week prior
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-semibold text-neutral-700 mb-1">
+                      Minimum Order Spend (0 for none)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={anniversaryOfferMinSpend}
+                      onChange={(e) => setAnniversaryOfferMinSpend(e.target.value)}
+                      disabled={!anniversaryOfferEnabled}
+                      placeholder="0"
+                      className="w-full text-xs px-3 py-2 border border-neutral-300 rounded focus:outline-none focus:border-[#b6713e]"
+                    />
+                    <p className="text-[10px] text-neutral-400 mt-1">
+                      Coupon will require this basket total
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="pt-2 flex items-center gap-3">
+            <button
+              type="submit"
+              disabled={celebrationSaving}
+              className="btn-primary h-9 px-5 text-xs font-bold inline-flex items-center gap-2 cursor-pointer"
+            >
+              {celebrationSaving ? (
+                <>
+                  <Loader2 size={13} className="animate-spin" />
+                  <span>Saving Celebration Offers...</span>
+                </>
+              ) : celebrationSaved ? (
+                <>
+                  <Check size={14} />
+                  <span>Celebration Offers Saved!</span>
+                </>
+              ) : (
+                <>
+                  <Save size={14} />
+                  <span>Save Celebration Settings</span>
+                </>
+              )}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );

@@ -20,6 +20,8 @@ export async function GET() {
         phone: true,
         role: true,
         rewardPoints: true,
+        birthday: true,
+        anniversary: true,
         addresses: {
           orderBy: { isDefault: "desc" },
         },

@@ -22,6 +22,7 @@ import {
 import { Button } from "@/components/ui/Button";
 import { generateQrDataUrl } from "@/lib/services/qr";
 import { ClearCartOnSuccess } from "@/components/checkout/ClearCartOnSuccess";
+import { CelebrationPromptModal } from "@/components/checkout/CelebrationPromptModal";
 
 interface PageProps {
   searchParams: Promise<{ orderNumber?: string }>;
@@ -102,9 +103,29 @@ export default async function OrderSuccessPage({ searchParams, isAr = false }: P
     }
   }
 
+  // Check if customer already has celebration dates in their profile
+  let celebrationUser: { birthday: Date | null; anniversary: Date | null } | null = null;
+  if (order.userId) {
+    celebrationUser = await prisma.user.findUnique({
+      where: { id: order.userId },
+      select: { birthday: true, anniversary: true },
+    });
+  } else if (order.customerEmail) {
+    celebrationUser = await prisma.user.findUnique({
+      where: { email: order.customerEmail },
+      select: { birthday: true, anniversary: true },
+    });
+  }
+
   return (
     <div className="bg-[#fbf9f5] min-h-screen py-12">
       <ClearCartOnSuccess />
+      <CelebrationPromptModal
+        initialBirthday={celebrationUser?.birthday ? celebrationUser.birthday.toISOString().split("T")[0] : null}
+        initialAnniversary={celebrationUser?.anniversary ? celebrationUser.anniversary.toISOString().split("T")[0] : null}
+        orderNumber={order.orderNumber}
+        isAr={isAr}
+      />
       <div className="ramillette-container max-w-3xl">
         <div className="bg-white rounded-[10px] border border-[#e5e5e5] p-6 sm:p-10 shadow-sm space-y-8">
           {/* Header */}

@@ -123,6 +123,8 @@ model User {
   auditLogs             AuditLog[]
   rewardPoints          Int                    @default(0)
   rewardPointTransactions RewardPointTransaction[]
+  birthday              DateTime?
+  anniversary           DateTime?
 }
 
 model CustomRole {

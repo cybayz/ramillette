@@ -20,6 +20,8 @@ import {
 } from "lucide-react";
 import { LogoutButton } from "@/components/account/LogoutButton";
 import { SavedAddressesManager } from "@/components/account/SavedAddressesManager";
+import { ProfileCelebrationBanner } from "@/components/account/ProfileCelebrationBanner";
+import { CelebrationDatesCard } from "@/components/account/CelebrationDatesCard";
 
 export default async function AccountPage() {
   const session = await getSession();
@@ -64,6 +66,12 @@ export default async function AccountPage() {
           <span>/</span>
           <span className="text-[#1c1c1c] font-semibold">My Account</span>
         </nav>
+
+        {/* Profile Completion Celebration Banner (shown if either birthday or anniversary is missing) */}
+        <ProfileCelebrationBanner
+          hasBirthday={Boolean(user.birthday)}
+          hasAnniversary={Boolean(user.anniversary)}
+        />
 
         {/* Account Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 sm:p-8 bg-[#fbf9f5] border border-[#ecdec1] rounded-[8px] mb-10">
@@ -401,6 +409,12 @@ export default async function AccountPage() {
                 </div>
               )}
             </div>
+
+            {/* Celebration & Milestone Dates Card */}
+            <CelebrationDatesCard
+              initialBirthday={user.birthday ? user.birthday.toISOString().split("T")[0] : null}
+              initialAnniversary={user.anniversary ? user.anniversary.toISOString().split("T")[0] : null}
+            />
 
             <SavedAddressesManager
               initialAddresses={user.addresses}

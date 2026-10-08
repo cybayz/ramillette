@@ -17,6 +17,16 @@ export async function POST(request: Request) {
       "storePhone",
       "storeEmail",
       "boutiqueName",
+      "birthdayOfferEnabled",
+      "birthdayOfferType",
+      "birthdayOfferValue",
+      "birthdayOfferDaysBefore",
+      "birthdayOfferMinSpend",
+      "anniversaryOfferEnabled",
+      "anniversaryOfferType",
+      "anniversaryOfferValue",
+      "anniversaryOfferDaysBefore",
+      "anniversaryOfferMinSpend",
     ];
 
     const updates = [];

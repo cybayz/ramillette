@@ -221,3 +221,81 @@ export function getEmailProvider(country: CountryCode = "QA"): EmailProvider {
   }
   return new QatarEmailProvider();
 }
+
+export interface EmailCelebrationPayload {
+  customerName: string;
+  customerEmail: string;
+  type: "BIRTHDAY" | "ANNIVERSARY";
+  discountDescription: string;
+  couponCode: string;
+  daysValid: number;
+  country?: CountryCode;
+}
+
+export async function sendCelebrationEmail(payload: EmailCelebrationPayload): Promise<EmailResult> {
+  const isBirthday = payload.type === "BIRTHDAY";
+  const title = isBirthday
+    ? `Happy Birthday from Ramillette Perfumes 🎂`
+    : `Happy Anniversary from Ramillette Perfumes 💍`;
+  const greeting = isBirthday ? "Happy Birthday" : "Happy Anniversary";
+  const celebrationText = isBirthday
+    ? "As your special day approaches, we want to celebrate this momentous occasion with you. Enjoy an exclusive celebratory luxury fragrance offer crafted specially for you."
+    : "Wishing you warmth and elegance as your special milestone approaches. To celebrate your anniversary, please enjoy this bespoke luxury perfume gift from Ramillette.";
+
+  const htmlPreview = `
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #1c1c1c; max-width: 600px; margin: auto; padding: 24px; border: 1px solid #ecdac1; border-radius: 12px; background: #ffffff;">
+      <div style="text-align: center; padding-bottom: 20px; border-bottom: 1px solid #f0ece1;">
+        <span style="font-size: 24px; letter-spacing: 2px; font-weight: bold; color: #1c1c1c; text-transform: uppercase;">RAMILLETTE</span>
+        <p style="font-size: 11px; color: #b6713e; letter-spacing: 1.5px; text-transform: uppercase; margin: 4px 0 0 0;">Haute Parfumerie</p>
+      </div>
+
+      <div style="text-align: center; padding: 30px 10px 20px 10px;">
+        <span style="font-size: 38px;">${isBirthday ? "🎂" : "💍"}</span>
+        <h1 style="color: #1c1c1c; font-size: 22px; margin: 12px 0 8px 0; font-weight: bold;">
+          ${greeting}, ${payload.customerName}!
+        </h1>
+        <p style="color: #666; font-size: 13px; line-height: 1.6; max-width: 480px; margin: auto;">
+          ${celebrationText}
+        </p>
+
+        <div style="margin: 28px auto; padding: 20px; background: #fbf9f5; border: 2px dashed #b6713e; border-radius: 10px; max-width: 360px;">
+          <span style="font-size: 11px; font-weight: bold; color: #b6713e; text-transform: uppercase; letter-spacing: 1px;">
+            Your Celebration Privilege
+          </span>
+          <h2 style="color: #1c1c1c; font-size: 26px; margin: 8px 0; font-weight: 800;">
+            ${payload.discountDescription}
+          </h2>
+          <p style="font-size: 11px; color: #888; margin: 0 0 12px 0;">Use coupon code at checkout:</p>
+          <div style="background: #ffffff; border: 1px solid #ecdac1; padding: 8px 16px; border-radius: 6px; display: inline-block;">
+            <span style="font-family: monospace; font-size: 18px; font-weight: bold; color: #b6713e; letter-spacing: 2px;">
+              ${payload.couponCode}
+            </span>
+          </div>
+          <p style="font-size: 10px; color: #999; margin: 12px 0 0 0;">Valid for the next ${payload.daysValid} days on our entire luxury fragrance collection.</p>
+        </div>
+
+        <a href="https://ramillette.com/shop" style="background: #b6713e; color: #ffffff; text-decoration: none; padding: 12px 28px; border-radius: 6px; font-size: 12px; font-weight: bold; display: inline-block; letter-spacing: 0.5px;">
+          Explore Fragrances & Redeem
+        </a>
+      </div>
+
+      <div style="border-top: 1px solid #f0ece1; padding-top: 16px; text-align: center; font-size: 11px; color: #999; line-height: 1.5;">
+        <p>Ramillette Haute Parfumerie • Doha, Qatar</p>
+        <p>You received this exclusive invitation because your celebration dates are registered on your Ramillette customer profile.</p>
+      </div>
+    </div>
+  `;
+
+  const config = getCountryConfig(payload.country || "QA");
+  const from = config.orderEmail || "celebrations@ramillette.com";
+  console.log(`[EMAIL-CELEBRATION] ${payload.type} invitation sent to ${payload.customerEmail} with code ${payload.couponCode}`);
+
+  return {
+    success: true,
+    messageId: `MAIL-${payload.type}-${Date.now()}`,
+    from,
+    to: payload.customerEmail,
+    subject: title,
+    htmlPreview,
+  };
+}
