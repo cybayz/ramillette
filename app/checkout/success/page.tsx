@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/Button";
 import { generateQrDataUrl } from "@/lib/services/qr";
 import { ClearCartOnSuccess } from "@/components/checkout/ClearCartOnSuccess";
 import { CelebrationPromptModal } from "@/components/checkout/CelebrationPromptModal";
+import { checkPayLaterPaymentStatus } from "@/lib/services/paylater";
 
 interface PageProps {
   searchParams: Promise<{ orderNumber?: string }>;
@@ -84,6 +85,23 @@ export default async function OrderSuccessPage({ searchParams, isAr = false }: P
 
   const isPickup = order.orderType === "PICKUP";
   const shippingAddr: any = order.shippingAddress || {};
+
+  // If order was placed via PayLater and payment is pending, poll PayLater status to confirm immediately
+  if (order.paymentMethod === "PAYLATER" && order.paymentStatus === "PENDING") {
+    try {
+      const plStatus = await checkPayLaterPaymentStatus(order.orderNumber);
+      if (plStatus.status === 2) {
+        await prisma.order.update({
+          where: { id: order.id },
+          data: { paymentStatus: "PAID", status: "CONFIRMED" },
+        });
+        order.paymentStatus = "PAID";
+        order.status = "CONFIRMED";
+      }
+    } catch (checkErr) {
+      console.warn("PayLater status poll error:", checkErr);
+    }
+  }
 
   // Generate real QR code image for pickup orders
   let qrDataUrl = "";

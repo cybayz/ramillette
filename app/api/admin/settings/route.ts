@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
-import { getSession } from "@/lib/auth/session";
+import { getSession, isAdminRole } from "@/lib/auth/session";
 
 export async function POST(request: Request) {
   try {
     const session = await getSession();
-    if (!session || session.role !== "ADMIN") {
+    if (!session || !isAdminRole(session.role)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 
@@ -27,11 +27,21 @@ export async function POST(request: Request) {
       "anniversaryOfferValue",
       "anniversaryOfferDaysBefore",
       "anniversaryOfferMinSpend",
+      "paylaterEnabled",
+      "paylaterEnvironment",
+      "paylaterClientId",
+      "paylaterClientSecret",
+      "paylaterOutletId",
+      "paylaterApiKey",
+      "paylaterWebhookSecret",
+      "paylaterMinAmount",
+      "paylaterMaxAmount",
     ];
 
     const updates = [];
-    for (const [key, value] of Object.entries(body)) {
-      if (allowedKeys.includes(key) && typeof value === "string") {
+    for (const [key, rawValue] of Object.entries(body)) {
+      if (allowedKeys.includes(key) && rawValue !== undefined && rawValue !== null) {
+        const value = String(rawValue);
         updates.push(
           prisma.siteSetting.upsert({
             where: { key },

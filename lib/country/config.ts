@@ -108,6 +108,14 @@ export const COUNTRIES: Record<CountryCode, CountryConfig> = {
         descriptionAr: "ادفع ببطاقة الصراف أو الائتمان عبر جهاز نقاط البيع المحمول مع المندوب في قطر.",
         badge: "Card Machine",
       },
+      {
+        id: "PAYLATER",
+        name: "PayLater (Split in 4)",
+        nameAr: "باي ليتر (قسمها على 4 دفعات بدون فوائد)",
+        description: "Split your payment into 4 interest-free instalments. Available in Qatar.",
+        descriptionAr: "قسم مشترياتك على 4 دفعات ميسرة وبدون أي فوائد عبر باي ليتر. متاح في قطر.",
+        badge: "0% Interest",
+      },
     ],
     giftWrapOptions: [
       {
@@ -420,12 +428,20 @@ export const MASTER_PAYMENT_METHODS: Record<string, PaymentMethodInfo> = {
     descriptionAr: "دفع فوري سريع عبر شبكة بنفت باي الوطنية وكريديمكس.",
     badge: "National Fav",
   },
+  PAYLATER: {
+    id: "PAYLATER",
+    name: "PayLater (Split in 4)",
+    nameAr: "باي ليتر (قسمها على 4 دفعات بدون فوائد)",
+    description: "Split your payment into 4 interest-free instalments. Available in Qatar.",
+    descriptionAr: "قسم مشترياتك على 4 دفعات ميسرة وبدون أي فوائد عبر باي ليتر. متاح في قطر.",
+    badge: "0% Interest",
+  },
 };
 
 /**
  * Temporary Payment Gateway maintenance status.
  * While TRUE: hides online gateway payment options (ONLINE, TABBY_TAMARA, BENEFIT_PAY)
- * and keeps only "Pay on Delivery (Cash)" and "Card on Delivery".
+ * and keeps only "Pay on Delivery (Cash)", "Card on Delivery", and "PayLater" (for Qatar).
  * Switch back to FALSE once payment gateway configuration is restored.
  */
 export const IS_PAYMENT_GATEWAY_TEMPORARILY_DISABLED = true;
@@ -459,8 +475,8 @@ export function resolvePaymentMethods(
     });
   }
 
-  // When payment gateway is temporarily disabled, hide online gateways
-  // and ensure only Pay on Delivery (Cash) and Card on Delivery are available.
+  // When payment gateway is temporarily disabled, hide legacy online gateways
+  // and ensure Pay on Delivery (Cash), Card on Delivery, and PayLater (Qatar) are available.
   if (IS_PAYMENT_GATEWAY_TEMPORARILY_DISABLED) {
     const onlineGatewayIds = new Set(["ONLINE", "TABBY_TAMARA", "BENEFIT_PAY"]);
     const deliveryMethods = resolved.filter((m) => !onlineGatewayIds.has(m.id));
@@ -479,7 +495,17 @@ export function resolvePaymentMethods(
       );
     }
 
+    // Ensure PAYLATER is present for Qatar (QA)
+    if (upper === "QA" && !deliveryMethods.some((m) => m.id === "PAYLATER")) {
+      deliveryMethods.push(MASTER_PAYMENT_METHODS.PAYLATER);
+    }
+
     return deliveryMethods;
+  }
+
+  // Ensure PAYLATER is present for Qatar (QA)
+  if (upper === "QA" && !resolved.some((m) => m.id === "PAYLATER")) {
+    resolved.push(MASTER_PAYMENT_METHODS.PAYLATER);
   }
 
   return resolved;

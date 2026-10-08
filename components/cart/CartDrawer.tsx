@@ -12,6 +12,7 @@ import { Button } from "@/lib/../components/ui/Button";
 import { formatPrice } from "@/lib/utils";
 import { ShoppingBag, Trash2, ArrowRight, Plus, Coins } from "lucide-react";
 import { useCountryStore } from "@/lib/store/useCountryStore";
+import { PayLaterCartButton } from "@/components/cart/PayLaterCartButton";
 
 export function CartDrawer() {
   const pathname = usePathname();
@@ -71,6 +72,27 @@ export function CartDrawer() {
       window.location.href = isAr
         ? "/ar/account/login?redirect=/ar/checkout"
         : "/account/login?redirect=/checkout";
+    }
+  };
+
+  const handleBuyWithPayLater = async () => {
+    setIsRedirecting(true);
+    closeCart();
+    const targetUrl = isAr ? "/ar/checkout?method=PAYLATER" : "/checkout?method=PAYLATER";
+    try {
+      const res = await fetch("/api/auth/me");
+      const data = await res.json();
+      if (data?.user) {
+        window.location.href = targetUrl;
+      } else {
+        window.location.href = isAr
+          ? `/ar/account/login?redirect=${encodeURIComponent(targetUrl)}`
+          : `/account/login?redirect=${encodeURIComponent(targetUrl)}`;
+      }
+    } catch {
+      window.location.href = isAr
+        ? `/ar/account/login?redirect=${encodeURIComponent(targetUrl)}`
+        : `/account/login?redirect=${encodeURIComponent(targetUrl)}`;
     }
   };
 
@@ -286,7 +308,7 @@ export function CartDrawer() {
               </label>
 
               {/* Buttons */}
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <Button
                   type="button"
                   variant="primary"
@@ -299,6 +321,16 @@ export function CartDrawer() {
                   <ArrowRight size={16} />
                 </Button>
 
+                {/* PayLater Buy Button & Trust Badges */}
+                <PayLaterCartButton
+                  onPayLaterClick={handleBuyWithPayLater}
+                  subtotal={subtotal}
+                  currency={config.currency}
+                  isAr={isAr}
+                  disabled={!agreedToTerms}
+                  showBadges={true}
+                />
+
                 {/* Add More Items Button (Takes user to /shop) */}
                 <Link href={isAr ? "/ar/shop" : "/shop"} onClick={closeCart} className="block w-full">
                   <button
@@ -310,10 +342,19 @@ export function CartDrawer() {
                   </button>
                 </Link>
 
+                {/* View Full Bag Button (Matching Image 1) */}
                 <Link href={isAr ? "/ar/cart" : "/cart"} onClick={closeCart} className="block w-full">
-                  <Button variant="secondary" className="w-full h-10 text-xs font-semibold">
-                    {isAr ? "عرض السلة بالتفصيل" : "View Full Bag"}
-                  </Button>
+                  <button
+                    type="button"
+                    className="w-full h-11 text-xs font-bold rounded-[8px] border border-neutral-300 bg-white hover:bg-neutral-50 active:scale-[0.99] transition-all flex items-center justify-center gap-1.5 text-neutral-800 cursor-pointer shadow-2xs"
+                  >
+                    <span>
+                      {isAr
+                        ? `عرض السلة بالكامل (${totalCount} منتجات)`
+                        : `View Full Bag (${totalCount} ${totalCount === 1 ? "item" : "items"})`}
+                    </span>
+                    <ArrowRight size={14} className={isAr ? "rotate-180" : ""} />
+                  </button>
                 </Link>
               </div>
             </div>

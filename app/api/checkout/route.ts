@@ -13,6 +13,7 @@ import {
   calculatePointsDiscount,
   verifyLoyaltyToken,
 } from "@/lib/loyalty/loyaltyService";
+import { createPayLaterPaymentLink } from "@/lib/services/paylater";
 
 export async function POST(request: Request) {
   try {
@@ -399,7 +400,7 @@ export async function POST(request: Request) {
           pickupTimeSlot: isPickup ? (pickupTimeSlot || null) : null,
           pickupCode,
           idempotencyKey: `CHK-${orderNumber}`,
-          status: "CONFIRMED",
+          status: paymentMethod === "PAYLATER" ? "PENDING" : "CONFIRMED",
           paymentStatus: paymentMethod === "ONLINE" || paymentMethod === "TABBY_TAMARA" || paymentMethod === "BENEFIT_PAY" ? "PAID" : "PENDING",
           fulfillmentStatus: "UNFULFILLED",
           customerName,
@@ -686,47 +687,90 @@ export async function POST(request: Request) {
       customerPhone,
     });
 
-    // 8. Asynchronous Notifications: SMS and Email per Country
-    try {
-      const smsProvider = getSmsProvider(targetCountryCode);
-      await smsProvider.sendOrderConfirmation({
-        orderNumber: order.orderNumber,
-        total: finalTotal,
-        currency: countryConfig.currency,
-        customerName,
-        customerPhone,
-        country: targetCountryCode,
-      });
+    // 7b. PayLater Payment Link Generation
+    let paymentLinkUrl: string | null = null;
+    if (paymentMethod === "PAYLATER") {
+      try {
+        const plConfig = await (await import("@/lib/services/paylater")).getPayLaterConfig();
+        if (finalTotal < plConfig.minAmount) {
+          return NextResponse.json(
+            { error: `PayLater requires a minimum order value of ${plConfig.minAmount} ${countryConfig.currency}.` },
+            { status: 400 }
+          );
+        }
+        if (finalTotal > plConfig.maxAmount) {
+          return NextResponse.json(
+            { error: `PayLater maximum order limit is ${plConfig.maxAmount} ${countryConfig.currency}.` },
+            { status: 400 }
+          );
+        }
 
-      const emailProvider = getEmailProvider(targetCountryCode);
-      await emailProvider.sendOrderConfirmation({
-        orderNumber: order.orderNumber,
-        total: finalTotal,
-        subtotal: calculatedSubtotal,
-        shipping: shippingFee,
-        discount: discountAmount,
-        currency: countryConfig.currency,
-        country: targetCountryCode,
-        customerName,
-        customerEmail,
-        orderType: isPickup ? "PICKUP" : "DELIVERY",
-        pickupStoreName: pickupStoreRecord?.name || null,
-        pickupStoreAddress: pickupStoreRecord?.address || null,
-        pickupStorePhone: pickupStoreRecord?.phone || null,
-        pickupDate: pickupDate ? String(pickupDate) : null,
-        pickupTimeSlot: pickupTimeSlot || null,
-        pickupCode: pickupCode || null,
-        qrCodeDataUrl: qrDataUrl || null,
-        items: validatedOrderItems.map((vi) => ({
-          name: vi.productName,
-          variantName: vi.variantName,
-          quantity: vi.quantity,
-          unitPrice: vi.unitPrice,
-          total: vi.total,
-        })),
-      });
-    } catch (notifErr) {
-      console.warn("Non-blocking notification error:", notifErr);
+        const origin = new URL(request.url).origin || "https://ramillette.com";
+        const successUrl = `${origin}/checkout/success?orderNumber=${order.orderNumber}`;
+        const failUrl = `${origin}/checkout?error=paylater_cancelled&orderNumber=${order.orderNumber}`;
+
+        const plResult = await createPayLaterPaymentLink({
+          orderId: order.orderNumber,
+          amount: finalTotal,
+          currency: countryConfig.currency,
+          successRedirectUrl: successUrl,
+          failRedirectUrl: failUrl,
+          expiryMinutes: 60,
+        });
+
+        paymentLinkUrl = plResult.paymentLinkUrl;
+      } catch (plErr: any) {
+        console.error("[PayLater] Checkout generation error:", plErr);
+        return NextResponse.json(
+          { error: plErr.message || "Failed to initiate PayLater checkout. Please try another payment method." },
+          { status: 400 }
+        );
+      }
+    }
+
+    // 8. Asynchronous Notifications: SMS and Email per Country (Skip immediate confirmation for PayLater until paid via webhook)
+    if (paymentMethod !== "PAYLATER") {
+      try {
+        const smsProvider = getSmsProvider(targetCountryCode);
+        await smsProvider.sendOrderConfirmation({
+          orderNumber: order.orderNumber,
+          total: finalTotal,
+          currency: countryConfig.currency,
+          customerName,
+          customerPhone,
+          country: targetCountryCode,
+        });
+
+        const emailProvider = getEmailProvider(targetCountryCode);
+        await emailProvider.sendOrderConfirmation({
+          orderNumber: order.orderNumber,
+          total: finalTotal,
+          subtotal: calculatedSubtotal,
+          shipping: shippingFee,
+          discount: discountAmount,
+          currency: countryConfig.currency,
+          country: targetCountryCode,
+          customerName,
+          customerEmail,
+          orderType: isPickup ? "PICKUP" : "DELIVERY",
+          pickupStoreName: pickupStoreRecord?.name || null,
+          pickupStoreAddress: pickupStoreRecord?.address || null,
+          pickupStorePhone: pickupStoreRecord?.phone || null,
+          pickupDate: pickupDate ? String(pickupDate) : null,
+          pickupTimeSlot: pickupTimeSlot || null,
+          pickupCode: pickupCode || null,
+          qrCodeDataUrl: qrDataUrl || null,
+          items: validatedOrderItems.map((vi) => ({
+            name: vi.productName,
+            variantName: vi.variantName,
+            quantity: vi.quantity,
+            unitPrice: vi.unitPrice,
+            total: vi.total,
+          })),
+        });
+      } catch (notifErr) {
+        console.warn("Non-blocking notification error:", notifErr);
+      }
     }
 
     return NextResponse.json({
@@ -739,6 +783,7 @@ export async function POST(request: Request) {
       country: targetCountryCode,
       currency: countryConfig.currency,
       paymentResult,
+      paymentLinkUrl,
     });
   } catch (error) {
     console.error("Checkout execution error:", error);

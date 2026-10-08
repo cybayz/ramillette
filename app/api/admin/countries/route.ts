@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
-import { getSession } from "@/lib/auth/session";
+import { getSession, isAdminRole } from "@/lib/auth/session";
 import { COUNTRIES, CountryCode } from "@/lib/country/config";
 
 export async function GET() {
   try {
     const session = await getSession();
-    if (!session || session.role !== "ADMIN") {
+    if (!session || !isAdminRole(session.role)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 
@@ -69,7 +69,7 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const session = await getSession();
-    if (!session || session.role !== "ADMIN") {
+    if (!session || !isAdminRole(session.role)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 

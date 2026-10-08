@@ -20,8 +20,12 @@ import {
   Heart,
   Sparkles,
   Send,
+  Copy,
+  Key,
+  ShieldCheck,
 } from "lucide-react";
 import { AdminCountry } from "./CountryManager";
+import { PayLaterLogo } from "@/components/cart/PayLaterCartButton";
 
 interface StoreSettingsViewProps {
   countries: AdminCountry[];
@@ -59,6 +63,27 @@ export function StoreSettingsView({ countries: initialCountries, settings }: Sto
   const [celebrationSaved, setCelebrationSaved] = useState(false);
   const [celebrationTesting, setCelebrationTesting] = useState(false);
   const [celebrationTestResult, setCelebrationTestResult] = useState<string | null>(null);
+
+  // PayLater Settings state
+  const [paylaterEnabled, setPaylaterEnabled] = useState(settings.paylaterEnabled !== "false");
+  const [paylaterEnvironment, setPaylaterEnvironment] = useState<"sandbox" | "production">(
+    (settings.paylaterEnvironment as "sandbox" | "production") || "sandbox"
+  );
+  const [paylaterClientId, setPaylaterClientId] = useState(settings.paylaterClientId || "merchant-1683");
+  const [paylaterClientSecret, setPaylaterClientSecret] = useState(settings.paylaterClientSecret || "");
+  const [showClientSecret, setShowClientSecret] = useState(false);
+  const [paylaterOutletId, setPaylaterOutletId] = useState(settings.paylaterOutletId || "1683");
+  const [paylaterApiKey, setPaylaterApiKey] = useState(settings.paylaterApiKey || "4868be79-c686-442e-b841-f034d3110078");
+  const [paylaterWebhookSecret, setPaylaterWebhookSecret] = useState(settings.paylaterWebhookSecret || "");
+  const [paylaterMinAmount, setPaylaterMinAmount] = useState(settings.paylaterMinAmount || "300");
+  const [paylaterMaxAmount, setPaylaterMaxAmount] = useState(settings.paylaterMaxAmount || "25000");
+
+  const [paylaterSaving, setPaylaterSaving] = useState(false);
+  const [paylaterSaved, setPaylaterSaved] = useState(false);
+  const [paylaterSaveError, setPaylaterSaveError] = useState<string | null>(null);
+  const [paylaterTesting, setPaylaterTesting] = useState(false);
+  const [paylaterTestResult, setPaylaterTestResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [copiedWebhookUrl, setCopiedWebhookUrl] = useState(false);
 
   // Regional country settings form state
   const activeCountry = countriesList.find((c) => c.code === selectedTarget);
@@ -219,6 +244,81 @@ export function StoreSettingsView({ countries: initialCountries, settings }: Sto
     } finally {
       setCelebrationTesting(false);
     }
+  };
+
+  const handleSavePayLater = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPaylaterSaving(true);
+    setPaylaterSaved(false);
+    setPaylaterSaveError(null);
+
+    try {
+      const res = await fetch("/api/admin/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          paylaterEnabled: String(paylaterEnabled),
+          paylaterEnvironment,
+          paylaterClientId,
+          paylaterClientSecret,
+          paylaterOutletId,
+          paylaterApiKey,
+          paylaterWebhookSecret,
+          paylaterMinAmount: String(paylaterMinAmount),
+          paylaterMaxAmount: String(paylaterMaxAmount),
+        }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (res.ok) {
+        setPaylaterSaved(true);
+        setPaylaterSaveError(null);
+        setTimeout(() => setPaylaterSaved(false), 2500);
+      } else {
+        setPaylaterSaveError(data.error || "Failed to save settings. Please check your permissions.");
+      }
+    } catch (err: any) {
+      console.error("Failed to save PayLater settings:", err);
+      setPaylaterSaveError(err.message || "Network error while saving settings.");
+    } finally {
+      setPaylaterSaving(false);
+    }
+  };
+
+  const handleTestPayLater = async () => {
+    setPaylaterTesting(true);
+    setPaylaterTestResult(null);
+
+    try {
+      const res = await fetch("/api/admin/settings/paylater-test", { method: "POST" });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setPaylaterTestResult({
+          success: true,
+          message: data.message || "Successfully authenticated with PayLater API!",
+        });
+      } else {
+        setPaylaterTestResult({
+          success: false,
+          message: data.error || "Connection failed. Please verify credentials.",
+        });
+      }
+    } catch (err: any) {
+      setPaylaterTestResult({
+        success: false,
+        message: `Error: ${err.message}`,
+      });
+    } finally {
+      setPaylaterTesting(false);
+    }
+  };
+
+  const handleCopyWebhookUrl = () => {
+    const url = typeof window !== "undefined" ? `${window.location.origin}/api/paylater/webhook` : "https://ramillette.com/api/paylater/webhook";
+    navigator.clipboard.writeText(url);
+    setCopiedWebhookUrl(true);
+    setTimeout(() => setCopiedWebhookUrl(false), 2000);
   };
 
   return (
@@ -949,6 +1049,302 @@ export function StoreSettingsView({ countries: initialCountries, settings }: Sto
                 <>
                   <Save size={14} />
                   <span>Save Celebration Settings</span>
+                </>
+              )}
+            </button>
+          </div>
+        </form>
+      </div>
+
+      {/* PayLater BNPL Payment Gateway Configuration */}
+      <div id="paylater-settings-section" className="bg-white rounded-[10px] border border-[#e5e5e5] shadow-xs overflow-hidden">
+        <div className="px-6 py-4 border-b border-[#e5e5e5] bg-[#f0f7ff]/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <PayLaterLogo className="w-6 h-6 shrink-0" color="#0066cc" />
+            <div>
+              <h2 className="text-sm font-bold text-[#1c1c1c] flex items-center gap-2">
+                <span>PayLater (BNPL) Gateway Integration</span>
+                <span className={`text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full ${paylaterEnvironment === "production" ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"}`}>
+                  {paylaterEnvironment === "production" ? "Live / Production" : "Sandbox / UAT"}
+                </span>
+              </h2>
+              <p className="text-[11px] text-neutral-500">
+                Official Buy Now, Pay Later (Split in 4) gateway integration for Qatar. Configure merchant credentials, webhooks, and order limits.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleTestPayLater}
+              disabled={paylaterTesting}
+              className="h-8 px-3 text-[11px] font-semibold text-neutral-700 bg-white border border-neutral-300 rounded-lg hover:bg-neutral-50 inline-flex items-center gap-1.5 transition-colors cursor-pointer"
+              title="Test OAuth2 authentication with PayLater"
+            >
+              {paylaterTesting ? (
+                <Loader2 size={12} className="animate-spin text-[#0066cc]" />
+              ) : (
+                <Key size={12} className="text-[#0066cc]" />
+              )}
+              <span>{paylaterTesting ? "Testing Connection..." : "Test Connection"}</span>
+            </button>
+          </div>
+        </div>
+
+        {paylaterTestResult && (
+          <div className={`mx-6 mt-4 p-3.5 rounded-lg text-xs flex items-center justify-between border ${
+            paylaterTestResult.success ? "bg-emerald-50 border-emerald-200 text-emerald-900" : "bg-red-50 border-red-200 text-red-900"
+          }`}>
+            <div className="flex items-center gap-2">
+              {paylaterTestResult.success ? <Check size={16} className="text-emerald-600 shrink-0" /> : <ShieldCheck size={16} className="text-red-600 shrink-0" />}
+              <span>{paylaterTestResult.message}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setPaylaterTestResult(null)}
+              className="font-bold ml-2 opacity-70 hover:opacity-100 cursor-pointer"
+            >
+              ×
+            </button>
+          </div>
+        )}
+
+        <form onSubmit={handleSavePayLater} className="p-6 space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            {/* Enable Toggle & Environment */}
+            <div className="p-4 rounded-xl border border-neutral-200 bg-neutral-50/50 space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-xs font-bold text-[#1c1c1c] block">Enable PayLater at Checkout</span>
+                  <span className="text-[11px] text-neutral-500">Show &quot;Buy with PayLater&quot; in cart and checkout</span>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={paylaterEnabled}
+                    onChange={(e) => setPaylaterEnabled(e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-9 h-5 bg-neutral-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#0066cc]"></div>
+                </label>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold text-neutral-700 mb-1">
+                  API Environment
+                </label>
+                <select
+                  value={paylaterEnvironment}
+                  onChange={(e) => setPaylaterEnvironment(e.target.value as "sandbox" | "production")}
+                  className="w-full text-xs px-3 py-2 border border-neutral-300 rounded bg-white focus:outline-none focus:border-[#0066cc]"
+                >
+                  <option value="sandbox">Sandbox (Testing / UAT) — connect.uat.paylaterapp.com</option>
+                  <option value="production">Production (Live) — connect.paylaterapp.com</option>
+                </select>
+                <p className="text-[10px] text-neutral-500 mt-1">
+                  {paylaterEnvironment === "sandbox"
+                    ? "Currently using PayLater Sandbox credentials. Test shoppers and test cards work here."
+                    : "Live mode: Real transactions in QAR settled via PayLater."}
+                </p>
+              </div>
+            </div>
+
+            {/* Merchant Identity Card */}
+            <div className="p-4 rounded-xl border border-neutral-200 bg-neutral-50/50 space-y-3">
+              <div>
+                <label className="block text-[11px] font-semibold text-neutral-700 mb-1">
+                  Client ID
+                </label>
+                <input
+                  type="text"
+                  value={paylaterClientId}
+                  onChange={(e) => setPaylaterClientId(e.target.value)}
+                  placeholder="merchant-1683"
+                  className="w-full text-xs px-3 py-2 border border-neutral-300 rounded focus:outline-none focus:border-[#0066cc] font-mono"
+                />
+                <p className="text-[10px] text-neutral-400 mt-1">
+                  From PayLater portal Settings &rarr; Webhook API Key
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold text-neutral-700 mb-1 flex items-center justify-between">
+                  <span>Client Secret</span>
+                  <button
+                    type="button"
+                    onClick={() => setShowClientSecret(!showClientSecret)}
+                    className="text-[10px] text-[#0066cc] font-semibold hover:underline cursor-pointer"
+                  >
+                    {showClientSecret ? "Hide" : "Show"}
+                  </button>
+                </label>
+                <input
+                  type={showClientSecret ? "text" : "password"}
+                  value={paylaterClientSecret}
+                  onChange={(e) => setPaylaterClientSecret(e.target.value)}
+                  placeholder="Paste unmasked client secret from PayLater portal"
+                  className="w-full text-xs px-3 py-2 border border-neutral-300 rounded focus:outline-none focus:border-[#0066cc] font-mono"
+                />
+                <p className="text-[10px] text-neutral-400 mt-1">
+                  Revealed by clicking unmask/copy next to Client Secret in the PayLater portal
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            {/* Outlet & API Key */}
+            <div className="space-y-3">
+              <div>
+                <label className="block text-[11px] font-semibold text-neutral-700 mb-1">
+                  Outlet ID
+                </label>
+                <input
+                  type="text"
+                  value={paylaterOutletId}
+                  onChange={(e) => setPaylaterOutletId(e.target.value)}
+                  placeholder={paylaterEnvironment === "sandbox" ? "1000000061" : "Production Outlet ID"}
+                  className="w-full text-xs px-3 py-2 border border-neutral-300 rounded focus:outline-none focus:border-[#0066cc] font-mono"
+                />
+                <p className="text-[10px] text-neutral-400 mt-1">
+                  {paylaterEnvironment === "sandbox"
+                    ? "In Sandbox mode, Outlet ID is automatically 1000000061."
+                    : "Storefront outlet ID (found in PayLater Portal under Settings → Integration or Outlets). Note: Merchant ID is 1683, Outlet ID is distinct."}
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold text-neutral-700 mb-1">
+                  API Key
+                </label>
+                <input
+                  type="text"
+                  value={paylaterApiKey}
+                  onChange={(e) => setPaylaterApiKey(e.target.value)}
+                  placeholder="4868be79-c686-442e-b841-f034d3110078"
+                  className="w-full text-xs px-3 py-2 border border-neutral-300 rounded focus:outline-none focus:border-[#0066cc] font-mono"
+                />
+                <p className="text-[10px] text-neutral-400 mt-1">
+                  Your assigned Webhook API Key UUID from portal
+                </p>
+              </div>
+            </div>
+
+            {/* Webhook Configuration & Callback URL */}
+            <div className="space-y-3">
+              <div>
+                <label className="block text-[11px] font-semibold text-neutral-700 mb-1">
+                  Webhook Secret
+                </label>
+                <input
+                  type="text"
+                  value={paylaterWebhookSecret}
+                  onChange={(e) => setPaylaterWebhookSecret(e.target.value)}
+                  placeholder="Provided by PayLater portal after setting Webhook URL"
+                  className="w-full text-xs px-3 py-2 border border-neutral-300 rounded focus:outline-none focus:border-[#0066cc] font-mono"
+                />
+                <p className="text-[10px] text-neutral-400 mt-1">
+                  Used to verify HMAC SHA-256 signature on payment callbacks
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold text-neutral-700 mb-1">
+                  Webhook URL (Paste into PayLater Portal)
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    readOnly
+                    value={typeof window !== "undefined" ? `${window.location.origin}/api/paylater/webhook` : "https://ramillette.com/api/paylater/webhook"}
+                    className="w-full text-xs px-3 py-2 border border-neutral-300 rounded bg-neutral-100 font-mono text-neutral-700 select-all"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleCopyWebhookUrl}
+                    className="px-3 py-2 text-xs font-semibold bg-white border border-neutral-300 rounded hover:bg-neutral-50 flex items-center gap-1 shrink-0 cursor-pointer text-[#0066cc]"
+                  >
+                    {copiedWebhookUrl ? <Check size={14} className="text-emerald-600" /> : <Copy size={14} />}
+                    <span>{copiedWebhookUrl ? "Copied!" : "Copy"}</span>
+                  </button>
+                </div>
+                <p className="text-[10px] text-neutral-400 mt-1">
+                  In PayLater portal, enter this under <strong>Settings &rarr; Webhook API Key &rarr; Webhook URL</strong>
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-neutral-200">
+            <div>
+              <label className="block text-[11px] font-semibold text-neutral-700 mb-1">
+                Minimum Order Value (QAR)
+              </label>
+              <input
+                type="number"
+                min="1"
+                max="25000"
+                value={paylaterMinAmount}
+                onChange={(e) => setPaylaterMinAmount(e.target.value)}
+                className="w-full text-xs px-3 py-2 border border-neutral-300 rounded focus:outline-none focus:border-[#0066cc]"
+              />
+              <p className="text-[10px] text-neutral-400 mt-1">
+                Standard PayLater minimum is 300 QAR
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-semibold text-neutral-700 mb-1">
+                Maximum Order Value (QAR)
+              </label>
+              <input
+                type="number"
+                min="1"
+                max="25000"
+                value={paylaterMaxAmount}
+                onChange={(e) => setPaylaterMaxAmount(e.target.value)}
+                className="w-full text-xs px-3 py-2 border border-neutral-300 rounded focus:outline-none focus:border-[#0066cc]"
+              />
+              <p className="text-[10px] text-neutral-400 mt-1">
+                Standard PayLater maximum is 25,000 QAR
+              </p>
+            </div>
+          </div>
+
+          {paylaterSaveError && (
+            <div className="p-3 bg-red-50 border border-red-200 text-red-800 text-xs rounded-lg flex items-center justify-between">
+              <span>{paylaterSaveError}</span>
+              <button
+                type="button"
+                onClick={() => setPaylaterSaveError(null)}
+                className="font-bold ml-2 text-red-600 hover:text-red-800"
+              >
+                ×
+              </button>
+            </div>
+          )}
+
+          <div className="pt-2 flex items-center gap-3">
+            <button
+              type="submit"
+              disabled={paylaterSaving}
+              className="btn-primary h-9 px-5 text-xs font-bold inline-flex items-center gap-2 cursor-pointer"
+            >
+              {paylaterSaving ? (
+                <>
+                  <Loader2 size={13} className="animate-spin" />
+                  <span>Saving PayLater Settings...</span>
+                </>
+              ) : paylaterSaved ? (
+                <>
+                  <Check size={14} />
+                  <span>PayLater Settings Saved!</span>
+                </>
+              ) : (
+                <>
+                  <Save size={14} />
+                  <span>Save PayLater Settings</span>
                 </>
               )}
             </button>

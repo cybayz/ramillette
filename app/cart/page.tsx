@@ -23,6 +23,7 @@ import {
   Loader2,
   Plus,
 } from "lucide-react";
+import { PayLaterCartButton } from "@/components/cart/PayLaterCartButton";
 
 export default function CartPage() {
   const router = useRouter();
@@ -61,6 +62,26 @@ export default function CartPage() {
       window.location.href = isAr
         ? "/ar/account/login?redirect=/ar/checkout"
         : "/account/login?redirect=/checkout";
+    }
+  };
+
+  const handleBuyWithPayLater = async () => {
+    setIsRedirecting(true);
+    const targetUrl = isAr ? "/ar/checkout?method=PAYLATER" : "/checkout?method=PAYLATER";
+    try {
+      const res = await fetch("/api/auth/me");
+      const data = await res.json();
+      if (data?.user) {
+        window.location.href = targetUrl;
+      } else {
+        window.location.href = isAr
+          ? `/ar/account/login?redirect=${encodeURIComponent(targetUrl)}`
+          : `/account/login?redirect=${encodeURIComponent(targetUrl)}`;
+      }
+    } catch {
+      window.location.href = isAr
+        ? `/ar/account/login?redirect=${encodeURIComponent(targetUrl)}`
+        : `/account/login?redirect=${encodeURIComponent(targetUrl)}`;
     }
   };
 
@@ -310,6 +331,15 @@ export default function CartPage() {
                   <span>{isAr ? "المتابعة إلى الدفع" : "Proceed to Checkout"}</span>
                   <ArrowRight size={16} className="rtl:rotate-180" />
                 </Button>
+
+                {/* PayLater Buy Button */}
+                <PayLaterCartButton
+                  onPayLaterClick={handleBuyWithPayLater}
+                  subtotal={finalTotal}
+                  currency={config?.currency || "QAR"}
+                  isAr={isAr}
+                  showBadges={false}
+                />
 
                 <Link href={isAr ? "/ar/shop" : "/shop"} className="block w-full">
                   <button

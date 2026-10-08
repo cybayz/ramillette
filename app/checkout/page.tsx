@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/Button";
 import { formatPrice } from "@/lib/utils";
 import { CheckoutCoupons } from "@/components/checkout/CheckoutCoupons";
 import { CheckoutLoyaltyRewards } from "@/components/checkout/CheckoutLoyaltyRewards";
+import { PayLaterLogo } from "@/components/cart/PayLaterCartButton";
 import {
   ShieldCheck,
   Truck,
@@ -215,6 +216,14 @@ export default function CheckoutPage() {
   useEffect(() => {
     setMounted(true);
 
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const method = params.get("method") || params.get("payment");
+      if (method && method.toUpperCase() === "PAYLATER") {
+        setPaymentMethod("PAYLATER");
+      }
+    }
+
     fetch("/api/auth/me")
       .then((r) => r.json())
       .then((data) => {
@@ -409,6 +418,14 @@ export default function CheckoutPage() {
       errors.selectedStoreId = isAr ? "يرجى تحديد فرع للاستلام من القائمة." : "Please select a boutique location for store pickup.";
     }
 
+    if (paymentMethod === "PAYLATER" && finalTotal < 300) {
+      const minMsg = isAr
+        ? "الحد الأدنى للطلب عبر خدمة باي ليتر هو 300 ر.ق. يرجى إضافة المزيد من المنتجات إلى سلتك أو اختيار طريقة دفع أخرى."
+        : "PayLater requires a minimum order value of 300 QAR. Please add more items to your bag or select another payment method.";
+      setErrorMessage(minMsg);
+      return;
+    }
+
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors);
       const errMsg = isAr
@@ -520,6 +537,10 @@ export default function CheckoutPage() {
         setIsSubmitting(false);
       } else {
         setIsOrderCompleted(true);
+        if (data.paymentLinkUrl) {
+          window.location.href = data.paymentLinkUrl;
+          return;
+        }
         const successUrl = `${isAr ? "/ar" : ""}/checkout/success?orderNumber=${data.orderNumber}`;
         window.location.href = successUrl;
       }
@@ -1431,7 +1452,9 @@ export default function CheckoutPage() {
                         key={methodId}
                         className={`flex items-start gap-3 p-4 rounded-[6px] border transition-all cursor-pointer ${
                           isSelected
-                            ? "border-[#b6713e] bg-[#faedcd]/20 shadow-xs"
+                            ? methodId === "PAYLATER"
+                              ? "border-[#0066cc] bg-[#f0f7ff]/70 shadow-xs"
+                              : "border-[#b6713e] bg-[#faedcd]/20 shadow-xs"
                             : "border-[#e5e5e5] hover:border-neutral-300"
                         }`}
                       >
@@ -1441,12 +1464,14 @@ export default function CheckoutPage() {
                           value={methodId}
                           checked={isSelected}
                           onChange={() => setPaymentMethod(methodId)}
-                          className="mt-0.5 text-[#b6713e] focus:ring-[#b6713e]"
+                          className={`mt-0.5 ${methodId === "PAYLATER" ? "text-[#0066cc] focus:ring-[#0066cc]" : "text-[#b6713e] focus:ring-[#b6713e]"}`}
                         />
                         <div className="flex-1">
                           <div className="flex items-center justify-between">
                             <span className="text-xs font-bold text-[#1c1c1c] flex items-center gap-1.5">
-                              {methodId === "COD" ? (
+                              {methodId === "PAYLATER" ? (
+                                <PayLaterLogo className="w-5 h-5 shrink-0" color="#0066cc" />
+                              ) : methodId === "COD" ? (
                                 <Banknote size={16} className="text-[#b6713e]" />
                               ) : (
                                 <CreditCard size={16} className="text-[#b6713e]" />
@@ -1460,7 +1485,13 @@ export default function CheckoutPage() {
                               </span>
                             </span>
                             {method.badge && (
-                              <span className="text-[10px] bg-[#faedcd] text-[#1c1c1c] font-bold px-2 py-0.5 rounded">
+                              <span
+                                className={`text-[10px] font-bold px-2 py-0.5 rounded ${
+                                  methodId === "PAYLATER"
+                                    ? "bg-[#bfdbfe]/60 text-[#0066cc]"
+                                    : "bg-[#faedcd] text-[#1c1c1c]"
+                                }`}
+                              >
                                 {method.badge}
                               </span>
                             )}
@@ -1472,6 +1503,28 @@ export default function CheckoutPage() {
                                 : (isAr ? "ادفع ببطاقة الصراف أو الائتمان عبر جهاز الدفع في البوتيك." : "Pay via credit or debit card at our boutique terminal.")
                               : (isAr ? method.descriptionAr : method.description)}
                           </p>
+
+                          {/* PayLater Instalment Breakdown Details */}
+                          {methodId === "PAYLATER" && (
+                            <div className="mt-2.5 p-3 rounded-[6px] bg-[#f0f7ff] border border-[#bfdbfe]/80 space-y-1.5 text-xs">
+                              <div className="flex items-center justify-between text-[#0066cc] font-bold">
+                                <span>{isAr ? "الدفع على 4 أقساط شهرية ميسرة" : "Split into 4 monthly payments"}</span>
+                                <span>{finalTotal > 0 ? `${(finalTotal / 4).toFixed(2)} ${config.currency}` : ""}</span>
+                              </div>
+                              <p className="text-[11px] text-[#475569] leading-relaxed">
+                                {isAr
+                                  ? "ادفع 25% اليوم، وقسّم المتبقي على 3 دفعات شهرية متساوية بدون أي فوائد. ستتم إعادة توجيهك إلى منصة باي ليتر الآمنة لتأكيد خطتك."
+                                  : "Pay 25% today and the rest over 3 monthly instalments with 0% interest. You will be redirected securely to PayLater to confirm your plan."}
+                              </p>
+                              {finalTotal < 300 && (
+                                <p className="text-[11px] text-amber-700 font-semibold pt-0.5">
+                                  {isAr
+                                    ? "⚠️ تنبيه: الحد الأدنى المطلوب لخدمة باي ليتر هو 300 ر.ق."
+                                    : "⚠️ Note: PayLater requires a minimum order value of 300 QAR."}
+                                </p>
+                              )}
+                            </div>
+                          )}
                         </div>
                       </label>
                     );
