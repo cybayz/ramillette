@@ -7,7 +7,7 @@ import { useWishlistStore, WishlistItem } from "@/lib/store/useWishlistStore";
 import { useCartStore } from "@/lib/store/useCartStore";
 import { useLanguageStore } from "@/lib/store/useLanguageStore";
 import { getProductTitle } from "@/lib/i18n";
-import { Heart, X } from "lucide-react";
+import { Heart, X, ShoppingBag } from "lucide-react";
 
 export default function WishlistPage() {
   const { items, removeItem, clearWishlist } = useWishlistStore();
@@ -138,18 +138,18 @@ export default function WishlistPage() {
           </button>
         </div>
 
-        {/* Wishlist Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5 sm:gap-6">
+        {/* Wishlist Grid: 2 columns on mobile (4 tiles fit on screen), 6-8 columns on desktop */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-6 2xl:grid-cols-8 gap-2.5 sm:gap-3.5 md:gap-4">
           {items.map((item) => {
             const productName = getProductTitle(item.name, item.slug, language);
 
             return (
               <div
                 key={item.productId}
-                className="group relative flex flex-col bg-white rounded-[14px] border border-[#e5e5e5] p-3.5 sm:p-4 transition-all duration-200 shadow-none hover:shadow-xs"
+                className="group relative flex flex-col bg-white rounded-[10px] sm:rounded-[12px] border border-[#e5e5e5] p-2.5 sm:p-3 transition-all duration-200 shadow-none hover:shadow-xs hover:border-[#b6713e]/40"
               >
                 {/* Product Image Area */}
-                <div className="relative w-full aspect-square bg-[#fbf9f5] rounded-[10px] overflow-hidden mb-3">
+                <div className="relative w-full aspect-square bg-[#fbf9f5] rounded-[8px] overflow-hidden mb-2">
                   {/* Floating Remove Button × at Top Right */}
                   <button
                     type="button"
@@ -158,10 +158,10 @@ export default function WishlistPage() {
                       e.stopPropagation();
                       removeItem(item.productId);
                     }}
-                    className="absolute top-2.5 right-2.5 z-10 w-7 h-7 rounded-full bg-white/95 border border-neutral-200 shadow-xs flex items-center justify-center text-neutral-600 hover:text-black hover:scale-105 transition-all cursor-pointer"
+                    className="absolute top-1.5 right-1.5 z-10 w-6 h-6 rounded-full bg-white/95 border border-neutral-200 shadow-2xs flex items-center justify-center text-neutral-500 hover:text-red-600 hover:scale-105 transition-all cursor-pointer"
                     aria-label="Remove item"
                   >
-                    <X size={14} strokeWidth={2.2} />
+                    <X size={12} strokeWidth={2.2} />
                   </button>
 
                   <Link
@@ -173,8 +173,8 @@ export default function WishlistPage() {
                         src={item.image}
                         alt={productName}
                         fill
-                        className="object-contain p-2 group-hover:scale-105 transition-transform duration-300"
-                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 33vw, 280px"
+                        className="object-contain p-1.5 sm:p-2 group-hover:scale-105 transition-transform duration-300"
+                        sizes="(max-width: 640px) 50vw, (max-width: 1024px) 25vw, (max-width: 1536px) 16vw, 12vw"
                       />
                     ) : null}
                   </Link>
@@ -183,31 +183,33 @@ export default function WishlistPage() {
                 {/* Product Title */}
                 <Link
                   href={`/product/${item.slug}`}
-                  className="text-[14.5px] font-bold text-[#1c1c1c] hover:text-[#4e6648] transition-colors line-clamp-1 mb-1"
+                  className="text-xs sm:text-[13px] font-bold text-[#1c1c1c] hover:text-[#b6713e] transition-colors line-clamp-1 mb-0.5 leading-tight"
+                  title={productName}
                 >
                   {productName}
                 </Link>
 
                 {/* Price Display */}
-                <div className="text-[15px] font-bold text-[#1c1c1c] mb-3.5">
+                <div className="text-xs sm:text-[13.5px] font-extrabold text-[#1c1c1c] mb-2">
                   {isArabic
                     ? `${Number(item.price).toFixed(2)} ر.ق`
                     : `QAR ${Number(item.price).toFixed(2)}`}
                 </div>
 
-                {/* Two Action Buttons: Move to Cart & View Product */}
-                <div className="mt-auto flex flex-col gap-2 w-full">
+                {/* Action Buttons: Move to Cart & View Product */}
+                <div className="mt-auto flex flex-col gap-1.5 w-full">
                   <button
                     type="button"
                     onClick={() => handleMoveToCart(item)}
-                    className="w-full py-2.5 px-4 rounded-[6px] border border-neutral-800 bg-white text-[#1c1c1c] text-[13px] sm:text-[13.5px] font-semibold transition-all duration-200 text-center hover:bg-[#4e6648] hover:border-[#4e6648] hover:text-white cursor-pointer"
+                    className="w-full py-1.5 sm:py-2 px-1.5 rounded-[5px] border border-neutral-900 bg-[#1c1c1c] text-white text-[11px] sm:text-xs font-semibold hover:bg-[#b6713e] hover:border-[#b6713e] transition-colors flex items-center justify-center gap-1 cursor-pointer shadow-2xs"
                   >
-                    {tWishlist.moveToCart}
+                    <ShoppingBag size={12} className="shrink-0" />
+                    <span className="truncate">{tWishlist.moveToCart}</span>
                   </button>
 
                   <Link
                     href={`/product/${item.slug}`}
-                    className="w-full py-2.5 px-4 rounded-[6px] border border-neutral-800 bg-white text-[#1c1c1c] text-[13px] sm:text-[13.5px] font-semibold transition-all duration-200 text-center hover:bg-[#4e6648] hover:border-[#4e6648] hover:text-white block cursor-pointer"
+                    className="w-full py-1 px-1 rounded-[4px] text-neutral-500 hover:text-[#1c1c1c] text-[10.5px] sm:text-[11px] font-medium text-center transition-colors block cursor-pointer"
                   >
                     {tWishlist.viewProduct}
                   </Link>

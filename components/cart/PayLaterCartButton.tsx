@@ -10,6 +10,7 @@ interface PayLaterCartButtonProps {
   isAr?: boolean;
   disabled?: boolean;
   showBadges?: boolean;
+  compact?: boolean;
   className?: string;
 }
 
@@ -45,61 +46,93 @@ export function PayLaterCartButton({
   currency = "QAR",
   isAr = false,
   disabled = false,
-  showBadges = true,
+  showBadges = false,
+  compact = false,
   className = "",
 }: PayLaterCartButtonProps) {
   const instalmentAmount = subtotal && subtotal > 0 ? (subtotal / 4).toFixed(2) : null;
 
   return (
-    <div className={`w-full space-y-3 ${className}`}>
+    <div className={`w-full ${compact ? "space-y-1.5" : "space-y-2"} ${className}`}>
       {/* Divider */}
-      <div className="relative flex items-center justify-center my-1">
+      <div className="relative flex items-center justify-center my-0.5">
         <div className="w-full border-t border-[#e2e8f0]" />
-        <span className="absolute bg-[#ffffff] px-3 text-[11px] font-bold text-neutral-400 uppercase tracking-widest">
+        <span className="absolute bg-[#ffffff] px-2 text-[10px] font-bold text-neutral-400 uppercase tracking-wider">
           {isAr ? "أو" : "OR"}
         </span>
       </div>
 
-      {/* PayLater Action Button */}
-      <button
-        type="button"
-        onClick={onPayLaterClick}
-        disabled={disabled}
-        className={`w-full group text-left rtl:text-right transition-all duration-200 rounded-[10px] p-3 sm:p-3.5 border border-[#bfdbfe] bg-[#f0f7ff] hover:bg-[#e3f0fe] active:scale-[0.99] shadow-2xs cursor-pointer ${
-          disabled ? "opacity-50 cursor-not-allowed" : ""
-        }`}
-      >
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <PayLaterLogo className="w-6 h-6 shrink-0" color="#0066cc" />
-            <div className="flex items-center gap-1.5">
-              <span className="text-xs sm:text-sm font-medium text-[#1c1c1c]">
-                {isAr ? "اشتري الآن عبر" : "Buy with"}
-              </span>
-              <span className="text-xs sm:text-sm font-extrabold text-[#0066cc] tracking-tight">
+      {compact ? (
+        /* Compact 1-line PayLater Button for Space-Saving Drawers */
+        <button
+          type="button"
+          onClick={onPayLaterClick}
+          disabled={disabled}
+          className={`w-full group text-left rtl:text-right transition-all duration-200 rounded-[7px] py-2 px-2.5 border border-[#bfdbfe] bg-[#f0f7ff] hover:bg-[#e3f0fe] active:scale-[0.99] cursor-pointer flex items-center justify-between shadow-2xs ${
+            disabled ? "opacity-50 cursor-not-allowed" : ""
+          }`}
+        >
+          <div className="flex items-center gap-2 min-w-0">
+            <PayLaterLogo className="w-5 h-5 shrink-0" color="#0066cc" />
+            <div className="flex items-center gap-1.5 min-w-0">
+              <span className="text-xs font-extrabold text-[#0066cc] tracking-tight">
                 PayLater
               </span>
+              {instalmentAmount && (
+                <span className="text-[10px] font-semibold text-[#0066cc] bg-white/90 px-1.5 py-0.5 rounded border border-[#bfdbfe]/70 whitespace-nowrap">
+                  {isAr ? `4 × ${instalmentAmount} ${currency}` : `4 × ${currency} ${instalmentAmount}`}
+                </span>
+              )}
             </div>
           </div>
 
-          <div className="w-6 h-6 rounded-full bg-white/80 border border-[#bfdbfe] flex items-center justify-center text-[#0066cc] group-hover:translate-x-0.5 rtl:group-hover:-translate-x-0.5 transition-transform">
-            <ArrowRight size={13} className={isAr ? "rotate-180" : ""} />
+          <div className="flex items-center gap-1 text-[11px] font-bold text-[#0066cc] shrink-0">
+            <span className="hidden xs:inline">{isAr ? "دفع بالتقسيط" : "Buy with PayLater"}</span>
+            <ArrowRight size={13} className={`transition-transform group-hover:translate-x-0.5 ${isAr ? "rotate-180 group-hover:-translate-x-0.5" : ""}`} />
           </div>
-        </div>
+        </button>
+      ) : (
+        /* Standard 2-line PayLater Button */
+        <button
+          type="button"
+          onClick={onPayLaterClick}
+          disabled={disabled}
+          className={`w-full group text-left rtl:text-right transition-all duration-200 rounded-[10px] p-2.5 sm:p-3 border border-[#bfdbfe] bg-[#f0f7ff] hover:bg-[#e3f0fe] active:scale-[0.99] shadow-2xs cursor-pointer ${
+            disabled ? "opacity-50 cursor-not-allowed" : ""
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <PayLaterLogo className="w-5 h-5 shrink-0" color="#0066cc" />
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs font-medium text-[#1c1c1c]">
+                  {isAr ? "اشتري الآن عبر" : "Buy with"}
+                </span>
+                <span className="text-xs font-extrabold text-[#0066cc] tracking-tight">
+                  PayLater
+                </span>
+              </div>
+            </div>
 
-        <div className="mt-1 pl-8.5 rtl:pl-0 rtl:pr-8.5 flex flex-wrap items-center justify-between text-[11px] text-[#475569]">
-          <span>
-            {isAr
-              ? "قسم دفعاتك بسهولة. متاح في قطر."
-              : "Split your payment. Available in Qatar."}
-          </span>
-          {instalmentAmount && (
-            <span className="font-semibold text-[#0066cc]">
-              {isAr ? `(4 دفعات × ${instalmentAmount} ${currency})` : `(4 × ${currency} ${instalmentAmount})`}
+            <div className="w-5 h-5 rounded-full bg-white/80 border border-[#bfdbfe] flex items-center justify-center text-[#0066cc] group-hover:translate-x-0.5 rtl:group-hover:-translate-x-0.5 transition-transform">
+              <ArrowRight size={12} className={isAr ? "rotate-180" : ""} />
+            </div>
+          </div>
+
+          <div className="mt-1 pl-7 rtl:pl-0 rtl:pr-7 flex flex-wrap items-center justify-between text-[11px] text-[#475569]">
+            <span>
+              {isAr
+                ? "قسم دفعاتك بسهولة. متاح في قطر."
+                : "Split your payment. Available in Qatar."}
             </span>
-          )}
-        </div>
-      </button>
+            {instalmentAmount && (
+              <span className="font-semibold text-[#0066cc]">
+                {isAr ? `(4 × ${instalmentAmount} ${currency})` : `(4 × ${currency} ${instalmentAmount})`}
+              </span>
+            )}
+          </div>
+        </button>
+      )}
 
       {/* Trust & Guarantee Badges matching Image 1 */}
       {showBadges && (
