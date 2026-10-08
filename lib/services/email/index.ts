@@ -299,3 +299,100 @@ export async function sendCelebrationEmail(payload: EmailCelebrationPayload): Pr
     htmlPreview,
   };
 }
+
+export interface EmailSuggestionConfirmationPayload {
+  customerEmail: string;
+  productName: string;
+}
+
+export async function sendSuggestionConfirmationEmail(payload: EmailSuggestionConfirmationPayload): Promise<EmailResult> {
+  const title = `We received your fragrance request for "${payload.productName}" | Ramillette`;
+  const htmlPreview = `
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #1c1c1c; max-width: 600px; margin: auto; padding: 24px; border: 1px solid #ecdac1; border-radius: 12px; background: #ffffff;">
+      <div style="text-align: center; padding-bottom: 20px; border-bottom: 1px solid #f0ece1;">
+        <span style="font-size: 24px; letter-spacing: 2px; font-weight: bold; color: #1c1c1c; text-transform: uppercase;">RAMILLETTE</span>
+        <p style="font-size: 11px; color: #b6713e; letter-spacing: 1.5px; text-transform: uppercase; margin: 4px 0 0 0;">Haute Parfumerie</p>
+      </div>
+      <div style="text-align: center; padding: 30px 10px 20px 10px;">
+        <span style="font-size: 32px;">✨</span>
+        <h1 style="color: #1c1c1c; font-size: 20px; margin: 12px 0 8px 0; font-weight: bold;">
+          Thank You for Your Fragrance Suggestion
+        </h1>
+        <p style="color: #666; font-size: 13px; line-height: 1.6; max-width: 480px; margin: auto;">
+          We've received your request for <strong style="color: #b6713e;">${payload.productName}</strong>. Our olfactory curation team has been notified.
+        </p>
+        <p style="color: #666; font-size: 13px; line-height: 1.6; max-width: 480px; margin: 12px auto 0 auto;">
+          As soon as this fragrance is available in our boutique or online store, we will send an update directly to this email address.
+        </p>
+      </div>
+      <div style="border-top: 1px solid #f0ece1; padding-top: 16px; text-align: center; font-size: 11px; color: #999; line-height: 1.5;">
+        <p>Ramillette Haute Parfumerie • Doha, Qatar</p>
+      </div>
+    </div>
+  `;
+
+  const from = "concierge@ramillette.com";
+  console.log(`[EMAIL-SUGGESTION] Confirmation sent to ${payload.customerEmail} for "${payload.productName}"`);
+  return {
+    success: true,
+    messageId: `MAIL-SUGG-${Date.now()}`,
+    from,
+    to: payload.customerEmail,
+    subject: title,
+    htmlPreview,
+  };
+}
+
+export interface EmailProductAvailablePayload {
+  customerEmail: string;
+  productName: string;
+  productUrl?: string;
+  customMessage?: string;
+}
+
+export async function sendProductAvailableEmail(payload: EmailProductAvailablePayload): Promise<EmailResult> {
+  const title = `Good News: "${payload.productName}" is now available at Ramillette!`;
+  const destinationUrl = payload.productUrl || "https://ramillette.com/shop";
+  const htmlPreview = `
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #1c1c1c; max-width: 600px; margin: auto; padding: 24px; border: 1px solid #ecdac1; border-radius: 12px; background: #ffffff;">
+      <div style="text-align: center; padding-bottom: 20px; border-bottom: 1px solid #f0ece1;">
+        <span style="font-size: 24px; letter-spacing: 2px; font-weight: bold; color: #1c1c1c; text-transform: uppercase;">RAMILLETTE</span>
+        <p style="font-size: 11px; color: #b6713e; letter-spacing: 1.5px; text-transform: uppercase; margin: 4px 0 0 0;">Haute Parfumerie</p>
+      </div>
+      <div style="text-align: center; padding: 30px 10px 20px 10px;">
+        <span style="font-size: 32px;">🎉</span>
+        <h1 style="color: #1c1c1c; font-size: 22px; margin: 12px 0 8px 0; font-weight: bold;">
+          Your Requested Fragrance Has Arrived!
+        </h1>
+        <p style="color: #666; font-size: 13px; line-height: 1.6; max-width: 480px; margin: auto;">
+          You previously asked us about <strong style="color: #b6713e;">${payload.productName}</strong>. We're thrilled to inform you that it is now officially part of our collection!
+        </p>
+        ${payload.customMessage ? `
+          <div style="margin: 16px auto; padding: 12px 16px; background: #fbf9f5; border: 1px solid #ecdac1; border-radius: 6px; font-size: 13px; color: #444; max-width: 480px;">
+            ${payload.customMessage}
+          </div>
+        ` : ""}
+        <div style="margin-top: 24px;">
+          <a href="${destinationUrl}" style="background: #b6713e; color: #ffffff; text-decoration: none; padding: 12px 28px; border-radius: 6px; font-size: 12px; font-weight: bold; display: inline-block; letter-spacing: 0.5px;">
+            View & Order Now
+          </a>
+        </div>
+      </div>
+      <div style="border-top: 1px solid #f0ece1; padding-top: 16px; text-align: center; font-size: 11px; color: #999; line-height: 1.5;">
+        <p>Ramillette Haute Parfumerie • Doha, Qatar</p>
+      </div>
+    </div>
+  `;
+
+  const from = "concierge@ramillette.com";
+  console.log(`[EMAIL-AVAILABLE] Notification sent to ${payload.customerEmail} for "${payload.productName}"`);
+  return {
+    success: true,
+    messageId: `MAIL-AVAIL-${Date.now()}`,
+    from,
+    to: payload.customerEmail,
+    subject: title,
+    htmlPreview,
+  };
+}
+

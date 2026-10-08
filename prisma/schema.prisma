@@ -809,3 +809,20 @@ model RewardPointTransaction {
   @@index([createdAt])
 }
 
+model ProductSuggestion {
+  id          String    @id @default(cuid())
+  productName String
+  userEmail   String
+  searchQuery String?
+  notes       String?   @db.Text
+  status      String    @default("PENDING") // PENDING, IN_REVIEW, AVAILABLE, REJECTED
+  adminNotes  String?   @db.Text
+  notifiedAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([userEmail])
+  @@index([status])
+  @@index([createdAt])
+}
+

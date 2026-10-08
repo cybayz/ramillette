@@ -3,6 +3,7 @@ import Link from "next/link";
 import prisma from "@/lib/db/prisma";
 import { ProductCard } from "@/components/product/ProductCard";
 import { Search } from "lucide-react";
+import { SuggestProductButton } from "@/components/product/SuggestProductButton";
 import type { Metadata } from "next";
 
 export const revalidate = 0; // Dynamic search
@@ -140,18 +141,29 @@ export default async function SearchPage({ searchParams }: PageProps) {
             ))}
           </div>
         ) : query ? (
-          <div className="text-center py-16 bg-[#fbf9f5] rounded-[8px] border border-[#e5e5e5] max-w-2xl mx-auto p-8">
-            <h3 className="text-lg font-bold text-[#1c1c1c] mb-2">
+          <div className="text-center py-16 bg-[#fbf9f5] rounded-[10px] border border-[#ecdac1] max-w-2xl mx-auto p-8 shadow-sm">
+            <div className="w-14 h-14 rounded-full bg-[#faedcd]/50 border border-[#ecdac1] text-[#b6713e] flex items-center justify-center mx-auto mb-4">
+              <Search size={24} className="text-[#b6713e]" />
+            </div>
+            <h3 className="text-xl font-bold text-[#1c1c1c] mb-2">
               No matching fragrances found
             </h3>
-            <p className="text-xs text-neutral-500 mb-6">
-              We couldn't find any fragrances matching "<strong>{query}</strong>". Try searching for popular scents like "Amber Code", "Sauvage", or "Oud".
+            <p className="text-sm text-neutral-600 mb-6 max-w-md mx-auto leading-relaxed">
+              We couldn't find any fragrances matching "<strong>{query}</strong>". Can't find the scent you're looking for? Suggest it to our curation team and we'll inform you when we bring it!
             </p>
-            <Link href="/shop" className="btn-primary h-10 px-6 text-xs inline-flex items-center">
-              Explore All Fragrances
-            </Link>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+              <SuggestProductButton
+                initialProductName={query}
+                searchQuery={query}
+                buttonText="Suggest This Product"
+              />
+              <Link href="/shop" className="btn-secondary h-10 px-6 text-xs inline-flex items-center">
+                Explore All Fragrances
+              </Link>
+            </div>
           </div>
         ) : null}
+
 
         {/* Popular Fragrances Recommendations */}
         {products.length === 0 && (

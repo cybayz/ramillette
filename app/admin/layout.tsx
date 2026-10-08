@@ -16,6 +16,7 @@ import {
   Gift,
   History,
   Coins,
+  Sparkles,
 } from "lucide-react";
 import { LogoutButton } from "@/components/account/LogoutButton";
 import { AdminSidebarMobile } from "@/components/admin/AdminSidebarMobile";
@@ -39,6 +40,7 @@ export default async function AdminLayout({
     { label: "Dashboard", href: "/admin", icon: LayoutDashboard },
     { label: "Store ERP & POS", href: "/erp", icon: Store },
     { label: "Products & Stock", href: "/admin/products", icon: Package },
+    { label: "Product Suggestions", href: "/admin/suggestions", icon: Sparkles },
     { label: "Orders & Delivery", href: "/admin/orders", icon: ShoppingBag },
     { label: "Countries & Markets", href: "/admin/countries", icon: Globe },
     { label: "Gift Packaging", href: "/admin/gift-wrap", icon: Gift },

@@ -12,6 +12,7 @@ import {
   Globe,
   TrendingUp,
   Truck,
+  Sparkles,
 } from "lucide-react";
 
 export const revalidate = 0; // Real-time admin metrics
@@ -25,6 +26,8 @@ export default async function AdminDashboardPage() {
     lowStockRaw,
     revenueRaw,
     countriesRaw,
+    recentSuggestionsRaw,
+    pendingSuggestionsCount,
   ] = await Promise.all([
     prisma.product.count({ where: { active: true } }),
     prisma.order.count(),
@@ -47,6 +50,11 @@ export default async function AdminDashboardPage() {
     prisma.country.findMany({
       orderBy: { sortOrder: "asc" },
     }),
+    prisma.productSuggestion.findMany({
+      orderBy: { createdAt: "desc" },
+      take: 4,
+    }),
+    prisma.productSuggestion.count({ where: { status: "PENDING" } }),
   ]);
 
   const totalRevenue = Number(revenueRaw._sum.total || 0);
@@ -364,6 +372,91 @@ export default async function AdminDashboardPage() {
           )}
         </div>
       </div>
+
+      {/* Customer Product Suggestions / Sourcing Requests Section */}
+      <div className="bg-white rounded-[8px] border border-[#e5e5e5] shadow-xs p-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 mb-4 border-b border-[#e5e5e5] gap-2">
+          <div className="flex items-center gap-2.5">
+            <div className="w-7 h-7 rounded-full bg-[#faedcd] border border-[#ecdec1] text-[#b6713e] flex items-center justify-center">
+              <Sparkles size={14} />
+            </div>
+            <div>
+              <h2 className="text-sm font-bold uppercase tracking-wider text-[#1c1c1c]">
+                Customer Fragrance Sourcing Requests
+              </h2>
+              <span className="text-[11px] text-neutral-400">
+                Products searched by visitors that were not in catalog
+              </span>
+            </div>
+            {pendingSuggestionsCount > 0 && (
+              <span className="ml-2 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                {pendingSuggestionsCount} pending
+              </span>
+            )}
+          </div>
+          <Link
+            href="/admin/suggestions"
+            className="text-xs font-semibold text-[#b6713e] hover:underline inline-flex items-center gap-1 self-start sm:self-auto"
+          >
+            <span>Manage all suggestions</span>
+            <ArrowRight size={13} />
+          </Link>
+        </div>
+
+        {recentSuggestionsRaw.length === 0 ? (
+          <div className="py-8 text-center text-xs text-neutral-400">
+            No customer fragrance requests yet. When visitors search for missing products and suggest them, they will appear here.
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {recentSuggestionsRaw.map((sugg) => (
+              <div
+                key={sugg.id}
+                className="p-3.5 bg-[#fbf9f5] border border-[#ecdac1] rounded-[8px] flex flex-col justify-between text-xs hover:border-[#b6713e] transition-colors"
+              >
+                <div>
+                  <div className="flex items-start justify-between gap-2 mb-1">
+                    <span className="font-bold text-[#1c1c1c] text-sm line-clamp-1">
+                      {sugg.productName}
+                    </span>
+                    <span
+                      className={`text-[9px] font-bold px-2 py-0.5 rounded uppercase shrink-0 ${
+                        sugg.status === "AVAILABLE"
+                          ? "bg-emerald-100 text-emerald-800"
+                          : sugg.status === "IN_REVIEW"
+                          ? "bg-blue-100 text-blue-800"
+                          : sugg.status === "REJECTED"
+                          ? "bg-neutral-200 text-neutral-700"
+                          : "bg-amber-100 text-amber-800"
+                      }`}
+                    >
+                      {sugg.status}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-neutral-500 truncate mb-2">
+                    {sugg.userEmail}
+                  </p>
+                  {sugg.searchQuery && (
+                    <span className="inline-block text-[10px] font-mono bg-white border border-[#e5e5e5] px-1.5 py-0.5 rounded text-neutral-600 mb-2">
+                      Searched: "{sugg.searchQuery}"
+                    </span>
+                  )}
+                </div>
+                <div className="text-[10px] text-neutral-400 border-t border-[#f0ece1] pt-2 flex items-center justify-between">
+                  <span>{new Date(sugg.createdAt).toLocaleDateString()}</span>
+                  <Link
+                    href="/admin/suggestions"
+                    className="text-[#b6713e] font-semibold hover:underline"
+                  >
+                    View &rarr;
+                  </Link>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
+

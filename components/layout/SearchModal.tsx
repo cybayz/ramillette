@@ -4,8 +4,9 @@ import React, { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Search, X, Loader2, ArrowRight } from "lucide-react";
+import { Search, X, Loader2, ArrowRight, Sparkles } from "lucide-react";
 import { formatPrice } from "@/lib/utils";
+import { SuggestProductModal } from "@/components/product/SuggestProductModal";
 
 interface SearchModalProps {
   isOpen: boolean;
@@ -17,6 +18,7 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isSuggestModalOpen, setIsSuggestModalOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -192,12 +194,37 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
               </div>
             </div>
           ) : !isLoading ? (
-            <div className="py-8 text-center text-neutral-500 text-sm">
-              No fragrances found matching "<strong>{query}</strong>". Try searching for "Oud", "Amber", or another scent.
+            <div className="py-8 text-center px-4">
+              <div className="w-12 h-12 rounded-full bg-[#faedcd]/40 border border-[#ecdac1] text-[#b6713e] flex items-center justify-center mx-auto mb-3">
+                <Sparkles size={20} />
+              </div>
+              <p className="text-sm font-semibold text-[#1c1c1c] mb-1">
+                No fragrances found matching "<strong>{query}</strong>"
+              </p>
+              <p className="text-xs text-neutral-500 mb-5 max-w-sm mx-auto leading-relaxed">
+                Can't find what you're looking for? Suggest this fragrance to our curation team and we'll notify you as soon as it arrives!
+              </p>
+              <button
+                type="button"
+                onClick={() => setIsSuggestModalOpen(true)}
+                className="btn-primary h-10 px-6 text-xs font-semibold inline-flex items-center justify-center gap-2 cursor-pointer shadow-sm hover:shadow-md transition-all"
+              >
+                <Sparkles size={14} className="text-[#faedcd]" />
+                <span>Suggest This Product</span>
+              </button>
             </div>
           ) : null}
         </div>
       </div>
+
+      {/* Suggest Product Modal */}
+      <SuggestProductModal
+        isOpen={isSuggestModalOpen}
+        onClose={() => setIsSuggestModalOpen(false)}
+        initialProductName={query}
+        searchQuery={query}
+      />
     </div>
   );
 }
+
