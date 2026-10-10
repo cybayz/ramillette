@@ -1470,7 +1470,7 @@ export default function CheckoutPage() {
                           <div className="flex items-center justify-between">
                             <span className="text-xs font-bold text-[#1c1c1c] flex items-center gap-1.5">
                               {methodId === "PAYLATER" ? (
-                                <PayLaterLogo className="w-5 h-5 shrink-0" color="#0066cc" />
+                                <PayLaterLogo iconOnly className="w-5 h-5 shrink-0" />
                               ) : methodId === "COD" ? (
                                 <Banknote size={16} className="text-[#b6713e]" />
                               ) : (

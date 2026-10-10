@@ -1060,7 +1060,7 @@ export function StoreSettingsView({ countries: initialCountries, settings }: Sto
       <div id="paylater-settings-section" className="bg-white rounded-[10px] border border-[#e5e5e5] shadow-xs overflow-hidden">
         <div className="px-6 py-4 border-b border-[#e5e5e5] bg-[#f0f7ff]/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-2.5">
-            <PayLaterLogo className="w-6 h-6 shrink-0" color="#0066cc" />
+            <PayLaterLogo iconOnly className="w-6 h-6 shrink-0" />
             <div>
               <h2 className="text-sm font-bold text-[#1c1c1c] flex items-center gap-2">
                 <span>PayLater (BNPL) Gateway Integration</span>

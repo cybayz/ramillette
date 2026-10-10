@@ -15,28 +15,70 @@ interface PayLaterCartButtonProps {
 }
 
 /**
- * PayLater SVG Brand Mark matching the official PayLater logo
+ * Official PayLater Brand Icon (Gradient Purple & Cyan Ribbon 'P')
  */
-export function PayLaterLogo({ className = "w-6 h-6", color = "#0066cc" }: { className?: string; color?: string }) {
+export function PayLaterIcon({ className = "w-7 h-7" }: { className?: string }) {
   return (
     <svg
       viewBox="0 0 32 32"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       className={className}
-      aria-label="PayLater"
+      aria-label="PayLater Icon"
     >
-      <rect width="32" height="32" rx="7" fill={color} fillOpacity="0.08" />
+      <defs>
+        <linearGradient id="paylaterPurpleGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#6924e2" />
+          <stop offset="50%" stopColor="#4c14ba" />
+          <stop offset="100%" stopColor="#320775" />
+        </linearGradient>
+        <linearGradient id="paylaterCyanGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#00e5ff" />
+          <stop offset="100%" stopColor="#00b4d8" />
+        </linearGradient>
+      </defs>
+
+      {/* Main Purple Loop & Stem of the P */}
       <path
-        d="M9 7.5H18.5C21.8 7.5 24.5 10.2 24.5 13.5C24.5 16.8 21.8 19.5 18.5 19.5H14.5V24.5H9V7.5Z"
-        fill={color}
+        d="M7 8.5C7 5.46243 9.46243 3 12.5 3H19C22.866 3 26 6.13401 26 10C26 13.866 22.866 17 19 17H13.5V20.5C13.5 22.1569 12.1569 23.5 10.5 23.5H9.5C8.11929 23.5 7 22.3807 7 21V8.5Z"
+        fill="url(#paylaterPurpleGradient)"
       />
+
+      {/* Inner Cutout Hole */}
+      <rect x="12" y="7.5" width="8" height="5.5" rx="2.75" fill="#ffffff" />
+
+      {/* Cyan Ribbon Fold at Bottom-Left */}
       <path
-        d="M14.5 12H18.2C19.3 12 20.2 12.9 20.2 14C20.2 15.1 19.3 16 18.2 16H14.5V12Z"
-        fill="#ffffff"
+        d="M5.5 19.5C5.5 17.8431 6.84315 16.5 8.5 16.5C10.1569 16.5 11.5 17.8431 11.5 19.5V22C11.5 23.6569 12.8431 25 14.5 25H15C15.8284 25 16.5 25.6716 16.5 26.5C16.5 27.3284 15.8284 28 15 28H10.5C7.73858 28 5.5 25.7614 5.5 23V19.5Z"
+        fill="url(#paylaterCyanGradient)"
       />
-      <circle cx="11.5" cy="19.5" r="2" fill="#38bdf8" />
     </svg>
+  );
+}
+
+/**
+ * PayLater Brand Lockup (Icon + Wordmark)
+ */
+export function PayLaterLogo({
+  className = "",
+  iconOnly = false,
+  color,
+}: {
+  className?: string;
+  iconOnly?: boolean;
+  color?: string;
+}) {
+  if (iconOnly) {
+    return <PayLaterIcon className={className || "w-6 h-6"} />;
+  }
+
+  return (
+    <div className={`inline-flex items-center gap-1.5 shrink-0 ${className}`}>
+      <PayLaterIcon className="w-7 h-7 shrink-0" />
+      <span className="text-[17px] sm:text-[18px] font-black tracking-tight text-[#381180] leading-none select-none">
+        Pay<span className="italic font-black">Later</span>
+      </span>
+    </div>
   );
 }
 
@@ -47,97 +89,53 @@ export function PayLaterCartButton({
   isAr = false,
   disabled = false,
   showBadges = false,
-  compact = false,
   className = "",
 }: PayLaterCartButtonProps) {
   const instalmentAmount = subtotal && subtotal > 0 ? (subtotal / 4).toFixed(2) : null;
 
   return (
-    <div className={`w-full ${compact ? "space-y-1.5" : "space-y-2"} ${className}`}>
-      {/* Divider */}
-      <div className="relative flex items-center justify-center my-0.5">
-        <div className="w-full border-t border-[#e2e8f0]" />
-        <span className="absolute bg-[#ffffff] px-2 text-[10px] font-bold text-neutral-400 uppercase tracking-wider">
-          {isAr ? "أو" : "OR"}
-        </span>
-      </div>
+    <div className={`w-full ${className}`}>
+      {/* PayLater Button matching reference image */}
+      <button
+        type="button"
+        onClick={onPayLaterClick}
+        disabled={disabled}
+        className={`w-full group text-left rtl:text-right transition-all duration-200 rounded-2xl h-13 py-3 px-4 sm:px-5 border border-[#cbd5e1] hover:border-[#94a3b8] bg-white hover:bg-neutral-50 active:scale-[0.99] flex items-center justify-between shadow-2xs cursor-pointer ${
+          disabled ? "opacity-50 cursor-not-allowed" : ""
+        }`}
+      >
+        <div className="flex items-center min-w-0">
+          <PayLaterLogo className="shrink-0" />
 
-      {compact ? (
-        /* Compact 1-line PayLater Button for Space-Saving Drawers */
-        <button
-          type="button"
-          onClick={onPayLaterClick}
-          disabled={disabled}
-          className={`w-full group text-left rtl:text-right transition-all duration-200 rounded-[7px] py-2 px-2.5 border border-[#bfdbfe] bg-[#f0f7ff] hover:bg-[#e3f0fe] active:scale-[0.99] cursor-pointer flex items-center justify-between shadow-2xs ${
-            disabled ? "opacity-50 cursor-not-allowed" : ""
-          }`}
-        >
-          <div className="flex items-center gap-2 min-w-0">
-            <PayLaterLogo className="w-5 h-5 shrink-0" color="#0066cc" />
-            <div className="flex items-center gap-1.5 min-w-0">
-              <span className="text-xs font-extrabold text-[#0066cc] tracking-tight">
-                PayLater
-              </span>
-              {instalmentAmount && (
-                <span className="text-[10px] font-semibold text-[#0066cc] bg-white/90 px-1.5 py-0.5 rounded border border-[#bfdbfe]/70 whitespace-nowrap">
-                  {isAr ? `4 × ${instalmentAmount} ${currency}` : `4 × ${currency} ${instalmentAmount}`}
-                </span>
-              )}
-            </div>
-          </div>
+          {/* Vertical Divider */}
+          <div className="h-6 w-[1px] bg-[#cbd5e1] mx-3 sm:mx-4 shrink-0" />
 
-          <div className="flex items-center gap-1 text-[11px] font-bold text-[#0066cc] shrink-0">
-            <span className="hidden xs:inline">{isAr ? "دفع بالتقسيط" : "Buy with PayLater"}</span>
-            <ArrowRight size={13} className={`transition-transform group-hover:translate-x-0.5 ${isAr ? "rotate-180 group-hover:-translate-x-0.5" : ""}`} />
-          </div>
-        </button>
-      ) : (
-        /* Standard 2-line PayLater Button */
-        <button
-          type="button"
-          onClick={onPayLaterClick}
-          disabled={disabled}
-          className={`w-full group text-left rtl:text-right transition-all duration-200 rounded-[10px] p-2.5 sm:p-3 border border-[#bfdbfe] bg-[#f0f7ff] hover:bg-[#e3f0fe] active:scale-[0.99] shadow-2xs cursor-pointer ${
-            disabled ? "opacity-50 cursor-not-allowed" : ""
-          }`}
-        >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <PayLaterLogo className="w-5 h-5 shrink-0" color="#0066cc" />
-              <div className="flex items-center gap-1.5">
-                <span className="text-xs font-medium text-[#1c1c1c]">
-                  {isAr ? "اشتري الآن عبر" : "Buy with"}
-                </span>
-                <span className="text-xs font-extrabold text-[#0066cc] tracking-tight">
-                  PayLater
-                </span>
-              </div>
-            </div>
-
-            <div className="w-5 h-5 rounded-full bg-white/80 border border-[#bfdbfe] flex items-center justify-center text-[#0066cc] group-hover:translate-x-0.5 rtl:group-hover:-translate-x-0.5 transition-transform">
-              <ArrowRight size={12} className={isAr ? "rotate-180" : ""} />
-            </div>
-          </div>
-
-          <div className="mt-1 pl-7 rtl:pl-0 rtl:pr-7 flex flex-wrap items-center justify-between text-[11px] text-[#475569]">
-            <span>
-              {isAr
-                ? "قسم دفعاتك بسهولة. متاح في قطر."
-                : "Split your payment. Available in Qatar."}
+          {/* Text: Pay in 4 installments */}
+          <div className="flex items-center gap-1.5 min-w-0">
+            <span className="text-xs sm:text-sm font-medium text-[#1c1c1c] whitespace-nowrap">
+              {isAr ? "ادفع على 4 دفعات" : "Pay in 4 installments"}
             </span>
             {instalmentAmount && (
-              <span className="font-semibold text-[#0066cc]">
-                {isAr ? `(4 × ${instalmentAmount} ${currency})` : `(4 × ${currency} ${instalmentAmount})`}
+              <span className="hidden md:inline text-[11px] font-semibold text-neutral-500 whitespace-nowrap">
+                {isAr ? `(${instalmentAmount} ${currency})` : `(${currency} ${instalmentAmount})`}
               </span>
             )}
           </div>
-        </button>
-      )}
+        </div>
 
-      {/* Trust & Guarantee Badges matching Image 1 */}
+        {/* Right Arrow */}
+        <ArrowRight
+          size={18}
+          className={`text-neutral-900 shrink-0 ml-2 transition-transform group-hover:translate-x-0.5 ${
+            isAr ? "rotate-180 group-hover:-translate-x-0.5" : ""
+          }`}
+        />
+      </button>
+
+      {/* Trust & Guarantee Badges (optional) */}
       {showBadges && (
-        <div className="grid grid-cols-2 gap-2 pt-1 pb-1">
-          <div className="flex items-center gap-2 p-2 rounded-[6px] bg-neutral-50/70 border border-neutral-100 text-neutral-600">
+        <div className="grid grid-cols-2 gap-2 pt-3">
+          <div className="flex items-center gap-2 p-2 rounded-lg bg-neutral-50/70 border border-neutral-100 text-neutral-600">
             <ShieldCheck size={16} className="text-[#0d9d00] shrink-0" />
             <div className="text-[10px] leading-tight">
               <span className="font-bold text-[#1c1c1c] block">
@@ -149,7 +147,7 @@ export function PayLaterCartButton({
             </div>
           </div>
 
-          <div className="flex items-center gap-2 p-2 rounded-[6px] bg-neutral-50/70 border border-neutral-100 text-neutral-600">
+          <div className="flex items-center gap-2 p-2 rounded-lg bg-neutral-50/70 border border-neutral-100 text-neutral-600">
             <Truck size={16} className="text-[#b6713e] shrink-0" />
             <div className="text-[10px] leading-tight">
               <span className="font-bold text-[#1c1c1c] block">

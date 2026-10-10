@@ -319,18 +319,16 @@ export default function CartPage() {
               </div>
 
               {/* Checkout & Add More Items Actions */}
-              <div className="pt-2 space-y-2.5">
-                <Button
+              <div className="pt-2 space-y-3">
+                <button
                   type="button"
-                  variant="primary"
-                  size="lg"
+                  disabled={isRedirecting}
                   onClick={handleProceedToCheckout}
-                  isLoading={isRedirecting}
-                  className="w-full h-13 text-sm font-semibold flex items-center justify-center gap-2 cursor-pointer shadow-sm"
+                  className="w-full h-13 rounded-2xl bg-[#eed2a4] hover:bg-[#e5c692] active:scale-[0.99] text-black font-bold text-sm sm:text-base flex items-center justify-center gap-2.5 transition-all shadow-xs cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <span>{isAr ? "المتابعة إلى الدفع" : "Proceed to Checkout"}</span>
-                  <ArrowRight size={16} className="rtl:rotate-180" />
-                </Button>
+                  <ArrowRight size={18} className="rtl:rotate-180" />
+                </button>
 
                 {/* PayLater Buy Button */}
                 <PayLaterCartButton
@@ -338,8 +336,8 @@ export default function CartPage() {
                   subtotal={finalTotal}
                   currency={config?.currency || "QAR"}
                   isAr={isAr}
-                  showBadges={false}
                 />
+
 
                 <Link href={isAr ? "/ar/shop" : "/shop"} className="block w-full">
                   <button

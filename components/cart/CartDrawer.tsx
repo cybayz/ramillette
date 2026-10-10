@@ -151,30 +151,26 @@ export function CartDrawer() {
             </label>
 
             {/* Action Buttons */}
-            <div className="space-y-2 pt-0.5">
-              <Button
+            <div className="space-y-3 pt-1">
+              <button
                 type="button"
-                variant="primary"
-                disabled={!agreedToTerms}
+                disabled={!agreedToTerms || isRedirecting}
                 onClick={handleProceedToCheckout}
-                isLoading={isRedirecting}
-                className="w-full h-11 text-xs sm:text-sm font-semibold flex items-center justify-center gap-2 cursor-pointer shadow-xs"
+                className="w-full h-13 rounded-2xl bg-[#eed2a4] hover:bg-[#e5c692] active:scale-[0.99] text-black font-bold text-sm sm:text-base flex items-center justify-center gap-2.5 transition-all shadow-xs cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <span>{isAr ? "المتابعة إلى الدفع" : "Proceed to Checkout"}</span>
-                <ArrowRight size={15} />
-              </Button>
+                <ArrowRight size={18} className="rtl:rotate-180" />
+              </button>
 
-              {/* PayLater Option in sleek compact mode */}
               <PayLaterCartButton
                 onPayLaterClick={handleBuyWithPayLater}
                 subtotal={subtotal}
                 currency={config.currency}
                 isAr={isAr}
                 disabled={!agreedToTerms}
-                compact={true}
-                showBadges={false}
               />
             </div>
+
           </div>
         ) : undefined
       }
