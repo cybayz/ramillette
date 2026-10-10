@@ -47,6 +47,7 @@ interface ProductCardProps {
   isArabic?: boolean;
   variant?: "standard" | "collection";
   selectedSize?: string;
+  layout?: "grid" | "list";
 }
 
 export function ProductCard({
@@ -55,6 +56,7 @@ export function ProductCard({
   isArabic,
   variant = "standard",
   selectedSize,
+  layout = "grid",
 }: ProductCardProps) {
   const pathname = usePathname();
   const { addItem, openCart } = useCartStore();
@@ -241,12 +243,25 @@ export function ProductCard({
 
   return (
     <div
-      className={cn("group relative flex flex-col bg-white", className)}
+      className={cn(
+        "group relative bg-white transition-all",
+        layout === "list"
+          ? "flex flex-row items-center gap-3 sm:gap-5 p-3 sm:p-4 rounded-xl border border-neutral-200/80 hover:border-neutral-300 shadow-2xs hover:shadow-xs"
+          : "flex flex-col",
+        className
+      )}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
       {/* Product Image Area with Hover Effect */}
-      <div className="relative w-full aspect-square rounded-xl overflow-hidden bg-[#f7f5f0]">
+      <div
+        className={cn(
+          "relative rounded-xl overflow-hidden bg-[#f7f5f0]",
+          layout === "list"
+            ? "w-28 sm:w-36 h-28 sm:h-36 shrink-0 aspect-square"
+            : "w-full aspect-square"
+        )}
+      >
         {/* Size Badge (e.g. 30ml / 80ml) on Top Left */}
         {sizeBadge && (
           <span className="absolute top-2.5 start-2.5 z-10 bg-white/95 text-neutral-900 text-[11px] font-bold px-2 py-0.5 rounded-[4px] shadow-xs">
@@ -313,23 +328,39 @@ export function ProductCard({
 
       {variant === "collection" ? (
         /* Collection View Card Details */
-        <div className="flex flex-col flex-1 pt-2.5 text-start">
-          <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-neutral-400 block mb-0.5">
-            {brandName}
-          </span>
-          <Link
-            href={productHref}
-            className="text-[14px] sm:text-[15px] font-bold text-neutral-900 hover:text-[#4e6648] transition-colors line-clamp-1 block text-start"
-          >
-            {displayName}
-          </Link>
-          <div className="mt-1 text-start">
-            <span className="text-[14px] sm:text-[15px] font-bold text-neutral-900">
-              {formatPrice(currentPrice, country)}
+        <div
+          className={cn(
+            "flex text-start",
+            layout === "list"
+              ? "flex-col flex-1 min-w-0 justify-between self-stretch py-0.5"
+              : "flex-col flex-1 pt-2.5"
+          )}
+        >
+          <div>
+            <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-neutral-400 block mb-0.5">
+              {brandName}
             </span>
+            <Link
+              href={productHref}
+              className="text-[14px] sm:text-[15px] font-bold text-neutral-900 hover:text-[#4e6648] transition-colors line-clamp-1 block text-start"
+            >
+              {displayName}
+            </Link>
+            <div className="mt-1 text-start">
+              <span className="text-[14px] sm:text-[15px] font-bold text-neutral-900">
+                {formatPrice(currentPrice, country)}
+              </span>
+            </div>
           </div>
 
-          <div className="mt-3 flex flex-col gap-1.5">
+          <div
+            className={cn(
+              "mt-3",
+              layout === "list"
+                ? "flex flex-row items-center gap-2 max-w-sm"
+                : "flex flex-col gap-1.5"
+            )}
+          >
             {/* Button 1: Add to Cart (or Notify Me if Out of Stock) */}
             {isOutOfStock ? (
               <button
@@ -339,7 +370,10 @@ export function ProductCard({
                   e.stopPropagation();
                   setIsNotifyModalOpen(true);
                 }}
-                className="w-full py-1.5 sm:py-2 px-1.5 sm:px-2 border border-amber-500/40 hover:border-amber-600 bg-amber-50/80 hover:bg-amber-100 text-amber-900 rounded-[6px] text-[11px] sm:text-xs font-semibold flex items-center justify-center gap-1 sm:gap-1.5 transition-all cursor-pointer shadow-2xs"
+                className={cn(
+                  "border border-amber-500/40 hover:border-amber-600 bg-amber-50/80 hover:bg-amber-100 text-amber-900 rounded-[6px] text-[11px] sm:text-xs font-semibold flex items-center justify-center gap-1 sm:gap-1.5 transition-all cursor-pointer shadow-2xs",
+                  layout === "list" ? "flex-1 py-1.5 px-3" : "w-full py-1.5 sm:py-2 px-1.5 sm:px-2"
+                )}
               >
                 <Bell size={13} className="stroke-[2] text-amber-700 shrink-0" />
                 <span className="truncate">{notifyMeText}</span>
@@ -348,7 +382,10 @@ export function ProductCard({
               <button
                 type="button"
                 onClick={handleAddToCartClick}
-                className="w-full py-1.5 sm:py-2 px-1.5 sm:px-2 border border-neutral-200 hover:border-[#233324] hover:bg-[#233324] hover:text-white rounded-[6px] text-[11px] sm:text-xs font-semibold text-neutral-900 bg-white flex items-center justify-center gap-1 sm:gap-1.5 transition-all cursor-pointer shadow-2xs"
+                className={cn(
+                  "border border-neutral-200 hover:border-[#233324] hover:bg-[#233324] hover:text-white rounded-[6px] text-[11px] sm:text-xs font-semibold text-neutral-900 bg-white flex items-center justify-center gap-1 sm:gap-1.5 transition-all cursor-pointer shadow-2xs",
+                  layout === "list" ? "flex-1 py-1.5 px-3" : "w-full py-1.5 sm:py-2 px-1.5 sm:px-2"
+                )}
               >
                 <ShoppingCart size={13} className="stroke-[2] shrink-0" />
                 <span className="truncate">{addToCartText}</span>
@@ -358,7 +395,10 @@ export function ProductCard({
             {/* Button 2: Choose & Buy (Navigates to Product Detail Page) */}
             <Link
               href={productHref}
-              className="w-full py-1.5 px-1.5 sm:px-2 bg-[#4e6648] hover:bg-[#3d5239] text-white rounded-[6px] text-[11px] sm:text-xs font-semibold flex items-center justify-center transition-colors cursor-pointer shadow-2xs text-center truncate"
+              className={cn(
+                "bg-[#4e6648] hover:bg-[#3d5239] text-white rounded-[6px] text-[11px] sm:text-xs font-semibold flex items-center justify-center transition-colors cursor-pointer shadow-2xs text-center truncate",
+                layout === "list" ? "flex-1 py-1.5 px-3" : "w-full py-1.5 px-1.5 sm:px-2"
+              )}
             >
               <span className="truncate">{chooseAndBuyText}</span>
             </Link>
