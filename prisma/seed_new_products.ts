@@ -338,7 +338,31 @@ async function main() {
 
   console.log("=== Fast Batch Seeding 80 Fragrances ===");
 
-  // 1. Ensure Categories exist
+  // 1. Wipe legacy orders, cart items, inventories, and products
+  console.log("Step 1: Wiping legacy orders, inventory transactions, and test products...");
+  await prisma.orderReturnItem.deleteMany().catch(() => {});
+  await prisma.orderReturn.deleteMany().catch(() => {});
+  await prisma.posPayment.deleteMany().catch(() => {});
+  await prisma.orderItem.deleteMany().catch(() => {});
+  await prisma.rewardPointTransaction.deleteMany().catch(() => {});
+  await prisma.order.deleteMany().catch(() => {});
+  await prisma.cartItem.deleteMany().catch(() => {});
+  await prisma.wishlist.deleteMany().catch(() => {});
+  await prisma.review.deleteMany().catch(() => {});
+  await prisma.stockTransferItem.deleteMany().catch(() => {});
+  await prisma.stockTransfer.deleteMany().catch(() => {});
+  await prisma.purchaseOrderItem.deleteMany().catch(() => {});
+  await prisma.purchaseOrder.deleteMany().catch(() => {});
+  await prisma.inventoryTransaction.deleteMany().catch(() => {});
+  await prisma.storeInventory.deleteMany().catch(() => {});
+  await prisma.productVariantCountry.deleteMany().catch(() => {});
+  await prisma.productVariant.deleteMany().catch(() => {});
+  await prisma.productCountry.deleteMany().catch(() => {});
+  await prisma.productImage.deleteMany().catch(() => {});
+  await prisma.product.deleteMany().catch(() => {});
+  console.log("Database cleared of all legacy products and orders.");
+
+  // 2. Ensure Categories exist
   const categories = await prisma.category.findMany();
   const categoryMap = new Map(categories.map((c) => [c.slug, c.id]));
   const defaultInspiredId = categoryMap.get("inspired") || categories[0]?.id;
@@ -447,6 +471,7 @@ async function main() {
       create: {
         name: title,
         slug,
+        sku: `PROD-${slug.toUpperCase()}`,
         description,
         shortDescription,
         brand: "Ramillette",
@@ -483,7 +508,7 @@ async function main() {
         variants: {
           create: availableVariants.map((v) => ({
             name: v.name,
-            sku: `RAM-${slug.slice(0, 4).toUpperCase()}-${v.name.toUpperCase()}`,
+            sku: `VAR-${slug.toUpperCase()}-${v.name.toUpperCase()}`,
             price: v.price,
             compareAtPrice: Math.round(v.price * 1.25),
             stock: 40,

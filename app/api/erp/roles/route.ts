@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
 import { getErpUser, hasPermission } from "@/lib/erp/context";
 
-export const ALL_SYSTEM_PERMISSIONS = [
+const ALL_SYSTEM_PERMISSIONS = [
   {
     category: "Storefront & Retail",
     permissions: [

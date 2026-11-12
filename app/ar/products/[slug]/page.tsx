@@ -1,4 +1,5 @@
-import ProductDetailPage, {
+import {
+  ProductDetailPageContent,
   generateMetadata as baseMetadata,
   generateStaticParams as baseStaticParams,
 } from "@/app/product/[slug]/page";
@@ -10,5 +11,5 @@ interface PageProps {
 }
 
 export default async function ArabicProductsDetailPage({ params }: PageProps) {
-  return <ProductDetailPage params={params} isArabic={true} />;
+  return <ProductDetailPageContent params={params} isArabic={true} />;
 }

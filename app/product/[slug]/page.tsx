@@ -13,7 +13,7 @@ export const revalidate = 60;
 
 interface PageProps {
   params: Promise<{ slug: string }>;
-  isArabic?: boolean;
+  searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
 }
 
 // Deduplicate product query between generateMetadata and Page component
@@ -97,7 +97,10 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   };
 }
 
-export default async function ProductDetailPage({ params, isArabic = false }: PageProps) {
+export async function ProductDetailPageContent({
+  params,
+  isArabic = false,
+}: PageProps & { isArabic?: boolean }) {
   const { slug } = await params;
   const product = await getProduct(slug);
 
@@ -250,4 +253,8 @@ export default async function ProductDetailPage({ params, isArabic = false }: Pa
       <ValueProps />
     </div>
   );
+}
+
+export default async function ProductDetailPage({ params }: PageProps) {
+  return <ProductDetailPageContent params={params} isArabic={false} />;
 }
