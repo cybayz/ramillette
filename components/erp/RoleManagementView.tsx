@@ -72,6 +72,7 @@ export function RoleManagementView() {
   const [roles, setRoles] = useState<RoleData[]>([]);
   const [catalog, setCatalog] = useState<PermissionCategory[]>([]);
   const [staff, setStaff] = useState<StaffUser[]>([]);
+  const [availableStores, setAvailableStores] = useState<{ id: string; name: string; code: string; countryCode: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [savingRoleId, setSavingRoleId] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -83,6 +84,17 @@ export function RoleManagementView() {
   const [newRoleLanding, setNewRoleLanding] = useState("/erp/pos");
   const [newRolePerms, setNewRolePerms] = useState<string[]>(["pos:access"]);
   const [creating, setCreating] = useState(false);
+
+  // New staff / cashier modal state
+  const [showCreateStaffModal, setShowCreateStaffModal] = useState(false);
+  const [newStaffFirstName, setNewStaffFirstName] = useState("");
+  const [newStaffLastName, setNewStaffLastName] = useState("");
+  const [newStaffEmail, setNewStaffEmail] = useState("");
+  const [newStaffPassword, setNewStaffPassword] = useState("");
+  const [newStaffPhone, setNewStaffPhone] = useState("");
+  const [newStaffStoreId, setNewStaffStoreId] = useState("");
+  const [newStaffRoleId, setNewStaffRoleId] = useState("");
+  const [creatingStaff, setCreatingStaff] = useState(false);
 
   useEffect(() => {
     fetchRolesAndCatalog();
@@ -115,6 +127,9 @@ export function RoleManagementView() {
       const data = await res.json();
       if (data.success) {
         setStaff(data.users);
+        if (data.stores) {
+          setAvailableStores(data.stores);
+        }
       }
     } catch (err) {
       console.error("Failed to load staff", err);
@@ -243,6 +258,72 @@ export function RoleManagementView() {
       }
     } catch (err) {
       showToast("Network error reassigning role");
+    }
+  };
+
+  const handleAssignStore = async (userId: string, assignedStoreId: string) => {
+    try {
+      const res = await fetch("/api/erp/roles/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, assignedStoreId: assignedStoreId || null }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast("Assigned branch updated!");
+        fetchStaff();
+      } else {
+        showToast(data.error || "Failed to update assigned branch");
+      }
+    } catch (err) {
+      showToast("Network error updating branch");
+    }
+  };
+
+  const handleCreateStaff = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newStaffEmail || !newStaffPassword || !newStaffFirstName) {
+      showToast("Please enter first name, email, and password");
+      return;
+    }
+    setCreatingStaff(true);
+    try {
+      const selectedRoleObj = roles.find((r) => r.id === newStaffRoleId);
+      const res = await fetch("/api/erp/roles/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "create",
+          firstName: newStaffFirstName,
+          lastName: newStaffLastName,
+          email: newStaffEmail,
+          password: newStaffPassword,
+          phone: newStaffPhone,
+          role: selectedRoleObj?.isSystem ? selectedRoleObj.name : "CASHIER",
+          customRoleId: selectedRoleObj?.isSystem ? null : selectedRoleObj?.id || null,
+          assignedStoreId: newStaffStoreId || null,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast(`Staff member "${data.user.name}" created successfully!`);
+        setShowCreateStaffModal(false);
+        setNewStaffFirstName("");
+        setNewStaffLastName("");
+        setNewStaffEmail("");
+        setNewStaffPassword("");
+        setNewStaffPhone("");
+        setNewStaffStoreId("");
+        setNewStaffRoleId("");
+        fetchStaff();
+        fetchRolesAndCatalog();
+      } else {
+        showToast(data.error || "Failed to create staff member");
+      }
+    } catch (err) {
+      showToast("Network error creating staff member");
+    } finally {
+      setCreatingStaff(false);
     }
   };
 
@@ -519,6 +600,19 @@ export function RoleManagementView() {
                 Assign branch employees to their respective roles to enforce isolation.
               </p>
             </div>
+            <button
+              type="button"
+              onClick={() => {
+                const cashierRole = roles.find((r) => r.name === "CASHIER") || roles[0];
+                if (cashierRole) setNewStaffRoleId(cashierRole.id);
+                if (availableStores[0]) setNewStaffStoreId(availableStores[0].id);
+                setShowCreateStaffModal(true);
+              }}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#faedcd] hover:bg-[#faedcd]/90 text-[#1c1c1c] rounded text-xs font-bold transition-all shadow-xs cursor-pointer"
+            >
+              <Plus size={14} />
+              <span>Add Staff / Cashier</span>
+            </button>
           </div>
 
           <div className="overflow-x-auto">
@@ -547,15 +641,18 @@ export function RoleManagementView() {
                         <span className="text-[11px] text-neutral-500">{u.phone || "—"}</span>
                       </td>
                       <td className="p-3.5">
-                        <div className="flex items-center gap-1.5 text-neutral-300">
-                          <Store size={13} className="text-[#faedcd]" />
-                          <span className="font-medium">{u.storeName}</span>
-                          {u.storeCode && (
-                            <span className="text-[9px] font-mono bg-[#222222] px-1 rounded text-neutral-400">
-                              {u.storeCode}
-                            </span>
-                          )}
-                        </div>
+                        <select
+                          value={u.assignedStoreId || ""}
+                          onChange={(e) => handleAssignStore(u.id, e.target.value)}
+                          className="bg-[#1c1c1c] border border-[#2e2e2e] text-neutral-200 text-xs rounded px-2.5 py-1.5 outline-hidden cursor-pointer"
+                        >
+                          <option value="">Global / Unassigned</option>
+                          {availableStores.map((s) => (
+                            <option key={s.id} value={s.id}>
+                              {s.name} ({s.countryCode})
+                            </option>
+                          ))}
+                        </select>
                       </td>
                       <td className="p-3.5">
                         <select
@@ -700,6 +797,152 @@ export function RoleManagementView() {
                   className="inline-flex items-center gap-2 bg-[#faedcd] hover:bg-[#faedcd]/90 text-[#1c1c1c] px-5 py-2 rounded-[6px] text-xs font-bold transition-all shadow-xs disabled:opacity-50"
                 >
                   {creating ? "Creating..." : "Save Role"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* CREATE STAFF MEMBER / CASHIER MODAL */}
+      {showCreateStaffModal && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-[#181818] border border-[#2d2d2d] rounded-[12px] max-w-lg w-full p-6 shadow-2xl space-y-5 animate-in fade-in zoom-in-95">
+            <div className="flex items-center justify-between border-b border-[#282828] pb-3">
+              <div className="flex items-center gap-2">
+                <Users size={18} className="text-[#faedcd]" />
+                <h3 className="font-bold text-sm text-white">Add New Staff / Cashier Account</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowCreateStaffModal(false)}
+                className="text-neutral-400 hover:text-white transition-colors"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateStaff} className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[11px] uppercase tracking-wider text-neutral-400 font-bold block mb-1">
+                    First Name *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Faisal"
+                    value={newStaffFirstName}
+                    onChange={(e) => setNewStaffFirstName(e.target.value)}
+                    className="w-full bg-[#121212] border border-[#2e2e2e] rounded-[6px] px-3 py-2 text-xs text-white placeholder-neutral-600 focus:outline-hidden focus:border-[#faedcd]"
+                  />
+                </div>
+                <div>
+                  <label className="text-[11px] uppercase tracking-wider text-neutral-400 font-bold block mb-1">
+                    Last Name
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Al-Thani"
+                    value={newStaffLastName}
+                    onChange={(e) => setNewStaffLastName(e.target.value)}
+                    className="w-full bg-[#121212] border border-[#2e2e2e] rounded-[6px] px-3 py-2 text-xs text-white placeholder-neutral-600 focus:outline-hidden focus:border-[#faedcd]"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-[11px] uppercase tracking-wider text-neutral-400 font-bold block mb-1">
+                  Email Address *
+                </label>
+                <input
+                  type="email"
+                  required
+                  placeholder="e.g. faisal@ramillette.com"
+                  value={newStaffEmail}
+                  onChange={(e) => setNewStaffEmail(e.target.value)}
+                  className="w-full bg-[#121212] border border-[#2e2e2e] rounded-[6px] px-3 py-2 text-xs text-white placeholder-neutral-600 focus:outline-hidden focus:border-[#faedcd]"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[11px] uppercase tracking-wider text-neutral-400 font-bold block mb-1">
+                    Login Password *
+                  </label>
+                  <input
+                    type="password"
+                    required
+                    placeholder="••••••••"
+                    value={newStaffPassword}
+                    onChange={(e) => setNewStaffPassword(e.target.value)}
+                    className="w-full bg-[#121212] border border-[#2e2e2e] rounded-[6px] px-3 py-2 text-xs text-white placeholder-neutral-600 focus:outline-hidden focus:border-[#faedcd]"
+                  />
+                </div>
+                <div>
+                  <label className="text-[11px] uppercase tracking-wider text-neutral-400 font-bold block mb-1">
+                    Phone Number
+                  </label>
+                  <input
+                    type="tel"
+                    placeholder="e.g. +974 5555 1234"
+                    value={newStaffPhone}
+                    onChange={(e) => setNewStaffPhone(e.target.value)}
+                    className="w-full bg-[#121212] border border-[#2e2e2e] rounded-[6px] px-3 py-2 text-xs text-white placeholder-neutral-600 focus:outline-hidden focus:border-[#faedcd]"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[11px] uppercase tracking-wider text-neutral-400 font-bold block mb-1">
+                    Operational Role *
+                  </label>
+                  <select
+                    value={newStaffRoleId}
+                    onChange={(e) => setNewStaffRoleId(e.target.value)}
+                    className="w-full bg-[#121212] border border-[#2e2e2e] rounded-[6px] px-3 py-2 text-xs text-[#faedcd] font-semibold focus:outline-hidden focus:border-[#faedcd] cursor-pointer"
+                  >
+                    {roles.map((r) => (
+                      <option key={r.id} value={r.id}>
+                        {r.displayName}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-[11px] uppercase tracking-wider text-neutral-400 font-bold block mb-1">
+                    Assigned Store / Branch *
+                  </label>
+                  <select
+                    value={newStaffStoreId}
+                    onChange={(e) => setNewStaffStoreId(e.target.value)}
+                    className="w-full bg-[#121212] border border-[#2e2e2e] rounded-[6px] px-3 py-2 text-xs text-white focus:outline-hidden focus:border-[#faedcd] cursor-pointer"
+                  >
+                    <option value="">Global / Unassigned</option>
+                    {availableStores.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.name} ({s.countryCode})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#262626]">
+                <button
+                  type="button"
+                  onClick={() => setShowCreateStaffModal(false)}
+                  className="px-4 py-2 rounded-[6px] text-xs font-semibold text-neutral-400 hover:text-white transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={creatingStaff}
+                  className="inline-flex items-center gap-2 bg-[#faedcd] hover:bg-[#faedcd]/90 text-[#1c1c1c] px-5 py-2 rounded-[6px] text-xs font-bold transition-all shadow-xs disabled:opacity-50 cursor-pointer"
+                >
+                  {creatingStaff ? "Creating..." : "Create Cashier Account"}
                 </button>
               </div>
             </form>

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
+import bcrypt from "bcryptjs";
 import { getErpUser, hasPermission } from "@/lib/erp/context";
 
 export async function GET() {
@@ -9,21 +10,29 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized access" }, { status: 403 });
     }
 
-    const staffUsers = await prisma.user.findMany({
-      where: {
-        role: { not: "CUSTOMER" },
-      },
-      include: {
-        customRole: true,
-        assignedStore: {
-          include: { region: true, country: true },
+    const [staffUsers, stores] = await Promise.all([
+      prisma.user.findMany({
+        where: {
+          role: { not: "CUSTOMER" },
         },
-      },
-      orderBy: { createdAt: "asc" },
-    });
+        include: {
+          customRole: true,
+          assignedStore: {
+            include: { region: true, country: true },
+          },
+        },
+        orderBy: { createdAt: "asc" },
+      }),
+      prisma.store.findMany({
+        where: { active: true },
+        select: { id: true, name: true, code: true, countryCode: true },
+        orderBy: [{ countryCode: "asc" }, { name: "asc" }],
+      }),
+    ]);
 
     return NextResponse.json({
       success: true,
+      stores,
       users: staffUsers.map((u) => ({
         id: u.id,
         email: u.email,
@@ -53,6 +62,67 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
+
+    // Create New Staff Member (e.g. Cashier)
+    if (body.action === "create") {
+      const { email, password, firstName, lastName, phone, role, customRoleId, assignedStoreId } = body;
+      if (!email || !password || !firstName) {
+        return NextResponse.json({ error: "First name, email and password are required" }, { status: 400 });
+      }
+
+      const normalizedEmail = email.trim().toLowerCase();
+      const existing = await prisma.user.findUnique({ where: { email: normalizedEmail } });
+      if (existing) {
+        return NextResponse.json({ error: "An account with this email already exists" }, { status: 400 });
+      }
+
+      const passwordHash = await bcrypt.hash(password, 10);
+      const roleEnum = role || "CASHIER";
+
+      const newUser = await prisma.user.create({
+        data: {
+          email: normalizedEmail,
+          passwordHash,
+          firstName: firstName.trim(),
+          lastName: lastName?.trim() || null,
+          phone: phone?.trim() || null,
+          role: roleEnum as any,
+          customRoleId: customRoleId || null,
+          assignedStoreId: assignedStoreId || null,
+        },
+        include: {
+          customRole: true,
+          assignedStore: true,
+        },
+      });
+
+      if (assignedStoreId) {
+        await prisma.userStore.create({
+          data: {
+            userId: newUser.id,
+            storeId: assignedStoreId,
+            isDefault: true,
+          },
+        }).catch(() => {});
+      }
+
+      return NextResponse.json({
+        success: true,
+        user: {
+          id: newUser.id,
+          email: newUser.email,
+          name: `${newUser.firstName || ""} ${newUser.lastName || ""}`.trim() || newUser.email,
+          phone: newUser.phone,
+          role: newUser.role,
+          customRoleId: newUser.customRoleId,
+          customRoleName: newUser.customRole?.displayName || newUser.role,
+          assignedStoreId: newUser.assignedStoreId,
+          storeName: newUser.assignedStore?.name || "Global / Unassigned",
+          storeCode: newUser.assignedStore?.code || null,
+        },
+      });
+    }
+
     const { userId, customRoleId, assignedStoreId } = body;
 
     if (!userId) {
