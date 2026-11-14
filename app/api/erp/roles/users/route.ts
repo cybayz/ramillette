@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
 import bcrypt from "bcryptjs";
+import { Role } from "@prisma/client";
 import { getErpUser, hasPermission } from "@/lib/erp/context";
 
 export async function GET() {
@@ -63,11 +64,69 @@ export async function POST(request: Request) {
 
     const body = await request.json();
 
+    // Reset Staff Member Password (Super Admin / Authorized Admin)
+    if (body.action === "reset_password" || body.action === "reset-password") {
+      const { userId, newPassword } = body;
+      if (!userId || !newPassword) {
+        return NextResponse.json({ error: "User ID and new password are required" }, { status: 400 });
+      }
+
+      if (typeof newPassword !== "string" || newPassword.trim().length < 6) {
+        return NextResponse.json({ error: "Password must be at least 6 characters" }, { status: 400 });
+      }
+
+      const targetUser = await prisma.user.findUnique({
+        where: { id: userId },
+      });
+
+      if (!targetUser) {
+        return NextResponse.json({ error: "Staff member not found" }, { status: 404 });
+      }
+
+      // Safeguard: Only Super Admin can reset another Super Admin's password
+      if (targetUser.role === "SUPER_ADMIN" && user.role !== "SUPER_ADMIN") {
+        return NextResponse.json(
+          { error: "Only a Super Administrator can reset credentials for this account." },
+          { status: 403 }
+        );
+      }
+
+      const passwordHash = await bcrypt.hash(newPassword.trim(), 10);
+
+      await prisma.user.update({
+        where: { id: userId },
+        data: { passwordHash },
+      });
+
+      // Audit log entry
+      await prisma.auditLog.create({
+        data: {
+          userId: user.id,
+          action: "STAFF_PASSWORD_RESET",
+          entity: "User",
+          entityId: targetUser.id,
+          newValue: {
+            targetEmail: targetUser.email,
+            resetBy: user.email,
+          },
+        },
+      }).catch(() => {});
+
+      return NextResponse.json({
+        success: true,
+        message: `Password reset successfully for ${targetUser.email}`,
+      });
+    }
+
     // Create New Staff Member (e.g. Cashier)
     if (body.action === "create") {
       const { email, password, firstName, lastName, phone, role, customRoleId, assignedStoreId } = body;
       if (!email || !password || !firstName) {
         return NextResponse.json({ error: "First name, email and password are required" }, { status: 400 });
+      }
+
+      if (password.trim().length < 6) {
+        return NextResponse.json({ error: "Password must be at least 6 characters" }, { status: 400 });
       }
 
       const normalizedEmail = email.trim().toLowerCase();
@@ -76,7 +135,7 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: "An account with this email already exists" }, { status: 400 });
       }
 
-      const passwordHash = await bcrypt.hash(password, 10);
+      const passwordHash = await bcrypt.hash(password.trim(), 10);
       const roleEnum = role || "CASHIER";
 
       const newUser = await prisma.user.create({
@@ -86,7 +145,7 @@ export async function POST(request: Request) {
           firstName: firstName.trim(),
           lastName: lastName?.trim() || null,
           phone: phone?.trim() || null,
-          role: roleEnum as any,
+          role: roleEnum as Role,
           customRoleId: customRoleId || null,
           assignedStoreId: assignedStoreId || null,
         },
@@ -97,14 +156,38 @@ export async function POST(request: Request) {
       });
 
       if (assignedStoreId) {
-        await prisma.userStore.create({
-          data: {
+        await prisma.userStore.upsert({
+          where: {
+            userId_storeId: {
+              userId: newUser.id,
+              storeId: assignedStoreId,
+            },
+          },
+          create: {
             userId: newUser.id,
             storeId: assignedStoreId,
             isDefault: true,
           },
+          update: {
+            isDefault: true,
+          },
         }).catch(() => {});
       }
+
+      await prisma.auditLog.create({
+        data: {
+          userId: user.id,
+          action: "STAFF_USER_CREATED",
+          entity: "User",
+          entityId: newUser.id,
+          newValue: {
+            email: newUser.email,
+            role: newUser.role,
+            assignedStoreId,
+            createdBy: user.email,
+          },
+        },
+      }).catch(() => {});
 
       return NextResponse.json({
         success: true,
@@ -146,7 +229,7 @@ export async function POST(request: Request) {
         // Map to corresponding prisma Role if matches, or retain existing
         const possibleRoles = ["SUPER_ADMIN", "STORE_MANAGER", "CASHIER", "INVENTORY_MANAGER", "FULFILLMENT_STAFF", "ACCOUNTANT", "ADMIN"];
         if (possibleRoles.includes(customRole.name)) {
-          roleName = customRole.name as any;
+          roleName = customRole.name as Role;
         }
       }
     }
@@ -163,6 +246,25 @@ export async function POST(request: Request) {
         assignedStore: true,
       },
     });
+
+    if (assignedStoreId) {
+      await prisma.userStore.upsert({
+        where: {
+          userId_storeId: {
+            userId: updated.id,
+            storeId: assignedStoreId,
+          },
+        },
+        create: {
+          userId: updated.id,
+          storeId: assignedStoreId,
+          isDefault: true,
+        },
+        update: {
+          isDefault: true,
+        },
+      }).catch(() => {});
+    }
 
     return NextResponse.json({
       success: true,

@@ -18,6 +18,11 @@ import {
   Info,
   CheckCircle2,
   Trash2,
+  KeyRound,
+  Copy,
+  Eye,
+  EyeOff,
+  RefreshCw,
 } from "lucide-react";
 
 interface RoleData {
@@ -95,6 +100,15 @@ export function RoleManagementView() {
   const [newStaffStoreId, setNewStaffStoreId] = useState("");
   const [newStaffRoleId, setNewStaffRoleId] = useState("");
   const [creatingStaff, setCreatingStaff] = useState(false);
+  const [showCreatePasswordText, setShowCreatePasswordText] = useState(false);
+
+  // Reset password modal state
+  const [showResetPasswordModal, setShowResetPasswordModal] = useState(false);
+  const [resetTargetUser, setResetTargetUser] = useState<StaffUser | null>(null);
+  const [resetNewPassword, setResetNewPassword] = useState("");
+  const [resettingPassword, setResettingPassword] = useState(false);
+  const [showResetPasswordText, setShowResetPasswordText] = useState(false);
+  const [copiedResetPassword, setCopiedResetPassword] = useState(false);
 
   useEffect(() => {
     fetchRolesAndCatalog();
@@ -324,6 +338,55 @@ export function RoleManagementView() {
       showToast("Network error creating staff member");
     } finally {
       setCreatingStaff(false);
+    }
+  };
+
+  const generateSecurePassword = (prefix = "Ram@2026") => {
+    const chars = "abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789!#$";
+    let randomPart = "";
+    for (let i = 0; i < 6; i++) {
+      randomPart += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return `${prefix}${randomPart}`;
+  };
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!resetTargetUser || !resetNewPassword.trim()) {
+      showToast("Please enter a new password");
+      return;
+    }
+    if (resetNewPassword.trim().length < 6) {
+      showToast("Password must be at least 6 characters");
+      return;
+    }
+
+    setResettingPassword(true);
+    try {
+      const res = await fetch("/api/erp/roles/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "reset_password",
+          userId: resetTargetUser.id,
+          newPassword: resetNewPassword.trim(),
+        }),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        showToast(`Password successfully reset for ${resetTargetUser.name || resetTargetUser.email}!`);
+        setShowResetPasswordModal(false);
+        setResetTargetUser(null);
+        setResetNewPassword("");
+        setShowResetPasswordText(false);
+      } else {
+        showToast(data.error || "Failed to reset password");
+      }
+    } catch (err) {
+      showToast("Network error resetting password");
+    } finally {
+      setResettingPassword(false);
     }
   };
 
@@ -624,6 +687,7 @@ export function RoleManagementView() {
                   <th className="p-3.5 font-semibold text-neutral-300">Assigned Branch</th>
                   <th className="p-3.5 font-semibold text-neutral-300">Active Role</th>
                   <th className="p-3.5 font-semibold text-neutral-300">Landing Workspace</th>
+                  <th className="p-3.5 font-semibold text-neutral-300 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#222222]">
@@ -671,6 +735,24 @@ export function RoleManagementView() {
                         <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-[#1e1e1e] border border-[#2d2d2d] text-neutral-300">
                           {currentRole?.defaultLanding || "/erp"}
                         </span>
+                      </td>
+                      <td className="p-3.5 text-right">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setResetTargetUser(u);
+                            const autoPass = generateSecurePassword();
+                            setResetNewPassword(autoPass);
+                            setShowResetPasswordText(true);
+                            setCopiedResetPassword(false);
+                            setShowResetPasswordModal(true);
+                          }}
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-[#1e1e1e] hover:bg-[#282828] text-[#faedcd] hover:text-white border border-[#2d2d2d] hover:border-[#444] rounded text-xs font-semibold transition-all cursor-pointer shadow-2xs"
+                          title={`Reset password for ${u.name || u.email}`}
+                        >
+                          <KeyRound size={13} className="text-[#faedcd]" />
+                          <span>Reset Password</span>
+                        </button>
                       </td>
                     </tr>
                   );
@@ -867,17 +949,41 @@ export function RoleManagementView() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-[11px] uppercase tracking-wider text-neutral-400 font-bold block mb-1">
-                    Login Password *
-                  </label>
-                  <input
-                    type="password"
-                    required
-                    placeholder="••••••••"
-                    value={newStaffPassword}
-                    onChange={(e) => setNewStaffPassword(e.target.value)}
-                    className="w-full bg-[#121212] border border-[#2e2e2e] rounded-[6px] px-3 py-2 text-xs text-white placeholder-neutral-600 focus:outline-hidden focus:border-[#faedcd]"
-                  />
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-[11px] uppercase tracking-wider text-neutral-400 font-bold block">
+                      Login Password *
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const pass = generateSecurePassword();
+                        setNewStaffPassword(pass);
+                        setShowCreatePasswordText(true);
+                      }}
+                      className="text-[10px] text-[#faedcd] hover:underline cursor-pointer"
+                    >
+                      Generate
+                    </button>
+                  </div>
+                  <div className="relative">
+                    <input
+                      type={showCreatePasswordText ? "text" : "password"}
+                      required
+                      minLength={6}
+                      placeholder="••••••••"
+                      value={newStaffPassword}
+                      onChange={(e) => setNewStaffPassword(e.target.value)}
+                      className="w-full bg-[#121212] border border-[#2e2e2e] rounded-[6px] pl-3 pr-8 py-2 text-xs text-white placeholder-neutral-600 focus:outline-hidden focus:border-[#faedcd] font-mono"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowCreatePasswordText(!showCreatePasswordText)}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-white cursor-pointer"
+                      title={showCreatePasswordText ? "Hide password" : "Show password"}
+                    >
+                      {showCreatePasswordText ? <EyeOff size={13} /> : <Eye size={13} />}
+                    </button>
+                  </div>
                 </div>
                 <div>
                   <label className="text-[11px] uppercase tracking-wider text-neutral-400 font-bold block mb-1">
@@ -933,7 +1039,7 @@ export function RoleManagementView() {
                 <button
                   type="button"
                   onClick={() => setShowCreateStaffModal(false)}
-                  className="px-4 py-2 rounded-[6px] text-xs font-semibold text-neutral-400 hover:text-white transition-colors"
+                  className="px-4 py-2 rounded-[6px] text-xs font-semibold text-neutral-400 hover:text-white transition-colors cursor-pointer"
                 >
                   Cancel
                 </button>
@@ -942,7 +1048,141 @@ export function RoleManagementView() {
                   disabled={creatingStaff}
                   className="inline-flex items-center gap-2 bg-[#faedcd] hover:bg-[#faedcd]/90 text-[#1c1c1c] px-5 py-2 rounded-[6px] text-xs font-bold transition-all shadow-xs disabled:opacity-50 cursor-pointer"
                 >
-                  {creatingStaff ? "Creating..." : "Create Cashier Account"}
+                  <Plus size={14} />
+                  <span>{creatingStaff ? "Provisioning..." : "Provision Staff Account"}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* RESET STAFF PASSWORD MODAL */}
+      {showResetPasswordModal && resetTargetUser && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-[#181818] border border-[#2d2d2d] rounded-[12px] max-w-md w-full p-6 shadow-2xl space-y-5 animate-in fade-in zoom-in-95">
+            <div className="flex items-center justify-between border-b border-[#282828] pb-3">
+              <div className="flex items-center gap-2">
+                <KeyRound size={18} className="text-[#faedcd]" />
+                <h3 className="font-bold text-sm text-white">Reset Staff Member Password</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowResetPasswordModal(false);
+                  setResetTargetUser(null);
+                  setResetNewPassword("");
+                  setShowResetPasswordText(false);
+                }}
+                className="text-neutral-400 hover:text-white transition-colors cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Target User Info Card */}
+            <div className="bg-[#121212] border border-[#262626] rounded-[8px] p-3 space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-white">{resetTargetUser.name}</span>
+                <span className="text-[10px] font-mono uppercase bg-[#222222] text-[#faedcd] px-2 py-0.5 rounded border border-[#333333]">
+                  {resetTargetUser.customRoleName || resetTargetUser.role}
+                </span>
+              </div>
+              <div className="text-[11px] text-neutral-400 flex items-center justify-between">
+                <span>{resetTargetUser.email}</span>
+                <span className="text-neutral-500 font-medium text-[10px]">{resetTargetUser.storeName}</span>
+              </div>
+            </div>
+
+            <form onSubmit={handleResetPassword} className="space-y-4">
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-[11px] uppercase tracking-wider text-neutral-400 font-bold block">
+                    New Login Password *
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const pass = generateSecurePassword();
+                      setResetNewPassword(pass);
+                      setShowResetPasswordText(true);
+                      setCopiedResetPassword(false);
+                    }}
+                    className="inline-flex items-center gap-1 text-[11px] text-[#faedcd] hover:underline cursor-pointer font-medium"
+                  >
+                    <RefreshCw size={11} />
+                    <span>Generate Secure</span>
+                  </button>
+                </div>
+
+                <div className="relative">
+                  <input
+                    type={showResetPasswordText ? "text" : "password"}
+                    required
+                    minLength={6}
+                    placeholder="Enter new password (min 6 characters)"
+                    value={resetNewPassword}
+                    onChange={(e) => {
+                      setResetNewPassword(e.target.value);
+                      setCopiedResetPassword(false);
+                    }}
+                    className="w-full bg-[#121212] border border-[#2e2e2e] rounded-[6px] pl-3 pr-20 py-2.5 text-xs text-white placeholder-neutral-600 focus:outline-hidden focus:border-[#faedcd] font-mono"
+                  />
+                  <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                    {resetNewPassword && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard.writeText(resetNewPassword);
+                          setCopiedResetPassword(true);
+                          setTimeout(() => setCopiedResetPassword(false), 2000);
+                        }}
+                        className="p-1 text-neutral-400 hover:text-white transition-colors cursor-pointer"
+                        title="Copy to clipboard"
+                      >
+                        {copiedResetPassword ? (
+                          <Check size={14} className="text-emerald-400" />
+                        ) : (
+                          <Copy size={14} />
+                        )}
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setShowResetPasswordText(!showResetPasswordText)}
+                      className="p-1 text-neutral-400 hover:text-white transition-colors cursor-pointer"
+                      title={showResetPasswordText ? "Hide password" : "Show password"}
+                    >
+                      {showResetPasswordText ? <EyeOff size={14} /> : <Eye size={14} />}
+                    </button>
+                  </div>
+                </div>
+
+                <p className="text-[11px] text-neutral-500 mt-2 leading-relaxed">
+                  The staff member will immediately use this new password to sign in at <span className="font-mono text-neutral-300">/account/login</span> or the POS cashier terminal.
+                </p>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#262626]">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowResetPasswordModal(false);
+                    setResetTargetUser(null);
+                    setResetNewPassword("");
+                    setShowResetPasswordText(false);
+                  }}
+                  className="px-4 py-2 rounded-[6px] text-xs font-semibold text-neutral-400 hover:text-white transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={resettingPassword}
+                  className="inline-flex items-center gap-2 bg-[#faedcd] hover:bg-[#faedcd]/90 text-[#1c1c1c] px-5 py-2 rounded-[6px] text-xs font-bold transition-all shadow-xs disabled:opacity-50 cursor-pointer"
+                >
+                  <KeyRound size={13} />
+                  <span>{resettingPassword ? "Updating..." : "Save New Password"}</span>
                 </button>
               </div>
             </form>
