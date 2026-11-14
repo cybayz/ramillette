@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import Image from "next/image";
 import {
   Search,
@@ -13,16 +13,17 @@ import {
   Banknote,
   Smartphone,
   Split,
-  User,
   CheckCircle2,
   Printer,
   RotateCcw,
   X,
   Sparkles,
   History,
-  Receipt,
+  MessageCircle,
+  Globe,
+  Store,
 } from "lucide-react";
-import { ErpInvoiceTemplate } from "@/components/erp/ErpInvoiceTemplate";
+import { ErpInvoiceTemplate, type ErpInvoiceData } from "@/components/erp/ErpInvoiceTemplate";
 import { PosSalesHistoryView } from "@/components/erp/PosSalesHistoryView";
 
 interface SplitSubPayment {
@@ -77,14 +78,17 @@ export function PosTerminal({ storeContext, cashierName }: PosTerminalProps) {
   const [cart, setCart] = useState<CartLineItem[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Customer state
+  // Customer & Order Channel state
+  type OrderChannel = "Walk-in Customer" | "Online Order" | "WhatsApp Order";
+  const [orderChannel, setOrderChannel] = useState<OrderChannel>("Walk-in Customer");
   const [customerName, setCustomerName] = useState("Walk-in Customer");
   const [customerPhone, setCustomerPhone] = useState("");
   const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
 
-  // Payment state
+  // Payment & Discount state (Amount or Percentage)
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
-  const [discountAmount, setDiscountAmount] = useState(0);
+  const [discountType, setDiscountType] = useState<"FIXED" | "PERCENT">("FIXED");
+  const [discountValue, setDiscountValue] = useState<string>("");
   const [cashTendered, setCashTendered] = useState<number>(0);
   const [primaryPaymentMethod, setPrimaryPaymentMethod] = useState<"CASH" | "CARD" | "BENEFIT_PAY">("CASH");
   const [cardRef, setCardRef] = useState("");
@@ -99,12 +103,12 @@ export function PosTerminal({ storeContext, cashierName }: PosTerminalProps) {
   const [splitFeedback, setSplitFeedback] = useState<string | null>(null);
 
   // Receipt state
-  const [completedReceipt, setCompletedReceipt] = useState<any>(null);
+  const [completedReceipt, setCompletedReceipt] = useState<ErpInvoiceData | null>(null);
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
 
   const searchInputRef = useRef<HTMLInputElement>(null);
   const barcodeBufferRef = useRef<string>("");
-  const barcodeTimerRef = useRef<any>(null);
+  const barcodeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handlePrintReceipt = () => {
     document.body.classList.add("printing-erp-invoice");
@@ -115,9 +119,8 @@ export function PosTerminal({ storeContext, cashierName }: PosTerminalProps) {
   };
 
   // Fetch store catalog
-  const loadCatalog = async (q = "") => {
+  const loadCatalog = useCallback(async (q = "") => {
     try {
-      setLoading(true);
       const res = await fetch(`/api/erp/pos/products?q=${encodeURIComponent(q)}`);
       if (res.ok) {
         const data = await res.json();
@@ -128,10 +131,71 @@ export function PosTerminal({ storeContext, cashierName }: PosTerminalProps) {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  // Cart operations
+  const addToCart = useCallback((item: PosItem) => {
+    if (item.availableStock <= 0) {
+      alert(`"${item.displayName}" is currently out of stock in this branch.`);
+      return;
+    }
+
+    setCart((prev) => {
+      const existing = prev.find((line) => line.item.id === item.id);
+      if (existing) {
+        if (existing.quantity >= item.availableStock) {
+          alert(`Cannot exceed available store stock (${item.availableStock} units).`);
+          return prev;
+        }
+        return prev.map((line) =>
+          line.item.id === item.id
+            ? { ...line, quantity: line.quantity + 1 }
+            : line
+        );
+      }
+      return [...prev, { item, quantity: 1, unitPrice: item.price }];
+    });
+  }, []);
+
+  const handleBarcodeScanned = useCallback((code: string) => {
+    const match = catalog.find(
+      (item) =>
+        (item.barcode && item.barcode.trim() === code) ||
+        (item.sku && item.sku.toLowerCase() === code.toLowerCase())
+    );
+
+    if (match) {
+      addToCart(match);
+      // Brief visual or sound feedback
+    } else {
+      // Re-query API if item wasn't in top catalog
+      loadCatalog(code).then(() => {
+        setSearchQuery(code);
+      });
+    }
+  }, [catalog, addToCart, loadCatalog]);
 
   useEffect(() => {
-    loadCatalog();
+    let ignore = false;
+    fetch("/api/erp/pos/products")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!ignore && data?.items) {
+          setCatalog(data.items);
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to load POS catalog:", err);
+      })
+      .finally(() => {
+        if (!ignore) {
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      ignore = true;
+    };
   }, [storeContext.storeId]);
 
   // Global Barcode Scanner Listener & Keyboard Shortcuts
@@ -197,7 +261,7 @@ export function PosTerminal({ storeContext, cashierName }: PosTerminalProps) {
           barcodeBufferRef.current = "";
         } else if (e.key.length === 1) {
           barcodeBufferRef.current += e.key;
-          clearTimeout(barcodeTimerRef.current);
+          if (barcodeTimerRef.current) clearTimeout(barcodeTimerRef.current);
           barcodeTimerRef.current = setTimeout(() => {
             barcodeBufferRef.current = "";
           }, 300);
@@ -207,49 +271,7 @@ export function PosTerminal({ storeContext, cashierName }: PosTerminalProps) {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [catalog, cart, isPaymentModalOpen]);
-
-  const handleBarcodeScanned = (code: string) => {
-    const match = catalog.find(
-      (item) =>
-        (item.barcode && item.barcode.trim() === code) ||
-        (item.sku && item.sku.toLowerCase() === code.toLowerCase())
-    );
-
-    if (match) {
-      addToCart(match);
-      // Brief visual or sound feedback
-    } else {
-      // Re-query API if item wasn't in top catalog
-      loadCatalog(code).then(() => {
-        setSearchQuery(code);
-      });
-    }
-  };
-
-  // Cart operations
-  const addToCart = (item: PosItem) => {
-    if (item.availableStock <= 0) {
-      alert(`"${item.displayName}" is currently out of stock in this branch.`);
-      return;
-    }
-
-    setCart((prev) => {
-      const existing = prev.find((line) => line.item.id === item.id);
-      if (existing) {
-        if (existing.quantity >= item.availableStock) {
-          alert(`Cannot exceed available store stock (${item.availableStock} units).`);
-          return prev;
-        }
-        return prev.map((line) =>
-          line.item.id === item.id
-            ? { ...line, quantity: line.quantity + 1 }
-            : line
-        );
-      }
-      return [...prev, { item, quantity: 1, unitPrice: item.price }];
-    });
-  };
+  }, [catalog, cart, isPaymentModalOpen, completedReceipt, handleBarcodeScanned]);
 
   const updateQuantity = (itemId: string, delta: number) => {
     setCart((prev) => {
@@ -277,7 +299,8 @@ export function PosTerminal({ storeContext, cashierName }: PosTerminalProps) {
     if (cart.length === 0) return;
     if (confirm("Are you sure you want to clear the current cart?")) {
       setCart([]);
-      setDiscountAmount(0);
+      setDiscountValue("");
+      setDiscountType("FIXED");
     }
   };
 
@@ -285,6 +308,26 @@ export function PosTerminal({ storeContext, cashierName }: PosTerminalProps) {
   const subtotal = useMemo(() => {
     return cart.reduce((sum, line) => sum + line.unitPrice * line.quantity, 0);
   }, [cart]);
+
+  const discountAmount = useMemo(() => {
+    const num = parseFloat(discountValue);
+    if (isNaN(num) || num <= 0) return 0;
+    if (discountType === "PERCENT") {
+      const calculated = (subtotal * num) / 100;
+      return Number(Math.min(subtotal, Math.max(0, calculated)).toFixed(2));
+    }
+    return Number(Math.min(subtotal, Math.max(0, num)).toFixed(2));
+  }, [discountType, discountValue, subtotal]);
+
+  const discountPercentLabel = useMemo(() => {
+    if (discountType === "PERCENT" && discountValue && Number(discountValue) > 0) {
+      return `${discountValue}%`;
+    }
+    if (discountAmount > 0 && subtotal > 0) {
+      return `${Math.round((discountAmount / subtotal) * 100)}%`;
+    }
+    return null;
+  }, [discountType, discountValue, discountAmount, subtotal]);
 
   const taxAmount = useMemo(() => {
     const taxable = Math.max(0, subtotal - discountAmount);
@@ -375,8 +418,10 @@ export function PosTerminal({ storeContext, cashierName }: PosTerminalProps) {
         })),
         customerName,
         customerPhone: customerPhone || null,
+        orderChannel,
         payments,
         discount: discountAmount,
+        discountPercent: discountPercentLabel,
       };
 
       const res = await fetch("/api/erp/pos/sales", {
@@ -394,15 +439,19 @@ export function PosTerminal({ storeContext, cashierName }: PosTerminalProps) {
       // Success: show receipt modal, reset cart
       setCompletedReceipt(data.receipt);
       setCart([]);
-      setDiscountAmount(0);
+      setDiscountValue("");
+      setDiscountType("FIXED");
+      setOrderChannel("Walk-in Customer");
+      setCustomerName("Walk-in Customer");
+      setCustomerPhone("");
       setCashTendered(0);
       setCardRef("");
       setIsPaymentModalOpen(false);
 
       // Refresh catalog stock
       loadCatalog(searchQuery);
-    } catch (err: any) {
-      alert(`POS Transaction Error: ${err.message}`);
+    } catch (err: unknown) {
+      alert(`POS Transaction Error: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       setIsProcessing(false);
     }
@@ -514,8 +563,10 @@ export function PosTerminal({ storeContext, cashierName }: PosTerminalProps) {
         })),
         customerName,
         customerPhone: customerPhone || null,
+        orderChannel,
         payments: paymentsPayload,
         discount: discountAmount,
+        discountPercent: discountPercentLabel,
       };
 
       const res = await fetch("/api/erp/pos/sales", {
@@ -532,7 +583,11 @@ export function PosTerminal({ storeContext, cashierName }: PosTerminalProps) {
       // Success: show receipt modal, reset cart & split states
       setCompletedReceipt(data.receipt);
       setCart([]);
-      setDiscountAmount(0);
+      setDiscountValue("");
+      setDiscountType("FIXED");
+      setOrderChannel("Walk-in Customer");
+      setCustomerName("Walk-in Customer");
+      setCustomerPhone("");
       setSplitPayments([]);
       setPartialAmount("");
       setPartialRef("");
@@ -540,8 +595,8 @@ export function PosTerminal({ storeContext, cashierName }: PosTerminalProps) {
 
       // Refresh catalog stock
       loadCatalog(searchQuery);
-    } catch (err: any) {
-      alert(`POS Split Transaction Error: ${err.message}`);
+    } catch (err: unknown) {
+      alert(`POS Split Transaction Error: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       setIsProcessing(false);
     }
@@ -720,28 +775,101 @@ export function PosTerminal({ storeContext, cashierName }: PosTerminalProps) {
 
       {/* RIGHT AREA: Cashier Cart, Customer & Checkout (Width: 380px) */}
       <div className="w-full lg:w-96 flex flex-col bg-[#1c1c1c] border border-[#2a2a2a] rounded-[10px] p-4 shadow-xl shrink-0">
-        {/* Customer Header */}
-        <div className="pb-3 border-b border-[#2a2a2a] flex items-center justify-between">
-          <div className="flex items-center gap-2 min-w-0">
-            <div className="w-7 h-7 rounded-full bg-[#2a2a2a] text-[#faedcd] flex items-center justify-center">
-              <User size={14} />
+        {/* Customer & Order Channel Header */}
+        <div className="pb-3 border-b border-[#2a2a2a] space-y-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 min-w-0">
+              <div
+                className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 ${
+                  orderChannel === "WhatsApp Order"
+                    ? "bg-emerald-950/70 text-emerald-400 border border-emerald-800/60"
+                    : orderChannel === "Online Order"
+                    ? "bg-sky-950/70 text-sky-400 border border-sky-800/60"
+                    : "bg-[#2a2a2a] text-[#faedcd]"
+                }`}
+              >
+                {orderChannel === "WhatsApp Order" ? (
+                  <MessageCircle size={14} />
+                ) : orderChannel === "Online Order" ? (
+                  <Globe size={14} />
+                ) : (
+                  <Store size={14} />
+                )}
+              </div>
+              <div className="min-w-0">
+                <span className="text-xs font-bold text-white truncate block">
+                  {customerName}
+                </span>
+                <span className="text-[10px] text-neutral-400 block truncate">
+                  {customerPhone ? `${customerPhone} • ` : ""}{cashierName ? `Cashier: ${cashierName}` : "Standard In-Store Sale"}
+                </span>
+              </div>
             </div>
-            <div className="min-w-0">
-              <span className="text-xs font-bold text-white truncate block">
-                {customerName}
-              </span>
-              <span className="text-[10px] text-neutral-400 block truncate">
-                {customerPhone || "Standard In-Store Sale"}
-              </span>
-            </div>
+
+            <button
+              onClick={() => setIsCustomerModalOpen(true)}
+              className="text-[10px] font-bold text-[#faedcd] hover:underline px-2 py-1 rounded bg-[#2a2a2a] hover:bg-[#333333] transition-colors cursor-pointer shrink-0"
+            >
+              Change (F4)
+            </button>
           </div>
 
-          <button
-            onClick={() => setIsCustomerModalOpen(true)}
-            className="text-[10px] font-bold text-[#faedcd] hover:underline px-2 py-1 rounded bg-[#2a2a2a] hover:bg-[#333333] transition-colors cursor-pointer"
-          >
-            Change (F4)
-          </button>
+          {/* Quick Order Channel Switcher Pills */}
+          <div className="grid grid-cols-3 gap-1 pt-1">
+            <button
+              type="button"
+              onClick={() => {
+                setOrderChannel("Walk-in Customer");
+                if (customerName === "Online Order" || customerName === "WhatsApp Order") {
+                  setCustomerName("Walk-in Customer");
+                }
+              }}
+              className={`py-1 px-1.5 text-[10px] font-bold rounded flex items-center justify-center gap-1 transition-all cursor-pointer ${
+                orderChannel === "Walk-in Customer"
+                  ? "bg-[#faedcd] text-[#1c1c1c] shadow-xs"
+                  : "bg-[#242424] text-neutral-400 hover:text-white border border-[#303030]"
+              }`}
+            >
+              <Store size={11} />
+              <span>Walk-in</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setOrderChannel("WhatsApp Order");
+                if (customerName === "Walk-in Customer" || customerName === "Online Order") {
+                  setCustomerName("WhatsApp Order");
+                }
+              }}
+              className={`py-1 px-1.5 text-[10px] font-bold rounded flex items-center justify-center gap-1 transition-all cursor-pointer ${
+                orderChannel === "WhatsApp Order"
+                  ? "bg-emerald-500 text-black shadow-xs font-black"
+                  : "bg-[#242424] text-neutral-400 hover:text-white border border-[#303030]"
+              }`}
+            >
+              <MessageCircle size={11} />
+              <span>WhatsApp</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setOrderChannel("Online Order");
+                if (customerName === "Walk-in Customer" || customerName === "WhatsApp Order") {
+                  setCustomerName("Online Order");
+                }
+              }}
+              className={`py-1 px-1.5 text-[10px] font-bold rounded flex items-center justify-center gap-1 transition-all cursor-pointer ${
+                orderChannel === "Online Order"
+                  ? "bg-sky-500 text-black shadow-xs font-black"
+                  : "bg-[#242424] text-neutral-400 hover:text-white border border-[#303030]"
+              }`}
+            >
+              <Globe size={11} />
+              <span>Online</span>
+            </button>
+          </div>
         </div>
 
         {/* Cart Item Rows */}
@@ -810,9 +938,88 @@ export function PosTerminal({ storeContext, cashierName }: PosTerminalProps) {
               </span>
             </div>
 
+            {/* Custom Discount (Amount or Percentage) */}
+            <div className="bg-[#181818] border border-[#2b2b2b] rounded-[6px] p-2 space-y-1.5 my-1">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-neutral-400 text-[11px] font-medium">Custom Discount:</span>
+                <div className="inline-flex rounded bg-[#242424] p-0.5 border border-[#333333]">
+                  <button
+                    type="button"
+                    onClick={() => setDiscountType("FIXED")}
+                    className={`px-1.5 py-0.5 text-[10px] font-bold rounded cursor-pointer transition-colors ${
+                      discountType === "FIXED"
+                        ? "bg-[#faedcd] text-[#1c1c1c]"
+                        : "text-neutral-400 hover:text-white"
+                    }`}
+                  >
+                    {storeContext.currency}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDiscountType("PERCENT")}
+                    className={`px-1.5 py-0.5 text-[10px] font-bold rounded cursor-pointer transition-colors ${
+                      discountType === "PERCENT"
+                        ? "bg-[#faedcd] text-[#1c1c1c]"
+                        : "text-neutral-400 hover:text-white"
+                    }`}
+                  >
+                    %
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-1.5">
+                <div className="relative flex-1">
+                  <span className="absolute left-2 top-1/2 -translate-y-1/2 text-neutral-500 font-mono text-[10px]">
+                    {discountType === "FIXED" ? storeContext.currency : "%"}
+                  </span>
+                  <input
+                    type="number"
+                    min="0"
+                    max={discountType === "PERCENT" ? "100" : String(subtotal)}
+                    step={discountType === "PERCENT" ? "1" : "0.5"}
+                    value={discountValue}
+                    onChange={(e) => setDiscountValue(e.target.value)}
+                    placeholder={discountType === "FIXED" ? "0.00" : "0%"}
+                    className="w-full bg-[#121212] border border-[#333333] rounded px-2 pl-7 py-1 text-right text-xs font-mono text-white placeholder-neutral-600 focus:outline-hidden focus:border-[#faedcd]"
+                  />
+                </div>
+                {discountType === "PERCENT" && (
+                  <div className="flex items-center gap-1">
+                    {[5, 10, 15, 20].map((pct) => (
+                      <button
+                        key={pct}
+                        type="button"
+                        onClick={() => setDiscountValue(String(pct))}
+                        className={`px-1.5 py-1 text-[10px] font-mono font-bold rounded border cursor-pointer ${
+                          discountValue === String(pct)
+                            ? "bg-[#faedcd] text-[#1c1c1c] border-[#faedcd]"
+                            : "bg-[#202020] text-neutral-400 border-[#303030] hover:text-white"
+                        }`}
+                      >
+                        {pct}%
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {discountValue && (
+                  <button
+                    type="button"
+                    onClick={() => setDiscountValue("")}
+                    className="text-neutral-400 hover:text-rose-400 text-xs px-1 cursor-pointer"
+                    title="Remove discount"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+            </div>
+
             {discountAmount > 0 && (
-              <div className="flex justify-between text-emerald-400">
-                <span>Discount:</span>
+              <div className="flex justify-between text-emerald-400 font-medium">
+                <span>
+                  Discount {discountType === "PERCENT" && discountValue ? `(${discountValue}%)` : ""}:
+                </span>
                 <span className="font-mono">
                   -{storeContext.currency} {discountAmount.toFixed(2)}
                 </span>
@@ -879,52 +1086,130 @@ export function PosTerminal({ storeContext, cashierName }: PosTerminalProps) {
         <div className="fixed inset-0 bg-black/70 backdrop-blur-xs flex items-center justify-center z-50 p-4">
           <div className="bg-[#222222] border border-[#383838] rounded-[10px] w-full max-w-md p-5 shadow-2xl space-y-4">
             <div className="flex justify-between items-center border-b border-[#303030] pb-2">
-              <h3 className="text-sm font-black text-white">Select Customer (F4)</h3>
-              <button onClick={() => setIsCustomerModalOpen(false)} className="text-neutral-400 hover:text-white">
+              <h3 className="text-sm font-black text-white">Select Customer &amp; Channel (F4)</h3>
+              <button onClick={() => setIsCustomerModalOpen(false)} className="text-neutral-400 hover:text-white cursor-pointer">
                 <X size={16} />
               </button>
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-3.5">
+              {/* Order Channel Selector */}
               <div>
-                <label className="text-[11px] font-bold text-neutral-400 block mb-1">Customer Full Name</label>
+                <label className="text-[11px] font-bold text-neutral-400 block mb-1.5">
+                  Order Channel / Source *
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOrderChannel("Walk-in Customer");
+                      if (customerName === "Online Order" || customerName === "WhatsApp Order") {
+                        setCustomerName("Walk-in Customer");
+                      }
+                    }}
+                    className={`p-2.5 rounded-[8px] border text-left flex flex-col gap-1 transition-all cursor-pointer ${
+                      orderChannel === "Walk-in Customer"
+                        ? "bg-[#faedcd]/15 border-[#faedcd] text-white"
+                        : "bg-[#181818] border-[#303030] text-neutral-400 hover:text-white"
+                    }`}
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <Store size={14} className={orderChannel === "Walk-in Customer" ? "text-[#faedcd]" : ""} />
+                      <span className="text-xs font-bold">Walk-in</span>
+                    </div>
+                    <span className="text-[10px] text-neutral-500 leading-tight">In-store counter</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOrderChannel("WhatsApp Order");
+                      if (customerName === "Walk-in Customer" || customerName === "Online Order") {
+                        setCustomerName("WhatsApp Order");
+                      }
+                    }}
+                    className={`p-2.5 rounded-[8px] border text-left flex flex-col gap-1 transition-all cursor-pointer ${
+                      orderChannel === "WhatsApp Order"
+                        ? "bg-emerald-950/40 border-emerald-500 text-white"
+                        : "bg-[#181818] border-[#303030] text-neutral-400 hover:text-white"
+                    }`}
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <MessageCircle size={14} className={orderChannel === "WhatsApp Order" ? "text-emerald-400" : ""} />
+                      <span className="text-xs font-bold">WhatsApp</span>
+                    </div>
+                    <span className="text-[10px] text-neutral-500 leading-tight">Chat booking</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOrderChannel("Online Order");
+                      if (customerName === "Walk-in Customer" || customerName === "WhatsApp Order") {
+                        setCustomerName("Online Order");
+                      }
+                    }}
+                    className={`p-2.5 rounded-[8px] border text-left flex flex-col gap-1 transition-all cursor-pointer ${
+                      orderChannel === "Online Order"
+                        ? "bg-sky-950/40 border-sky-500 text-white"
+                        : "bg-[#181818] border-[#303030] text-neutral-400 hover:text-white"
+                    }`}
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <Globe size={14} className={orderChannel === "Online Order" ? "text-sky-400" : ""} />
+                      <span className="text-xs font-bold">Online</span>
+                    </div>
+                    <span className="text-[10px] text-neutral-500 leading-tight">Click &amp; Collect</span>
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-[11px] font-bold text-neutral-400 block mb-1">
+                  Customer Full Name
+                </label>
                 <input
                   type="text"
                   value={customerName}
                   onChange={(e) => setCustomerName(e.target.value)}
                   placeholder="e.g. Tariq Al-Kuwari"
-                  className="w-full bg-[#1c1c1c] border border-[#333333] rounded-[6px] px-3 py-2 text-xs text-white"
+                  className="w-full bg-[#1c1c1c] border border-[#333333] rounded-[6px] px-3 py-2 text-xs text-white placeholder-neutral-600 focus:outline-hidden focus:border-[#faedcd]"
                 />
               </div>
 
               <div>
-                <label className="text-[11px] font-bold text-neutral-400 block mb-1">Phone Number (Optional)</label>
+                <label className="text-[11px] font-bold text-neutral-400 block mb-1">
+                  Phone Number {orderChannel === "WhatsApp Order" ? "(Recommended)" : "(Optional)"}
+                </label>
                 <input
                   type="text"
                   value={customerPhone}
                   onChange={(e) => setCustomerPhone(e.target.value)}
                   placeholder="+974 5500 1234"
-                  className="w-full bg-[#1c1c1c] border border-[#333333] rounded-[6px] px-3 py-2 text-xs text-white"
+                  className="w-full bg-[#1c1c1c] border border-[#333333] rounded-[6px] px-3 py-2 text-xs text-white placeholder-neutral-600 focus:outline-hidden focus:border-[#faedcd]"
                 />
               </div>
             </div>
 
             <div className="flex gap-2 pt-2 border-t border-[#303030]">
               <button
+                type="button"
                 onClick={() => {
+                  setOrderChannel("Walk-in Customer");
                   setCustomerName("Walk-in Customer");
                   setCustomerPhone("");
                   setIsCustomerModalOpen(false);
                 }}
-                className="flex-1 py-2 rounded bg-[#2e2e2e] text-xs font-bold text-neutral-300 hover:text-white"
+                className="flex-1 py-2 rounded bg-[#2e2e2e] text-xs font-bold text-neutral-300 hover:text-white cursor-pointer"
               >
-                Reset to Guest
+                Reset to Walk-in
               </button>
               <button
+                type="button"
                 onClick={() => setIsCustomerModalOpen(false)}
-                className="flex-1 py-2 rounded bg-[#faedcd] text-xs font-black text-[#1c1c1c]"
+                className="flex-1 py-2 rounded bg-[#faedcd] text-xs font-black text-[#1c1c1c] cursor-pointer hover:bg-[#ebd59f]"
               >
-                Save Customer
+                Save Details
               </button>
             </div>
           </div>
@@ -955,9 +1240,25 @@ export function PosTerminal({ storeContext, cashierName }: PosTerminalProps) {
                   {storeContext.currency} {totalAmount.toFixed(2)}
                 </div>
               </div>
-              <div className="text-right text-[11px] text-neutral-400">
+              <div className="text-right text-[11px] text-neutral-400 flex flex-col items-end gap-1">
                 <span>Items: {cart.reduce((s, l) => s + l.quantity, 0)} bottles</span>
-                <div className="text-white font-bold">{customerName}</div>
+                <div className="flex items-center gap-1.5">
+                  <span
+                    className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                      orderChannel === "WhatsApp Order"
+                        ? "bg-emerald-950/60 text-emerald-400 border border-emerald-800/50"
+                        : orderChannel === "Online Order"
+                        ? "bg-sky-950/60 text-sky-400 border border-sky-800/50"
+                        : "bg-[#252525] text-neutral-300 border border-[#383838]"
+                    }`}
+                  >
+                    {orderChannel === "WhatsApp Order" && <MessageCircle size={10} />}
+                    {orderChannel === "Online Order" && <Globe size={10} />}
+                    {orderChannel === "Walk-in Customer" && <Store size={10} />}
+                    {orderChannel}
+                  </span>
+                  <span className="text-white font-bold">{customerName}</span>
+                </div>
               </div>
             </div>
 
@@ -1058,18 +1359,91 @@ export function PosTerminal({ storeContext, cashierName }: PosTerminalProps) {
             )}
 
             {/* Discount Option */}
-            <div className="flex items-center justify-between text-xs pt-1">
-              <span className="text-neutral-400">Apply Custom Discount:</span>
-              <div className="flex items-center gap-1.5">
-                <span className="text-neutral-500 font-mono">{storeContext.currency}</span>
-                <input
-                  type="number"
-                  value={discountAmount || ""}
-                  onChange={(e) => setDiscountAmount(Math.max(0, Number(e.target.value)))}
-                  placeholder="0.00"
-                  className="w-20 bg-[#181818] border border-[#333333] rounded px-2 py-1 text-right text-xs font-mono text-white"
-                />
+            <div className="bg-[#181818] border border-[#2b2b2b] rounded-[6px] p-2.5 space-y-2">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-neutral-300 font-bold">Apply Custom Discount:</span>
+                <div className="inline-flex rounded bg-[#242424] p-0.5 border border-[#333333]">
+                  <button
+                    type="button"
+                    onClick={() => setDiscountType("FIXED")}
+                    className={`px-2 py-0.5 text-[10px] font-bold rounded cursor-pointer transition-colors ${
+                      discountType === "FIXED"
+                        ? "bg-[#faedcd] text-[#1c1c1c]"
+                        : "text-neutral-400 hover:text-white"
+                    }`}
+                  >
+                    Flat ({storeContext.currency})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDiscountType("PERCENT")}
+                    className={`px-2 py-0.5 text-[10px] font-bold rounded cursor-pointer transition-colors ${
+                      discountType === "PERCENT"
+                        ? "bg-[#faedcd] text-[#1c1c1c]"
+                        : "text-neutral-400 hover:text-white"
+                    }`}
+                  >
+                    Percent (%)
+                  </button>
+                </div>
               </div>
+
+              <div className="flex items-center gap-2">
+                <div className="relative flex-1">
+                  <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-500 font-mono text-xs">
+                    {discountType === "FIXED" ? storeContext.currency : "%"}
+                  </span>
+                  <input
+                    type="number"
+                    min="0"
+                    max={discountType === "PERCENT" ? "100" : String(subtotal)}
+                    step={discountType === "PERCENT" ? "1" : "0.5"}
+                    value={discountValue}
+                    onChange={(e) => setDiscountValue(e.target.value)}
+                    placeholder={discountType === "FIXED" ? "0.00" : "0%"}
+                    className="w-full bg-[#222222] border border-[#333333] rounded px-3 pl-8 py-1.5 text-right text-xs font-mono text-white placeholder-neutral-600 focus:outline-hidden focus:border-[#faedcd]"
+                  />
+                </div>
+                {discountType === "PERCENT" && (
+                  <div className="flex items-center gap-1">
+                    {[5, 10, 15, 20].map((pct) => (
+                      <button
+                        key={pct}
+                        type="button"
+                        onClick={() => setDiscountValue(String(pct))}
+                        className={`px-2 py-1.5 text-[10px] font-mono font-bold rounded border cursor-pointer ${
+                          discountValue === String(pct)
+                            ? "bg-[#faedcd] text-[#1c1c1c] border-[#faedcd]"
+                            : "bg-[#252525] text-neutral-400 border-[#383838] hover:text-white"
+                        }`}
+                      >
+                        {pct}%
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {discountValue && (
+                  <button
+                    type="button"
+                    onClick={() => setDiscountValue("")}
+                    className="px-2 py-1 text-xs text-neutral-400 hover:text-rose-400 hover:bg-[#252525] rounded border border-transparent hover:border-[#383838] cursor-pointer"
+                    title="Remove discount"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+
+              {discountAmount > 0 && (
+                <div className="flex justify-between items-center text-[11px] text-emerald-400 border-t border-[#262626] pt-1.5">
+                  <span>
+                    Discount Applied {discountType === "PERCENT" && discountValue ? `(${discountValue}%)` : ""}:
+                  </span>
+                  <span className="font-mono font-bold">
+                    -{storeContext.currency} {discountAmount.toFixed(2)}
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* Complete Sale Confirmation Button */}
@@ -1137,8 +1511,10 @@ export function PosTerminal({ storeContext, cashierName }: PosTerminalProps) {
                 <div className="text-lg font-black font-mono text-[#faedcd] mt-0.5">
                   {storeContext.currency} {totalAmount.toFixed(2)}
                 </div>
-                <div className="text-[10px] text-neutral-500 truncate mt-0.5">
-                  {customerName}
+                <div className="text-[10px] text-neutral-400 truncate mt-0.5 flex items-center gap-1">
+                  <span className="text-[#faedcd] font-bold">•</span>
+                  <span className="text-neutral-300 font-medium">{orderChannel}</span>
+                  <span className="text-neutral-500">({customerName})</span>
                 </div>
               </div>
 

@@ -1,8 +1,27 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
+import type { Prisma } from "@prisma/client";
 import { getErpUser, getActiveErpStore, canAccessPos } from "@/lib/erp/context";
 import { recordPosSale } from "@/lib/inventory/inventoryService";
 import { recordAuditLog } from "@/lib/audit/auditLogger";
+
+interface PosSaleItemInput {
+  productId: string;
+  variantId?: string | null;
+  name?: string;
+  productName?: string;
+  subtitle?: string;
+  variantName?: string | null;
+  sku?: string;
+  quantity: number;
+  unitPrice: number;
+}
+
+interface PosSalePaymentInput {
+  method: "CASH" | "CARD" | "BENEFIT_PAY";
+  amount: number;
+  reference?: string;
+}
 
 export async function POST(request: Request) {
   try {
@@ -23,8 +42,10 @@ export async function POST(request: Request) {
       customerName = "Walk-in Customer",
       customerPhone,
       customerEmail,
+      orderChannel = "Walk-in Customer",
       payments,
       discount = 0,
+      discountPercent = null,
       notes,
     } = body;
 
@@ -70,7 +91,7 @@ export async function POST(request: Request) {
     const finalTotal = Math.max(0, calculatedSubtotal - discountNum + calculatedTax);
 
     // Verify payments cover total amount (with small floating tolerance)
-    const paidTotal = payments.reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0);
+    const paidTotal = payments.reduce((sum: number, p: PosSalePaymentInput) => sum + (Number(p.amount) || 0), 0);
     if (paidTotal < finalTotal - 0.05) {
       return NextResponse.json(
         { error: `Insufficient payment: Received ${paidTotal.toFixed(2)}, required ${finalTotal.toFixed(2)}` },
@@ -89,10 +110,17 @@ export async function POST(request: Request) {
         // A. Create Order
         const primaryPaymentMethod = payments.length > 1 ? "SPLIT" : payments[0].method;
 
+        let orderChannelEnum = "POS";
+        if (orderChannel === "WhatsApp Order") {
+          orderChannelEnum = "WHATSAPP";
+        } else if (orderChannel === "Online Order") {
+          orderChannelEnum = "ONLINE";
+        }
+
         const createdOrder = await tx.order.create({
           data: {
             orderNumber,
-            channel: "POS",
+            channel: orderChannelEnum,
             status: "DELIVERED",
             paymentStatus: "PAID",
             fulfillmentStatus: "FULFILLED",
@@ -103,6 +131,7 @@ export async function POST(request: Request) {
             customerPhone: customerPhone?.trim() || store.phone || "+974 5555 1234",
             shippingAddress: {
               type: "IN_STORE_PICKUP",
+              channel: orderChannel,
               storeName: store.name,
               storeCode: store.code,
               address: store.address,
@@ -112,7 +141,9 @@ export async function POST(request: Request) {
               storeName: store.name,
               address: store.address,
             },
-            adminNotes: notes ? `Cashier: ${user.firstName || user.email} | ${notes}` : `Cashier: ${user.firstName || user.email}`,
+            adminNotes: notes
+              ? `Channel: ${orderChannel} | Cashier: ${user.firstName || user.email} | ${notes}`
+              : `Channel: ${orderChannel} | Cashier: ${user.firstName || user.email}`,
             subtotal: calculatedSubtotal,
             discount: discountNum,
             shipping: 0.0,
@@ -123,7 +154,7 @@ export async function POST(request: Request) {
             paymentMethod: primaryPaymentMethod,
             shippedAt: new Date(),
             items: {
-              create: items.map((it: any) => ({
+              create: items.map((it: PosSaleItemInput) => ({
                 productId: it.productId,
                 variantId: it.variantId || null,
                 productName: it.productName || it.name || "Product",
@@ -209,8 +240,9 @@ export async function POST(request: Request) {
         cashierName: `${user.firstName || ""} ${user.lastName || ""}`.trim() || user.email,
         customerName: result.customerName,
         customerPhone: result.customerPhone,
-        items: items.map((it: any) => ({
-          name: it.name,
+        orderChannel: orderChannel || "Walk-in Customer",
+        items: items.map((it: PosSaleItemInput) => ({
+          name: it.name || it.productName || "Product",
           subtitle: it.subtitle || "Extrait De Parfum",
           variantName: it.variantName || (it.name?.match(/\((.*?)\)/)?.[1] ?? null),
           sku: it.sku,
@@ -220,6 +252,7 @@ export async function POST(request: Request) {
         })),
         subtotal: calculatedSubtotal,
         discount: discountNum,
+        discountPercent: discountPercent || (discountNum > 0 && calculatedSubtotal > 0 ? `${Math.round((discountNum / calculatedSubtotal) * 100)}%` : null),
         tax: calculatedTax,
         taxRate,
         total: finalTotal,
@@ -231,10 +264,10 @@ export async function POST(request: Request) {
         createdAt: result.createdAt,
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("POS sale processing error:", error);
     return NextResponse.json(
-      { error: error?.message || "Failed to process POS sale" },
+      { error: error instanceof Error ? error.message : "Failed to process POS sale" },
       { status: 500 }
     );
   }
@@ -257,7 +290,7 @@ export async function GET(request: Request) {
     const period = searchParams.get("period") || "all"; // "today" or "all"
     const store = storeContext.store;
 
-    const whereClause: any = {
+    const whereClause: Prisma.OrderWhereInput = {
       channel: "POS",
       assignedStoreId: store.id,
     };
@@ -374,8 +407,11 @@ export async function GET(request: Request) {
         currency: store.currency,
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Failed to load POS sales history:", error);
-    return NextResponse.json({ error: error?.message || "Failed to load sales history" }, { status: 500 });
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Failed to load sales history" },
+      { status: 500 }
+    );
   }
 }

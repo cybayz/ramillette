@@ -20,6 +20,7 @@ export interface ErpInvoiceData {
   storePhone?: string | null;
   cashierName?: string | null;
   customerName?: string | null;
+  orderChannel?: string | null;
   createdAt?: string | Date;
   items: InvoiceItem[];
   subtotal: number;
@@ -68,7 +69,7 @@ function formatInvoiceTime(inputDate?: string | Date): string {
 // Parse display name to separate title, subtitle, and volume
 function parseItemLines(it: InvoiceItem) {
   let title = it.name || "FRAGRANCE";
-  let subtitle = it.subtitle || "Extrait De Parfum";
+  const subtitle = it.subtitle || "Extrait De Parfum";
   let variant = it.variantName || "";
 
   // If variantName is inside the title like "Amber Code (100ml)"
@@ -263,6 +264,18 @@ export function ErpInvoiceTemplate({
             <span>CASHIER</span>
             <span className="font-semibold">{cashier}</span>
           </div>
+          {receipt.customerName && (
+            <div className="flex justify-between items-center">
+              <span>CUSTOMER</span>
+              <span className="font-semibold">{receipt.customerName}</span>
+            </div>
+          )}
+          {receipt.orderChannel && receipt.orderChannel !== "Walk-in Customer" && (
+            <div className="flex justify-between items-center">
+              <span>CHANNEL</span>
+              <span className="font-semibold">{receipt.orderChannel}</span>
+            </div>
+          )}
         </div>
 
         {/* Divider 2 */}
@@ -327,7 +340,7 @@ export function ErpInvoiceTemplate({
             </span>
           </div>
           <div className="flex justify-between items-center">
-            <span>DICOUNTS</span>
+            <span>DISCOUNT</span>
             <span>{discountLabel}</span>
           </div>
           {tax > 0 && (
