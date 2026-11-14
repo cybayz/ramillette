@@ -12,11 +12,14 @@ import { PageTransition } from "@/components/layout/PageTransition";
 
 export function StorefrontChrome({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const isAdmin = pathname?.startsWith("/admin");
+  const isExcluded =
+    pathname?.startsWith("/admin") ||
+    pathname?.startsWith("/erp") ||
+    pathname?.startsWith("/invoice-preview");
 
-  if (isAdmin) {
-    // Admin routes get an unconstrained, dedicated viewport without storefront chrome
-    return <div className="min-h-screen bg-[#f5f5f5] text-[#1c1c1c]">{children}</div>;
+  if (isExcluded) {
+    // Admin, ERP and standalone views get an unconstrained viewport without storefront chrome
+    return <div className="min-h-screen min-w-0 max-w-full">{children}</div>;
   }
 
   return (

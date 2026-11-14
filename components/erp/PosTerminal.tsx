@@ -1510,20 +1510,27 @@ export function PosTerminal({ storeContext, cashierName }: PosTerminalProps) {
 
       {/* MODAL: Completed Sale Invoice / Receipt View */}
       {completedReceipt && (
-        <div className="fixed inset-0 bg-black/85 backdrop-blur-xs flex items-center justify-center z-50 p-4">
-          <div className="bg-[#181818] border border-[#333333] rounded-[12px] w-full max-w-md p-5 shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto">
-            {/* Header with Print Buttons */}
-            <div className="flex justify-between items-center border-b border-[#2e2e2e] pb-3 print:hidden">
+        <div
+          className="fixed inset-0 bg-black/85 backdrop-blur-xs flex items-center justify-center z-[200] p-3 sm:p-4 animate-in fade-in duration-150"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setCompletedReceipt(null);
+          }}
+        >
+          <div className="bg-[#181818] border border-[#333333] rounded-[12px] w-full max-w-md p-4 sm:p-5 shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto relative flex flex-col">
+            {/* Sticky Header with Close Button */}
+            <div className="sticky top-0 bg-[#181818] z-30 -mt-1 pt-1 pb-3 border-b border-[#2e2e2e] flex justify-between items-center print:hidden">
               <div className="flex items-center gap-1.5 text-emerald-400 font-bold text-xs">
                 <CheckCircle2 size={16} />
                 <span>Sale Completed Successfully</span>
               </div>
               <button
+                type="button"
                 onClick={() => setCompletedReceipt(null)}
-                className="text-neutral-400 hover:text-white p-1 rounded-sm hover:bg-neutral-800 transition-colors"
+                className="text-neutral-400 hover:text-white p-1.5 rounded-md hover:bg-neutral-800 transition-colors cursor-pointer"
                 title="Close receipt"
+                aria-label="Close invoice"
               >
-                <X size={18} />
+                <X size={20} />
               </button>
             </div>
 
@@ -1533,8 +1540,9 @@ export function PosTerminal({ storeContext, cashierName }: PosTerminalProps) {
             </div>
 
             {/* Modal Actions */}
-            <div className="flex gap-2 pt-2 border-t border-[#2e2e2e] print:hidden">
+            <div className="sticky bottom-0 bg-[#181818] z-30 -mb-1 pb-1 pt-3 border-t border-[#2e2e2e] flex gap-2 print:hidden">
               <button
+                type="button"
                 onClick={handlePrintReceipt}
                 className="flex-1 py-2.5 rounded bg-[#faedcd] hover:bg-[#ebd59f] text-[#1c1c1c] font-black text-xs flex items-center justify-center gap-2 cursor-pointer shadow-sm transition-all"
               >
@@ -1542,10 +1550,11 @@ export function PosTerminal({ storeContext, cashierName }: PosTerminalProps) {
                 <span>Print Invoice</span>
               </button>
               <button
+                type="button"
                 onClick={() => setCompletedReceipt(null)}
                 className="py-2.5 px-4 rounded bg-[#2a2a2a] hover:bg-[#333333] text-neutral-300 text-xs font-bold cursor-pointer transition-colors"
               >
-                New Sale
+                Close
               </button>
             </div>
           </div>
@@ -1554,7 +1563,7 @@ export function PosTerminal({ storeContext, cashierName }: PosTerminalProps) {
 
       {/* MODAL: Order History & Past Invoices */}
       {isHistoryModalOpen && (
-        <div className="fixed inset-0 bg-black/85 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/85 backdrop-blur-xs flex items-center justify-center z-[150] p-4">
           <div className="bg-[#181818] border border-[#333333] rounded-[12px] w-full max-w-4xl p-5 shadow-2xl max-h-[92vh] overflow-y-auto">
             <PosSalesHistoryView
               isModal={true}

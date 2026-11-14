@@ -520,7 +520,7 @@ export function OrderFulfillmentHub({ storeContext }: OrderFulfillmentHubProps) 
 
       {/* MODAL: Barcode-Verified Picking Checklist */}
       {activePickingOrder && (
-        <div className="fixed inset-0 bg-black/75 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/75 backdrop-blur-xs flex items-center justify-center z-[150] p-4">
           <div className="bg-[#202020] border border-[#333333] rounded-[10px] w-full max-w-lg p-6 shadow-2xl space-y-4">
             <div className="flex justify-between items-center border-b border-[#2d2d2d] pb-3">
               <div>
@@ -600,7 +600,7 @@ export function OrderFulfillmentHub({ storeContext }: OrderFulfillmentHubProps) 
 
       {/* MODAL: Dispatch & Shipping Modal */}
       {activeShippingOrder && (
-        <div className="fixed inset-0 bg-black/75 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/75 backdrop-blur-xs flex items-center justify-center z-[150] p-4">
           <div className="bg-[#202020] border border-[#333333] rounded-[10px] w-full max-w-md p-6 shadow-2xl space-y-4">
             <div className="flex justify-between items-center border-b border-[#2d2d2d] pb-3">
               <div>

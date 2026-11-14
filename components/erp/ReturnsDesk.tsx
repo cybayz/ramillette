@@ -404,7 +404,7 @@ export function ReturnsDesk({ storeContext }: ReturnsDeskProps) {
 
       {/* MODAL: Process Return / Exchange */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-xs flex items-center justify-center z-50 p-4 overflow-y-auto">
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-xs flex items-center justify-center z-[150] p-4 overflow-y-auto">
           <div className="bg-[#202020] border border-[#333333] rounded-[10px] w-full max-w-xl p-6 shadow-2xl space-y-4 my-8 max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center border-b border-[#2d2d2d] pb-2">
               <div className="flex items-center gap-2">

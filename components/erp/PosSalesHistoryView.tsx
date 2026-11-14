@@ -290,19 +290,26 @@ export function PosSalesHistoryView({
 
       {/* POPUP MODAL: View Invoice Preview */}
       {activeReceipt && (
-        <div className="fixed inset-0 bg-black/85 backdrop-blur-xs flex items-center justify-center z-50 p-4">
-          <div className="bg-[#181818] border border-[#333333] rounded-[12px] w-full max-w-md p-5 shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto">
-            <div className="flex justify-between items-center border-b border-[#2e2e2e] pb-3 print:hidden">
+        <div
+          className="fixed inset-0 bg-black/85 backdrop-blur-xs flex items-center justify-center z-[200] p-3 sm:p-4 animate-in fade-in duration-150"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setActiveReceipt(null);
+          }}
+        >
+          <div className="bg-[#181818] border border-[#333333] rounded-[12px] w-full max-w-md p-4 sm:p-5 shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto relative flex flex-col">
+            <div className="sticky top-0 bg-[#181818] z-30 -mt-1 pt-1 pb-3 border-b border-[#2e2e2e] flex justify-between items-center print:hidden">
               <div className="flex items-center gap-1.5 text-[#faedcd] font-bold text-xs">
                 <Receipt size={16} />
                 <span>Invoice #{activeReceipt.invoiceNumber || activeReceipt.orderNumber}</span>
               </div>
               <button
+                type="button"
                 onClick={() => setActiveReceipt(null)}
-                className="text-neutral-400 hover:text-white p-1 rounded-sm hover:bg-neutral-800 transition-colors"
+                className="text-neutral-400 hover:text-white p-1.5 rounded-md hover:bg-neutral-800 transition-colors cursor-pointer"
                 title="Close"
+                aria-label="Close invoice"
               >
-                <X size={18} />
+                <X size={20} />
               </button>
             </div>
 
@@ -312,8 +319,9 @@ export function PosSalesHistoryView({
             </div>
 
             {/* Modal Actions */}
-            <div className="flex gap-2 pt-2 border-t border-[#2e2e2e] print:hidden">
+            <div className="sticky bottom-0 bg-[#181818] z-30 -mb-1 pb-1 pt-3 border-t border-[#2e2e2e] flex gap-2 print:hidden">
               <button
+                type="button"
                 onClick={() => {
                   document.body.classList.add("printing-erp-invoice");
                   window.print();
@@ -327,6 +335,7 @@ export function PosSalesHistoryView({
                 <span>Print Invoice</span>
               </button>
               <button
+                type="button"
                 onClick={() => setActiveReceipt(null)}
                 className="py-2.5 px-4 rounded bg-[#2a2a2a] hover:bg-[#333333] text-neutral-300 text-xs font-bold cursor-pointer transition-colors"
               >
