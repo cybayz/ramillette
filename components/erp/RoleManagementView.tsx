@@ -18,6 +18,7 @@ import {
   Info,
   CheckCircle2,
   Trash2,
+  Pencil,
   KeyRound,
   Copy,
   Eye,
@@ -51,6 +52,8 @@ interface StaffUser {
   id: string;
   email: string;
   name: string;
+  firstName?: string | null;
+  lastName?: string | null;
   phone?: string | null;
   role: string;
   customRoleId?: string | null;
@@ -110,6 +113,22 @@ export function RoleManagementView() {
   const [showResetPasswordText, setShowResetPasswordText] = useState(false);
   const [copiedResetPassword, setCopiedResetPassword] = useState(false);
 
+  // Edit staff modal state
+  const [showEditStaffModal, setShowEditStaffModal] = useState(false);
+  const [editStaffUser, setEditStaffUser] = useState<StaffUser | null>(null);
+  const [editStaffFirstName, setEditStaffFirstName] = useState("");
+  const [editStaffLastName, setEditStaffLastName] = useState("");
+  const [editStaffEmail, setEditStaffEmail] = useState("");
+  const [editStaffPhone, setEditStaffPhone] = useState("");
+  const [editStaffRoleId, setEditStaffRoleId] = useState("");
+  const [editStaffStoreId, setEditStaffStoreId] = useState("");
+  const [updatingStaff, setUpdatingStaff] = useState(false);
+
+  // Delete staff modal state
+  const [showDeleteStaffModal, setShowDeleteStaffModal] = useState(false);
+  const [deleteTargetUser, setDeleteTargetUser] = useState<StaffUser | null>(null);
+  const [deletingStaff, setDeletingStaff] = useState(false);
+
   useEffect(() => {
     fetchRolesAndCatalog();
     fetchStaff();
@@ -120,7 +139,7 @@ export function RoleManagementView() {
     setTimeout(() => setToastMessage(null), 3500);
   };
 
-  const fetchRolesAndCatalog = async () => {
+  async function fetchRolesAndCatalog() {
     try {
       const res = await fetch("/api/erp/roles");
       const data = await res.json();
@@ -133,9 +152,9 @@ export function RoleManagementView() {
     } finally {
       setLoading(false);
     }
-  };
+  }
 
-  const fetchStaff = async () => {
+  async function fetchStaff() {
     try {
       const res = await fetch("/api/erp/roles/users");
       const data = await res.json();
@@ -148,7 +167,7 @@ export function RoleManagementView() {
     } catch (err) {
       console.error("Failed to load staff", err);
     }
-  };
+  }
 
   const togglePermission = async (role: RoleData, permKey: string) => {
     if (role.name === "SUPER_ADMIN") {
@@ -387,6 +406,86 @@ export function RoleManagementView() {
       showToast("Network error resetting password");
     } finally {
       setResettingPassword(false);
+    }
+  };
+
+  const openEditStaffModal = (u: StaffUser) => {
+    setEditStaffUser(u);
+    setEditStaffFirstName(u.firstName || "");
+    setEditStaffLastName(u.lastName || "");
+    setEditStaffEmail(u.email || "");
+    setEditStaffPhone(u.phone || "");
+    const matchingRole = roles.find((r) => r.id === u.customRoleId || r.name === u.role);
+    setEditStaffRoleId(matchingRole?.id || roles[0]?.id || "");
+    setEditStaffStoreId(u.assignedStoreId || "");
+    setShowEditStaffModal(true);
+  };
+
+  const handleEditStaff = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editStaffUser || !editStaffEmail.trim()) {
+      showToast("Email address is required");
+      return;
+    }
+
+    setUpdatingStaff(true);
+    try {
+      const selectedRoleObj = roles.find((r) => r.id === editStaffRoleId);
+      const res = await fetch("/api/erp/roles/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: editStaffUser.id,
+          firstName: editStaffFirstName.trim(),
+          lastName: editStaffLastName.trim(),
+          email: editStaffEmail.trim(),
+          phone: editStaffPhone.trim(),
+          role: selectedRoleObj?.isSystem ? selectedRoleObj.name : "CASHIER",
+          customRoleId: selectedRoleObj?.isSystem ? null : selectedRoleObj?.id || null,
+          assignedStoreId: editStaffStoreId || null,
+        }),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        showToast(`Staff member "${data.user.name}" updated successfully!`);
+        setShowEditStaffModal(false);
+        setEditStaffUser(null);
+        fetchStaff();
+        fetchRolesAndCatalog();
+      } else {
+        showToast(data.error || "Failed to update staff member");
+      }
+    } catch (err) {
+      showToast("Network error updating staff member");
+    } finally {
+      setUpdatingStaff(false);
+    }
+  };
+
+  const handleDeleteStaff = async () => {
+    if (!deleteTargetUser) return;
+
+    setDeletingStaff(true);
+    try {
+      const res = await fetch(`/api/erp/roles/users?id=${deleteTargetUser.id}`, {
+        method: "DELETE",
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        showToast(`Staff account ${deleteTargetUser.email} deleted.`);
+        setShowDeleteStaffModal(false);
+        setDeleteTargetUser(null);
+        fetchStaff();
+        fetchRolesAndCatalog();
+      } else {
+        showToast(data.error || "Failed to delete staff member");
+      }
+    } catch (err) {
+      showToast("Network error deleting staff member");
+    } finally {
+      setDeletingStaff(false);
     }
   };
 
@@ -737,22 +836,46 @@ export function RoleManagementView() {
                         </span>
                       </td>
                       <td className="p-3.5 text-right">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setResetTargetUser(u);
-                            const autoPass = generateSecurePassword();
-                            setResetNewPassword(autoPass);
-                            setShowResetPasswordText(true);
-                            setCopiedResetPassword(false);
-                            setShowResetPasswordModal(true);
-                          }}
-                          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-[#1e1e1e] hover:bg-[#282828] text-[#faedcd] hover:text-white border border-[#2d2d2d] hover:border-[#444] rounded text-xs font-semibold transition-all cursor-pointer shadow-2xs"
-                          title={`Reset password for ${u.name || u.email}`}
-                        >
-                          <KeyRound size={13} className="text-[#faedcd]" />
-                          <span>Reset Password</span>
-                        </button>
+                        <div className="inline-flex items-center gap-1.5 justify-end">
+                          <button
+                            type="button"
+                            onClick={() => openEditStaffModal(u)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-[#1b1b1b] hover:bg-[#252525] text-neutral-300 hover:text-white border border-[#2d2d2d] hover:border-[#444] rounded text-xs font-semibold transition-all cursor-pointer shadow-2xs"
+                            title={`Edit ${u.name || u.email}`}
+                          >
+                            <Pencil size={12} className="text-[#faedcd]" />
+                            <span>Edit</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setResetTargetUser(u);
+                              const autoPass = generateSecurePassword();
+                              setResetNewPassword(autoPass);
+                              setShowResetPasswordText(true);
+                              setCopiedResetPassword(false);
+                              setShowResetPasswordModal(true);
+                            }}
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-[#1e1e1e] hover:bg-[#282828] text-[#faedcd] hover:text-white border border-[#2d2d2d] hover:border-[#444] rounded text-xs font-semibold transition-all cursor-pointer shadow-2xs"
+                            title={`Reset password for ${u.name || u.email}`}
+                          >
+                            <KeyRound size={12} className="text-[#faedcd]" />
+                            <span>Reset</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setDeleteTargetUser(u);
+                              setShowDeleteStaffModal(true);
+                            }}
+                            className="inline-flex items-center p-1.5 bg-[#1a1a1a] hover:bg-rose-950/50 text-neutral-400 hover:text-rose-400 border border-[#2d2d2d] hover:border-rose-800/40 rounded transition-all cursor-pointer shadow-2xs"
+                            title={`Delete ${u.name || u.email}`}
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -1186,6 +1309,204 @@ export function RoleManagementView() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* EDIT STAFF MEMBER MODAL */}
+      {showEditStaffModal && editStaffUser && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-[#181818] border border-[#2d2d2d] rounded-[12px] max-w-lg w-full p-6 shadow-2xl space-y-5 animate-in fade-in zoom-in-95">
+            <div className="flex items-center justify-between border-b border-[#282828] pb-3">
+              <div className="flex items-center gap-2">
+                <Pencil size={18} className="text-[#faedcd]" />
+                <h3 className="font-bold text-sm text-white">Edit Staff Member Details</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowEditStaffModal(false);
+                  setEditStaffUser(null);
+                }}
+                className="text-neutral-400 hover:text-white transition-colors cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleEditStaff} className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[11px] uppercase tracking-wider text-neutral-400 font-bold block mb-1">
+                    First Name
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Faisal"
+                    value={editStaffFirstName}
+                    onChange={(e) => setEditStaffFirstName(e.target.value)}
+                    className="w-full bg-[#121212] border border-[#2e2e2e] rounded-[6px] px-3 py-2 text-xs text-white placeholder-neutral-600 focus:outline-hidden focus:border-[#faedcd]"
+                  />
+                </div>
+                <div>
+                  <label className="text-[11px] uppercase tracking-wider text-neutral-400 font-bold block mb-1">
+                    Last Name
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Al-Thani"
+                    value={editStaffLastName}
+                    onChange={(e) => setEditStaffLastName(e.target.value)}
+                    className="w-full bg-[#121212] border border-[#2e2e2e] rounded-[6px] px-3 py-2 text-xs text-white placeholder-neutral-600 focus:outline-hidden focus:border-[#faedcd]"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-[11px] uppercase tracking-wider text-neutral-400 font-bold block mb-1">
+                  Email Address *
+                </label>
+                <input
+                  type="email"
+                  required
+                  placeholder="e.g. faisal@ramillette.com"
+                  value={editStaffEmail}
+                  onChange={(e) => setEditStaffEmail(e.target.value)}
+                  className="w-full bg-[#121212] border border-[#2e2e2e] rounded-[6px] px-3 py-2 text-xs text-white placeholder-neutral-600 focus:outline-hidden focus:border-[#faedcd]"
+                />
+              </div>
+
+              <div>
+                <label className="text-[11px] uppercase tracking-wider text-neutral-400 font-bold block mb-1">
+                  Phone Number
+                </label>
+                <input
+                  type="tel"
+                  placeholder="e.g. +974 5555 1234"
+                  value={editStaffPhone}
+                  onChange={(e) => setEditStaffPhone(e.target.value)}
+                  className="w-full bg-[#121212] border border-[#2e2e2e] rounded-[6px] px-3 py-2 text-xs text-white placeholder-neutral-600 focus:outline-hidden focus:border-[#faedcd]"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[11px] uppercase tracking-wider text-neutral-400 font-bold block mb-1">
+                    Operational Role *
+                  </label>
+                  <select
+                    value={editStaffRoleId}
+                    onChange={(e) => setEditStaffRoleId(e.target.value)}
+                    className="w-full bg-[#121212] border border-[#2e2e2e] rounded-[6px] px-3 py-2 text-xs text-[#faedcd] font-semibold focus:outline-hidden focus:border-[#faedcd] cursor-pointer"
+                  >
+                    {roles.map((r) => (
+                      <option key={r.id} value={r.id}>
+                        {r.displayName}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-[11px] uppercase tracking-wider text-neutral-400 font-bold block mb-1">
+                    Assigned Store / Branch *
+                  </label>
+                  <select
+                    value={editStaffStoreId}
+                    onChange={(e) => setEditStaffStoreId(e.target.value)}
+                    className="w-full bg-[#121212] border border-[#2e2e2e] rounded-[6px] px-3 py-2 text-xs text-white focus:outline-hidden focus:border-[#faedcd] cursor-pointer"
+                  >
+                    <option value="">Global / Unassigned</option>
+                    {availableStores.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.name} ({s.countryCode})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#262626]">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowEditStaffModal(false);
+                    setEditStaffUser(null);
+                  }}
+                  className="px-4 py-2 rounded-[6px] text-xs font-semibold text-neutral-400 hover:text-white transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={updatingStaff}
+                  className="inline-flex items-center gap-2 bg-[#faedcd] hover:bg-[#faedcd]/90 text-[#1c1c1c] px-5 py-2 rounded-[6px] text-xs font-bold transition-all shadow-xs disabled:opacity-50 cursor-pointer"
+                >
+                  <Check size={14} />
+                  <span>{updatingStaff ? "Saving Changes..." : "Save Changes"}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* DELETE STAFF CONFIRMATION MODAL */}
+      {showDeleteStaffModal && deleteTargetUser && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-[#181818] border border-rose-900/40 rounded-[12px] max-w-md w-full p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95">
+            <div className="flex items-center justify-between border-b border-[#282828] pb-3">
+              <div className="flex items-center gap-2 text-rose-400">
+                <Trash2 size={18} />
+                <h3 className="font-bold text-sm text-white">Delete Staff Member</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowDeleteStaffModal(false);
+                  setDeleteTargetUser(null);
+                }}
+                className="text-neutral-400 hover:text-white transition-colors cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="bg-rose-950/20 border border-rose-900/30 rounded-[8px] p-3 text-xs text-neutral-300 space-y-1.5">
+              <p className="font-semibold text-rose-300">
+                Are you sure you want to permanently delete this staff member?
+              </p>
+              <p className="text-neutral-400 text-[11px]">
+                Account: <span className="text-white font-bold">{deleteTargetUser.name}</span> ({deleteTargetUser.email})
+              </p>
+              <p className="text-neutral-400 text-[11px]">
+                Assigned Role: <span className="text-[#faedcd] font-semibold">{deleteTargetUser.customRoleName || deleteTargetUser.role}</span> &bull; {deleteTargetUser.storeName}
+              </p>
+              <p className="text-rose-400/90 text-[10px] mt-2">
+                This will revoke their access to POS registers, inventory desks, and ERP workstations immediately.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#262626]">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowDeleteStaffModal(false);
+                  setDeleteTargetUser(null);
+                }}
+                className="px-4 py-2 rounded-[6px] text-xs font-semibold text-neutral-400 hover:text-white transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={deletingStaff}
+                onClick={handleDeleteStaff}
+                className="inline-flex items-center gap-1.5 bg-rose-600 hover:bg-rose-500 text-white px-4 py-2 rounded-[6px] text-xs font-bold transition-all shadow-xs disabled:opacity-50 cursor-pointer"
+              >
+                <Trash2 size={13} />
+                <span>{deletingStaff ? "Deleting..." : "Permanently Delete"}</span>
+              </button>
+            </div>
           </div>
         </div>
       )}

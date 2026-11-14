@@ -38,6 +38,8 @@ export async function GET() {
         id: u.id,
         email: u.email,
         name: `${u.firstName || ""} ${u.lastName || ""}`.trim() || u.email,
+        firstName: u.firstName || "",
+        lastName: u.lastName || "",
         phone: u.phone,
         role: u.role,
         customRoleId: u.customRoleId,
@@ -206,7 +208,62 @@ export async function POST(request: Request) {
       });
     }
 
-    const { userId, customRoleId, assignedStoreId } = body;
+    // Delete Staff Member via POST action
+    if (body.action === "delete") {
+      const { userId } = body;
+      if (!userId) {
+        return NextResponse.json({ error: "User ID is required" }, { status: 400 });
+      }
+
+      if (user.id === userId) {
+        return NextResponse.json({ error: "You cannot delete your own account." }, { status: 400 });
+      }
+
+      const targetUser = await prisma.user.findUnique({
+        where: { id: userId },
+      });
+
+      if (!targetUser) {
+        return NextResponse.json({ error: "Staff member not found" }, { status: 404 });
+      }
+
+      if (targetUser.role === "SUPER_ADMIN" && user.role !== "SUPER_ADMIN") {
+        return NextResponse.json(
+          { error: "Only a Super Administrator can remove another Super Administrator." },
+          { status: 403 }
+        );
+      }
+
+      await prisma.auditLog.create({
+        data: {
+          userId: user.id,
+          action: "STAFF_USER_DELETED",
+          entity: "User",
+          entityId: targetUser.id,
+          oldValue: {
+            email: targetUser.email,
+            name: `${targetUser.firstName || ""} ${targetUser.lastName || ""}`.trim(),
+            role: targetUser.role,
+            storeId: targetUser.assignedStoreId,
+          },
+          newValue: {
+            deletedBy: user.email,
+          },
+        },
+      }).catch(() => {});
+
+      await prisma.user.delete({
+        where: { id: userId },
+      });
+
+      return NextResponse.json({
+        success: true,
+        message: `Staff member ${targetUser.email} has been permanently deleted.`,
+      });
+    }
+
+    // Update / Edit Staff Member (Role, Branch, Contact, Name, Email)
+    const { userId, customRoleId, assignedStoreId, firstName, lastName, email, phone, role } = body;
 
     if (!userId) {
       return NextResponse.json({ error: "User ID is required" }, { status: 400 });
@@ -220,13 +277,28 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
+    // If email is changing, ensure it's not taken by another user
+    if (email && email.trim().toLowerCase() !== targetUser.email.toLowerCase()) {
+      const normalizedEmail = email.trim().toLowerCase();
+      const existing = await prisma.user.findFirst({
+        where: {
+          email: normalizedEmail,
+          id: { not: userId },
+        },
+      });
+      if (existing) {
+        return NextResponse.json({ error: "An account with this email already exists" }, { status: 400 });
+      }
+    }
+
     let roleName = targetUser.role;
-    if (customRoleId) {
+    if (role) {
+      roleName = role as Role;
+    } else if (customRoleId) {
       const customRole = await prisma.customRole.findUnique({
         where: { id: customRoleId },
       });
       if (customRole) {
-        // Map to corresponding prisma Role if matches, or retain existing
         const possibleRoles = ["SUPER_ADMIN", "STORE_MANAGER", "CASHIER", "INVENTORY_MANAGER", "FULFILLMENT_STAFF", "ACCOUNTANT", "ADMIN"];
         if (possibleRoles.includes(customRole.name)) {
           roleName = customRole.name as Role;
@@ -238,8 +310,12 @@ export async function POST(request: Request) {
       where: { id: userId },
       data: {
         role: roleName,
-        customRoleId: customRoleId || null,
+        customRoleId: customRoleId !== undefined ? (customRoleId || null) : undefined,
         ...(assignedStoreId !== undefined ? { assignedStoreId: assignedStoreId || null } : {}),
+        ...(firstName !== undefined ? { firstName: firstName?.trim() || null } : {}),
+        ...(lastName !== undefined ? { lastName: lastName?.trim() || null } : {}),
+        ...(phone !== undefined ? { phone: phone?.trim() || null } : {}),
+        ...(email && email.trim() ? { email: email.trim().toLowerCase() } : {}),
       },
       include: {
         customRole: true,
@@ -247,24 +323,46 @@ export async function POST(request: Request) {
       },
     });
 
-    if (assignedStoreId) {
-      await prisma.userStore.upsert({
-        where: {
-          userId_storeId: {
+    if (assignedStoreId !== undefined) {
+      if (assignedStoreId) {
+        await prisma.userStore.upsert({
+          where: {
+            userId_storeId: {
+              userId: updated.id,
+              storeId: assignedStoreId,
+            },
+          },
+          create: {
             userId: updated.id,
             storeId: assignedStoreId,
+            isDefault: true,
           },
-        },
-        create: {
-          userId: updated.id,
-          storeId: assignedStoreId,
-          isDefault: true,
-        },
-        update: {
-          isDefault: true,
-        },
-      }).catch(() => {});
+          update: {
+            isDefault: true,
+          },
+        }).catch(() => {});
+      }
     }
+
+    await prisma.auditLog.create({
+      data: {
+        userId: user.id,
+        action: "STAFF_USER_UPDATED",
+        entity: "User",
+        entityId: updated.id,
+        oldValue: {
+          email: targetUser.email,
+          role: targetUser.role,
+          storeId: targetUser.assignedStoreId,
+        },
+        newValue: {
+          email: updated.email,
+          role: updated.role,
+          storeId: updated.assignedStoreId,
+          updatedBy: user.email,
+        },
+      },
+    }).catch(() => {});
 
     return NextResponse.json({
       success: true,
@@ -272,6 +370,9 @@ export async function POST(request: Request) {
         id: updated.id,
         email: updated.email,
         name: `${updated.firstName || ""} ${updated.lastName || ""}`.trim() || updated.email,
+        firstName: updated.firstName || "",
+        lastName: updated.lastName || "",
+        phone: updated.phone || "",
         role: updated.role,
         customRoleId: updated.customRoleId,
         customRoleName: updated.customRole?.displayName || updated.role,
@@ -281,6 +382,71 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     console.error("POST /api/erp/roles/users error:", error);
-    return NextResponse.json({ error: "Failed to update staff member role" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to update staff member" }, { status: 500 });
+  }
+}
+
+export async function DELETE(request: Request) {
+  try {
+    const user = await getErpUser();
+    if (!user || !hasPermission(user, "roles:manage")) {
+      return NextResponse.json({ error: "Unauthorized access" }, { status: 403 });
+    }
+
+    const { searchParams } = new URL(request.url);
+    const userId = searchParams.get("id") || searchParams.get("userId");
+
+    if (!userId) {
+      return NextResponse.json({ error: "User ID is required" }, { status: 400 });
+    }
+
+    if (user.id === userId) {
+      return NextResponse.json({ error: "You cannot delete your own account." }, { status: 400 });
+    }
+
+    const targetUser = await prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!targetUser) {
+      return NextResponse.json({ error: "Staff member not found" }, { status: 404 });
+    }
+
+    if (targetUser.role === "SUPER_ADMIN" && user.role !== "SUPER_ADMIN") {
+      return NextResponse.json(
+        { error: "Only a Super Administrator can remove another Super Administrator." },
+        { status: 403 }
+      );
+    }
+
+    await prisma.auditLog.create({
+      data: {
+        userId: user.id,
+        action: "STAFF_USER_DELETED",
+        entity: "User",
+        entityId: targetUser.id,
+        oldValue: {
+          email: targetUser.email,
+          name: `${targetUser.firstName || ""} ${targetUser.lastName || ""}`.trim(),
+          role: targetUser.role,
+          storeId: targetUser.assignedStoreId,
+        },
+        newValue: {
+          deletedBy: user.email,
+        },
+      },
+    }).catch(() => {});
+
+    await prisma.user.delete({
+      where: { id: userId },
+    });
+
+    return NextResponse.json({
+      success: true,
+      message: `Staff member ${targetUser.email} has been permanently deleted.`,
+    });
+  } catch (error) {
+    console.error("DELETE /api/erp/roles/users error:", error);
+    return NextResponse.json({ error: "Failed to delete staff member" }, { status: 500 });
   }
 }
