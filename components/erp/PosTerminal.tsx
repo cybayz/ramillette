@@ -198,6 +198,26 @@ export function PosTerminal({ storeContext, cashierName }: PosTerminalProps) {
     };
   }, [storeContext.storeId]);
 
+  // Open / Close Customer Selector Modal (F4)
+  const openCustomerModal = useCallback(() => {
+    setCustomerName((curr) => {
+      if (
+        curr === "Walk-in Customer" ||
+        curr === "Online Order" ||
+        curr === "WhatsApp Order"
+      ) {
+        return "";
+      }
+      return curr;
+    });
+    setIsCustomerModalOpen(true);
+  }, []);
+
+  const closeCustomerModal = useCallback(() => {
+    setCustomerName((curr) => (!curr.trim() ? orderChannel : curr));
+    setIsCustomerModalOpen(false);
+  }, [orderChannel]);
+
   // Global Barcode Scanner Listener & Keyboard Shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -212,7 +232,7 @@ export function PosTerminal({ storeContext, cashierName }: PosTerminalProps) {
       // Hotkey F4: Customer Select
       if (e.key === "F4") {
         e.preventDefault();
-        setIsCustomerModalOpen(true);
+        openCustomerModal();
         return;
       }
 
@@ -237,7 +257,12 @@ export function PosTerminal({ storeContext, cashierName }: PosTerminalProps) {
         setIsPaymentModalOpen(false);
         setIsSplitPaymentModalOpen(false);
         setIsHistoryModalOpen(false);
-        setIsCustomerModalOpen(false);
+        setIsCustomerModalOpen((isOpen) => {
+          if (isOpen) {
+            setCustomerName((curr) => (!curr.trim() ? orderChannel : curr));
+          }
+          return false;
+        });
         if (completedReceipt) setCompletedReceipt(null);
         return;
       }
@@ -271,7 +296,7 @@ export function PosTerminal({ storeContext, cashierName }: PosTerminalProps) {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [catalog, cart, isPaymentModalOpen, completedReceipt, handleBarcodeScanned]);
+  }, [catalog, cart, isPaymentModalOpen, completedReceipt, handleBarcodeScanned, openCustomerModal, orderChannel]);
 
   const updateQuantity = (itemId: string, delta: number) => {
     setCart((prev) => {
@@ -796,8 +821,12 @@ export function PosTerminal({ storeContext, cashierName }: PosTerminalProps) {
                   <Store size={14} />
                 )}
               </div>
-              <div className="min-w-0">
-                <span className="text-xs font-bold text-white truncate block">
+              <div
+                className="min-w-0 cursor-pointer group"
+                onClick={openCustomerModal}
+                title="Click to change customer name (F4)"
+              >
+                <span className="text-xs font-bold text-white group-hover:text-[#faedcd] transition-colors truncate block">
                   {customerName}
                 </span>
                 <span className="text-[10px] text-neutral-400 block truncate">
@@ -807,7 +836,8 @@ export function PosTerminal({ storeContext, cashierName }: PosTerminalProps) {
             </div>
 
             <button
-              onClick={() => setIsCustomerModalOpen(true)}
+              type="button"
+              onClick={openCustomerModal}
               className="text-[10px] font-bold text-[#faedcd] hover:underline px-2 py-1 rounded bg-[#2a2a2a] hover:bg-[#333333] transition-colors cursor-pointer shrink-0"
             >
               Change (F4)
@@ -1087,7 +1117,7 @@ export function PosTerminal({ storeContext, cashierName }: PosTerminalProps) {
           <div className="bg-[#222222] border border-[#383838] rounded-[10px] w-full max-w-md p-5 shadow-2xl space-y-4">
             <div className="flex justify-between items-center border-b border-[#303030] pb-2">
               <h3 className="text-sm font-black text-white">Select Customer &amp; Channel (F4)</h3>
-              <button onClick={() => setIsCustomerModalOpen(false)} className="text-neutral-400 hover:text-white cursor-pointer">
+              <button onClick={closeCustomerModal} className="text-neutral-400 hover:text-white cursor-pointer">
                 <X size={16} />
               </button>
             </div>
@@ -1103,8 +1133,12 @@ export function PosTerminal({ storeContext, cashierName }: PosTerminalProps) {
                     type="button"
                     onClick={() => {
                       setOrderChannel("Walk-in Customer");
-                      if (customerName === "Online Order" || customerName === "WhatsApp Order") {
-                        setCustomerName("Walk-in Customer");
+                      if (
+                        customerName === "Walk-in Customer" ||
+                        customerName === "Online Order" ||
+                        customerName === "WhatsApp Order"
+                      ) {
+                        setCustomerName("");
                       }
                     }}
                     className={`p-2.5 rounded-[8px] border text-left flex flex-col gap-1 transition-all cursor-pointer ${
@@ -1124,8 +1158,12 @@ export function PosTerminal({ storeContext, cashierName }: PosTerminalProps) {
                     type="button"
                     onClick={() => {
                       setOrderChannel("WhatsApp Order");
-                      if (customerName === "Walk-in Customer" || customerName === "Online Order") {
-                        setCustomerName("WhatsApp Order");
+                      if (
+                        customerName === "Walk-in Customer" ||
+                        customerName === "Online Order" ||
+                        customerName === "WhatsApp Order"
+                      ) {
+                        setCustomerName("");
                       }
                     }}
                     className={`p-2.5 rounded-[8px] border text-left flex flex-col gap-1 transition-all cursor-pointer ${
@@ -1145,8 +1183,12 @@ export function PosTerminal({ storeContext, cashierName }: PosTerminalProps) {
                     type="button"
                     onClick={() => {
                       setOrderChannel("Online Order");
-                      if (customerName === "Walk-in Customer" || customerName === "WhatsApp Order") {
-                        setCustomerName("Online Order");
+                      if (
+                        customerName === "Walk-in Customer" ||
+                        customerName === "Online Order" ||
+                        customerName === "WhatsApp Order"
+                      ) {
+                        setCustomerName("");
                       }
                     }}
                     className={`p-2.5 rounded-[8px] border text-left flex flex-col gap-1 transition-all cursor-pointer ${
@@ -1165,16 +1207,49 @@ export function PosTerminal({ storeContext, cashierName }: PosTerminalProps) {
               </div>
 
               <div>
-                <label className="text-[11px] font-bold text-neutral-400 block mb-1">
-                  Customer Full Name
-                </label>
-                <input
-                  type="text"
-                  value={customerName}
-                  onChange={(e) => setCustomerName(e.target.value)}
-                  placeholder="e.g. Tariq Al-Kuwari"
-                  className="w-full bg-[#1c1c1c] border border-[#333333] rounded-[6px] px-3 py-2 text-xs text-white placeholder-neutral-600 focus:outline-hidden focus:border-[#faedcd]"
-                />
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-[11px] font-bold text-neutral-400">
+                    Customer Full Name
+                  </label>
+                  {customerName && (
+                    <button
+                      type="button"
+                      onClick={() => setCustomerName("")}
+                      className="text-[10px] text-neutral-400 hover:text-rose-400 transition-colors cursor-pointer"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+                <div className="relative">
+                  <input
+                    type="text"
+                    autoFocus
+                    value={customerName}
+                    onFocus={() => {
+                      if (
+                        customerName === "Walk-in Customer" ||
+                        customerName === "Online Order" ||
+                        customerName === "WhatsApp Order"
+                      ) {
+                        setCustomerName("");
+                      }
+                    }}
+                    onChange={(e) => setCustomerName(e.target.value)}
+                    placeholder={`e.g. Tariq Al-Kuwari (default: ${orderChannel})`}
+                    className="w-full bg-[#1c1c1c] border border-[#333333] rounded-[6px] pl-3 pr-8 py-2 text-xs text-white placeholder-neutral-600 focus:outline-hidden focus:border-[#faedcd]"
+                  />
+                  {customerName && (
+                    <button
+                      type="button"
+                      onClick={() => setCustomerName("")}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-white cursor-pointer"
+                      title="Clear Name"
+                    >
+                      <X size={13} />
+                    </button>
+                  )}
+                </div>
               </div>
 
               <div>
@@ -1206,7 +1281,7 @@ export function PosTerminal({ storeContext, cashierName }: PosTerminalProps) {
               </button>
               <button
                 type="button"
-                onClick={() => setIsCustomerModalOpen(false)}
+                onClick={closeCustomerModal}
                 className="flex-1 py-2 rounded bg-[#faedcd] text-xs font-black text-[#1c1c1c] cursor-pointer hover:bg-[#ebd59f]"
               >
                 Save Details
